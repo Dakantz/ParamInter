@@ -11,6 +11,14 @@ class DataDescription(BaseModel):
     num_features: int
     num_outputs: int
 
+class DataPoints(BaseModel):
+    """
+    DataPoint model to represent a single data point.
+    """
+    inputs: list[list[float]]
+    outputs: list[list[float]]
+    projected_outputs: list[list[float]] = None
+    
 class DataPoint(BaseModel):
     """
     DataPoint model to represent a single data point.
@@ -18,4 +26,3 @@ class DataPoint(BaseModel):
     inputs: list[float]
     outputs: list[float]
     projected_outputs: list[float] = None
-    
