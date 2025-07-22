@@ -14,4 +14,17 @@ dependencies = [
     "torch>=2.7.1",
     "torchvision>=0.22.1",
     "umap-learn>=0.5.9.post2",
+    "cudf-cu12==25.6.*",
+    "cuml-cu12==25.6.*",
 ]
+
+[tool.uv.sources]
+ cudf-cu12 = { index = "nv" }
+ cuml-cu12 = { index = "nv" }
+
+[[tool.uv.index]]
+# Optional name for the index.
+name = "nv"
+# Required URL for the index.
+url = "https://pypi.nvidia.com"
+

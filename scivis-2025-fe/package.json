@@ -4,11 +4,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate-client": "sta generate -p http://localhost:8000/openapi.json -o ./src/api/ --axios"
   },
   "dependencies": {
     "@mdi/font": "6.2.95",
+    "@types/d3": "^7.4.3",
+    "axios": "^1.10.0",
+    "chart.js": "^4.5.0",
+    "d3": "^7.9.0",
     "roboto-fontface": "*",
+    "three": "^0.178.0",
     "vue": "^3.4.21",
     "vuetify": "^3.5.8"
   },
@@ -17,6 +23,7 @@
     "@types/node": "^20.11.25",
     "@vitejs/plugin-vue": "^5.0.4",
     "sass": "^1.71.1",
+    "swagger-typescript-api": "^13.2.7",
     "typescript": "^5.4.2",
     "unplugin-fonts": "^1.1.1",
     "unplugin-vue-components": "^0.26.0",

@@ -10,3 +10,5 @@ wheels/
 .venv
 
 alloy_data.txt
+models
+data

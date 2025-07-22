@@ -8,5 +8,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
+    PlotsOverview: typeof import('./src/components/PlotsOverview.vue')['default']
+    ReducedDimPlot: typeof import('./src/components/ReducedDimPlot.vue')['default']
   }
 }
