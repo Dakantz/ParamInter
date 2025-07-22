@@ -1,3 +1,5 @@
+import { InterpolationResult } from "../api/Api";
+
 export class PlotSelection {
     constructor(
         public selected_indices: number[] = [],
@@ -14,4 +16,17 @@ export class PlotSelection {
             this.selected_indices.splice(idx, 1);
         }
     }
+}
+export class PlotSelectionResults {
+    constructor(
+        public similarities: number[] = [],
+        public interpolation: InterpolationResult | null = null,
+    ) { }
+}
+
+export interface MappedData {
+    x: number;
+    y: number;
+    data: any;
+    index: number;
 }

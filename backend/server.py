@@ -4,14 +4,23 @@ from fastapi import FastAPI
 
 # cors
 from fastapi.middleware.cors import CORSMiddleware
+from sklearn.base import TransformerMixin
 import umap
 import lightgbm as lgb
 
 from sklearn.preprocessing import MinMaxScaler
 
-from cuml.neighbors import NearestNeighbors
-from cuml.manifold.umap import UMAP
-from cuml import TSNE
+try:
+    from cuml.neighbors import NearestNeighbors
+    from cuml.manifold.umap import UMAP
+    from cuml import TSNE
+except ImportError:
+    from sklearn.neighbors import NearestNeighbors
+    from sklearn.manifold import TSNE
+    from umap import UMAP
+
+    print("Cuml not found, using CPU-based libraries.")
+    cuml = None
 
 from .col_defs import column_types, input_types
 from .models import DataDescription, DataPoints, DataPoint, InterpolationResult
@@ -37,20 +46,31 @@ cleaned = data[input_cols + output_cols].fillna(0)
 nn = NearestNeighbors(n_neighbors=1)
 nn.fit(cleaned[output_cols].values)
 
+modes = {
+    "tsne": TSNE,
+    "umap": UMAP,
+}
 
+mode = "umap"
 embedding_subsets: dict[str, np.ndarray] = {}
-tnses_subsets: dict[str, TSNE] = {}
+dim_reducers: dict[str, TransformerMixin] = {}
 for col_name, col_list in tqdm.tqdm(column_types.items(), desc="Creating embeddings"):
-    data_path = Path(f"data/{col_name}_tsne.npy")
+    data_path = Path(f"data/{col_name}_{mode}.npy")
     if data_path.exists():
         embedded_tsne = np.load(data_path)
         embedding_subsets[col_name] = embedded_tsne
     else:
-        tnses_subsets[col_name] = TSNE(
-            n_components=2,
-            perplexity=40,
+        dim_reducers[col_name] = (
+            TSNE(
+                n_components=2,
+                perplexity=40,
+            )
+            if mode == "tsne"
+            else UMAP(
+                n_neighbors=15,
+            )
         )
-        embedded_tsne: np.ndarray = tnses_subsets[col_name].fit_transform(
+        embedded_tsne: np.ndarray = dim_reducers[col_name].fit_transform(
             cleaned[col_list].values
         )
         scaled_tsne = MinMaxScaler().fit_transform(embedded_tsne)
@@ -64,7 +84,7 @@ for output_col in tqdm.tqdm(output_cols, desc="Loading models"):
     col_name = col_name.replace(" ", "_")
     col_name = col_name.replace(".", "_")
     col_name = col_name.replace("/", "_")
-    model = lgb.LGBMRegressor(
+    model = lgb.Booster(
         model_file=f"models/{col_name}_model.txt",
     )
     model_ensemble[output_col] = model
@@ -98,8 +118,11 @@ def get_similar_data_point(index: int) -> list[float]:
     if index < 0 or index >= len(data):
         return {"error": "Index out of bounds"}
 
-    input_data = data[input_cols].iloc[index].values
-    similarities = np.abs(cleaned[input_cols].values - input_data).sum(axis=1)
+    input_data = cleaned[input_cols].iloc[index].values
+
+    similarities = np.abs(cleaned[input_cols].values / 100 * input_data / 100).sum(
+        axis=1
+    )
     return similarities
 
 
@@ -108,12 +131,12 @@ def get_data_point(index: int) -> DataPoint:
     if index < 0 or index >= len(data):
         return None
 
-    input_data = data[input_cols].iloc[index].values.tolist()
-    output_data = data[output_cols].iloc[index].values.tolist()
+    input_data = cleaned[input_cols].iloc[index].values.tolist()
+    output_data = cleaned[output_cols].iloc[index].values.tolist()
     projected_output = embedded_tsne[index].tolist()
 
     return DataPoint(
-        input=input_data, output=output_data, projected_output=projected_output
+        inputs=input_data, outputs=output_data, projected_outputs=projected_output
     )
 
 
@@ -141,7 +164,7 @@ def get_interpolation(
 
     outputs_interpolated = np.empty((n_samples, len(model_ensemble)))
 
-    for i, cm in enumerate(model_ensemble.items()):
+    for i, cm in enumerate(tqdm.tqdm(model_ensemble.items())):
         _, model = cm
         predictions = model.predict(interpolated_inputs)
         outputs_interpolated[:, i] = predictions
@@ -165,4 +188,5 @@ def get_interpolation(
         inputs=interpolated_inputs.tolist(),
         outputs=outputs_interpolated.tolist(),
         projected_outputs=embeddings_nn,
+        indices=indices.flatten().tolist(),
     )

@@ -1,8 +1,9 @@
 # GradEx
 
 ## Installation
+(There is a UV project already available, but the nvidia wheels do not play nice with the correct dependency tree of uv)
 ```
-pip  install torch torchvision lightgbm  jupyter ipywidgets scikit-learn umap-learn fastapi
+pip  install torch torchvision lightgbm  jupyter ipywidgets scikit-learn umap-learn fastapi uvicorn pandas
 pip install \
     --extra-index-url=https://pypi.nvidia.com \
     "cudf-cu12==25.6.*" "dask-cudf-cu12==25.6.*" "cuml-cu12==25.6.*" \

@@ -69,7 +69,9 @@ export interface InterpolationResult {
   /** Outputs */
   outputs: number[][];
   /** Projected Outputs */
-  projected_outputs?: Record<string, number[][]>;
+  projected_outputs: Record<string, number[][]>;
+  /** Indices */
+  indices: number[];
 }
 
 /** ValidationError */

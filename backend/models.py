@@ -40,4 +40,5 @@ class InterpolationResult(BaseModel):
 
     inputs: list[list[float]]
     outputs: list[list[float]]
-    projected_outputs: dict[str, list[list[float]]] = None
+    projected_outputs: dict[str, list[list[float]]]
+    indices: list[int]
