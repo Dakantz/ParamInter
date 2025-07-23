@@ -1,13 +1,11 @@
 <template>
     <div class="search-container">
-        <div>
-            <h2>Similar Points</h2>
-            <SpyderChart :dimensions="state.dimensions" v-model="state.dim_data" :editable="true" :factor="1" />
-            <div class="search-results">
-                <div v-for="(result, idx) in state.search_results" :key="idx" class="search-result-item"
-                    @mouseenter="emit('preview', result.index || -1)" @click.capture="emit('select', result.index || -1)">
-                    <SpyderChart :dimensions="state.dimensions" v-model="result.inputs" :editable="false" />
-                </div>
+        <h2>Similar Points</h2>
+        <SpyderChart :dimensions="state.dimensions" v-model="state.dim_data" :editable="true" :factor="1" />
+        <div class="search-results">
+            <div v-for="(result, idx) in state.search_results" :key="idx" class="search-result-item"
+                @mouseenter="emit('preview', result.index || -1)" @click.capture="emit('select', result.index || -1)">
+                <SpyderChart :dimensions="state.dimensions" v-model="result.inputs" :editable="false" />
             </div>
         </div>
     </div>
@@ -67,13 +65,16 @@ watch(() => state.dim_data, (dim_data) => {
 
 </script>
 
-<style>
+<style scoped>
 .search-container {
-    width: 100%;
-    height: 100%;
+    width:100%;
+    min-height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
     display: flex;
-    justify-content: center;
-    align-items: start;
+    flex-direction: column;
+    justify-items: center;
+    align-items: center;
     padding: 7px;
 }
 
@@ -81,7 +82,7 @@ watch(() => state.dim_data, (dim_data) => {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 100%;
+    width: 80%;
 }
 
 .search-result-item {
@@ -92,7 +93,7 @@ watch(() => state.dim_data, (dim_data) => {
     padding: 5px;
     border: 1px solid #ccc;
     background-color: #f9f9f9;
-    cursor:  grab;
+    cursor: grab;
 }
 
 .search-result-item:hover {

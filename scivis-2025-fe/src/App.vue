@@ -9,7 +9,11 @@
         </div>
         <div class="divider"></div>
         <div class="search_container">
+
           <DatapointSearch :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
+            @preview="previewSelected" @select="updateSelection" v-if="state.selection.selected_indices.length == 0" />
+          <DatapointGuide :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
+            :selected_dp="state.selection.selected_indices[0]" v-if="state.selection.selected_indices.length == 1"
             @preview="previewSelected" @select="updateSelection" />
           <div v-if="state.loading">
             <v-progress-linear :value="state.loading_progress" color="primary" indeterminate></v-progress-linear>
@@ -28,6 +32,7 @@ import { DataRepository } from './proc/types';
 import { PlotSelection, PlotSelectionResults } from './components/types';
 import PlotsOverview from './components/PlotsOverview.vue';
 import DatapointSearch from './components/spyder/DatapointSearch.vue';
+import DatapointGuide from './components/spyder/DatapointGuide.vue';
 
 const state = reactive({
   data_rep: new DataRepository(),
@@ -91,7 +96,7 @@ function previewSelected(idx: number) {
 }
 function updateSelection(newSelection: number) {
   console.log("Updating selection:", newSelection);
-  if( state.selection.selected_indices.length==2){
+  if (state.selection.selected_indices.length == 2) {
     // If two indices are already selected, replace the first one
     state.selection.selected_indices = [newSelection];
   } else {
@@ -102,7 +107,7 @@ function updateSelection(newSelection: number) {
   // emit('update:selection', newSelection);
 }
 </script>
-<style scoped>
+<style>
 .main_container {
   width: 100%;
   height: 100%;
@@ -130,10 +135,22 @@ function updateSelection(newSelection: number) {
 
 .search_container {
   width: 24vw;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
+  height: 100vh;
+}
+
+button {
+  background-color: #ffd79f;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 1.2em;
+}
+
+button:hover {
+  background-color: #fbc170;
+}
+
+button:active {
+  background-color: #fca72f;
 }
 </style>

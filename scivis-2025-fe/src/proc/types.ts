@@ -1,5 +1,5 @@
 import { ThresholdNumberArrayGenerator } from "d3";
-import { Api, DataPoint, DataPoints } from "../api/Api";
+import { Api, DataDescription, DataPoint, DataPoints } from "../api/Api";
 import { API_BASE_URL } from "../config";
 
 export class Embeddings {
@@ -46,6 +46,7 @@ export class DataRepository {
     client: Api<unknown>;
     dps: DPCache;
     all_types: Record<string, string[]> = {};
+    description: DataDescription | null = null;
     constructor() {
         this.data_points = new LoadedDataPoints();
         this.all_embeddings = new AllEmbeddings();
@@ -62,7 +63,12 @@ export class DataRepository {
             this.all_embeddings.all_embeddings[type] = new Embeddings(embeddings);
             load_cb((Object.keys(this.all_embeddings.all_embeddings).length / Object.keys(this.all_types).length), Object.keys(this.all_embeddings.all_embeddings));
         }
+        this.description = (await this.client.dataDescription.getDataDescriptionDataDescriptionGet()).data;
         // this.data_points = (await this.client.data.getDataDataGet()).data;
 
     }
+    getTypeIndex(type: string): number {
+        return this.all_types["full"].indexOf(type);
+    }
+
 }

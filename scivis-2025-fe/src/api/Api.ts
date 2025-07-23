@@ -25,6 +25,14 @@ export interface DataDescription {
   num_features: number;
   /** Num Outputs */
   num_outputs: number;
+  /** Min Values */
+  min_values: Record<string, number>;
+  /** Max Values */
+  max_values: Record<string, number>;
+  /** Mean Values */
+  mean_values: Record<string, number>;
+  /** Std Values */
+  std_values: Record<string, number>;
 }
 
 /**
@@ -42,12 +50,42 @@ export interface DataPoint {
   index?: number;
 }
 
+/** DataPointSensitivity */
+export interface DataPointSensitivity {
+  /**
+   * For Outputs
+   * @default []
+   */
+  for_outputs?: string[];
+  /**
+   * Resolution
+   * @default 16
+   */
+  resolution?: number;
+}
+
 /** DataPointSimilarity */
 export interface DataPointSimilarity {
   /** Values */
   values: number[];
   /** K */
   k: number;
+}
+
+/** DataPointSuggestions */
+export interface DataPointSuggestions {
+  /** Base Index */
+  base_index?: number;
+  /**
+   * Values
+   * @default []
+   */
+  values?: number[];
+  /**
+   * K
+   * @default 5
+   */
+  k?: number;
 }
 
 /**
@@ -82,6 +120,19 @@ export interface InterpolationResult {
   projected_outputs: Record<string, number[][]>;
   /** Indices */
   indices: number[];
+}
+
+/**
+ * SensitivityAnalysisResult
+ * SensitivityAnalysisResult model to represent the result of sensitivity analysis.
+ */
+export interface SensitivityAnalysisResult {
+  /** DataPoint model to represent a single data point. */
+  dp: DataPoint;
+  /** Sensitivity Scores */
+  sensitivity_scores: number[];
+  /** Out Col */
+  out_col: string;
 }
 
 /** ValidationError */
@@ -358,6 +409,47 @@ export class Api<
     ) =>
       this.request<DataPoint[], HTTPValidationError>({
         path: `/data_point/similar`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name ExplanationsForDpDataPointExplanationsIdxPost
+     * @summary Explanations For Dp
+     * @request POST:/data_point/explanations/{idx}
+     */
+    explanationsForDpDataPointExplanationsIdxPost: (
+      idx: number,
+      data: DataPointSensitivity,
+      params: RequestParams = {},
+    ) =>
+      this.request<SensitivityAnalysisResult[], HTTPValidationError>({
+        path: `/data_point/explanations/${idx}`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name DataPointSuggestionsDataPointSuggestionsPost
+     * @summary Data Point Suggestions
+     * @request POST:/data_point/suggestions
+     */
+    dataPointSuggestionsDataPointSuggestionsPost: (
+      data: DataPointSuggestions,
+      params: RequestParams = {},
+    ) =>
+      this.request<DataPoint[], HTTPValidationError>({
+        path: `/data_point/suggestions`,
         method: "POST",
         body: data,
         type: ContentType.Json,

@@ -11,7 +11,7 @@ import * as d3 from 'd3';
 const dim_data = defineModel<Array<number>>({
     default: () => []
 });
-const { dimensions, editable, factor } = defineProps({
+const { dimensions, editable, factor, sensitivities } = defineProps({
     dimensions: {
         type: Array as () => Array<string>,
         required: true
@@ -23,6 +23,10 @@ const { dimensions, editable, factor } = defineProps({
     factor: {
         type: Number,
         default: 100.0
+    },
+    sensitivities: {
+        type: Array as () => Array<number>,
+        default: () => []
     }
 });
 const plot = useTemplateRef('plot');
@@ -56,9 +60,11 @@ function updateChart() {
             .range([0, 2 * Math.PI]);
         svg.select('g')
             .remove();
+
         const g = svg.append('g')
             .attr('transform', `translate(${center.x}, ${center.y})`)
             .attr('class', 'spider-group')
+
         g.append('g')
             .attr('class', 'spider-lines')
             .selectAll('line')
@@ -90,9 +96,10 @@ function updateChart() {
             .attr('fill', 'black')
             .attr('class', 'spider-text-item')
         const spider = g
-            .selectAll('path')
+            .selectAll('path.spider-path')
             .data([dim_mapped])
             .join('path')
+            .attr('class', 'spider-path')
             .attr('d', d => {
                 let pieces = d.map((v, i) => {
                     let angle = (i / d.length) * 2 * Math.PI;
@@ -115,6 +122,36 @@ function updateChart() {
             .attr('class', () => {
                 return editable ? 'spider-path' : 'fixed-spider';
             })
+        const filtered_sensitivities = sensitivities.map((s, i) => {
+            return { sense: s, idx: i, val: dim_mapped[i].value, name: dim_mapped[i].name, effective_length: radius * (s / (factor * 0.02)) };
+        }).filter(d => Math.abs(d.sense) > 0.2)
+        console.log("Filtered sensitivities:", filtered_sensitivities);
+        const sensitivity = g
+            .selectAll('path.sensitivity')
+            .data(filtered_sensitivities) // filter out very small sensitivities
+            // .filter(d => d.effective_length > 0.01) // filter out very small sensitivities
+            .join('path')
+            .attr('d', d => {
+                // draw an arrow depending on the sensitivity value
+                let angle = (d.idx / dim_mapped.length) * 2 * Math.PI;
+                let base_x = Math.cos(angle) * radius * (d.val / factor);
+                let base_y = Math.sin(angle) * radius * (d.val / factor);
+
+                let to_x = base_x + Math.cos(angle) * d.effective_length;
+                let to_y = base_y + Math.sin(angle) * d.effective_length;
+
+                let path = d3.path();
+                path.moveTo(base_x, base_y);
+                path.lineTo(to_x, to_y);
+                return path.toString();
+            })
+            .attr('marker-end', d => {
+                return d.sense > 0 ? 'url(#arrow-pos)' : 'url(#arrow-neg)';
+            })
+            .attr('class', d => {
+                return d.sense > 0 ? 'sensitivity_pos sensitivity' : 'sensitivity_neg sensitivity';
+            })
+
         svg
             .on('mousedown', (event: MouseEvent, d) => {
                 if (!editable) return;
@@ -179,6 +216,44 @@ function updateChart() {
 
 }
 onMounted(() => {
+
+    const markerBoxWidth = 10;
+    const markerBoxHeight = 10;
+    const refX = markerBoxWidth / 2;
+    const refY = markerBoxHeight / 2;
+    const arrowPoints = [
+        [0, 0],
+        [markerBoxWidth, markerBoxHeight / 2],
+        [0, markerBoxHeight],
+        [markerBoxWidth / 2, markerBoxHeight / 2]
+    ];
+    d3.select(plot.value)
+        .append('defs')
+        .append('marker')
+        .attr('id', 'arrow-pos')
+        .attr('viewBox', [0, 0, markerBoxWidth, markerBoxHeight])
+        .attr('refX', refX)
+        .attr('refY', refY)
+        .attr('markerWidth', markerBoxWidth)
+        .attr('markerHeight', markerBoxHeight)
+        .attr('orient', 'auto-start-reverse')
+        .append('path')
+        .attr('d', d3.line()(arrowPoints as [number, number][]))
+        .attr('class', 'sensitivity_pos');
+    d3.select(plot.value)
+        .append('defs')
+        .append('marker')
+        .attr('id', 'arrow-neg')
+        .attr('viewBox', [0, 0, markerBoxWidth, markerBoxHeight])
+        .attr('refX', refX)
+        .attr('refY', refY)
+        .attr('markerWidth', markerBoxWidth)
+        .attr('markerHeight', markerBoxHeight)
+        .attr('orient', 'auto-start-reverse')
+        .append('path')
+        .attr('d', d3.line()(arrowPoints as [number, number][]))
+        .attr('class', 'sensitivity_neg');
+
     updateChart();
 });
 watch(() => dimensions, () => {
@@ -187,7 +262,7 @@ watch(() => dimensions, () => {
 watch(() => dim_data, () => {
     // console.log("Dimension data changed:", dim_data.value);
     updateChart();
-}, {deep: true, immediate: true });
+}, { deep: true, immediate: true });
 const cursor_style = ref('default');
 watch(() => editable, (editing) => {
     if (editing) {
@@ -196,13 +271,21 @@ watch(() => editable, (editing) => {
         cursor_style.value = 'default';
     }
 }, { immediate: true });
+
+
+watch(() => sensitivities, (sense) => {
+    if (sense.length > 0) {
+        console.log("Updating sensitivities:", sense);
+        updateChart();
+    }
+}, { immediate: true });
 </script>
 
 <style>
 .spider-container {
     width: 100%;
     height: 100%;
-    min-height: 200px;
+    min-height: 300px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -230,4 +313,17 @@ watch(() => editable, (editing) => {
     stroke-width: 1px;
 }
 
+.sensitivity {
+    stroke-width: 1.5px;
+}
+
+.sensitivity_pos {
+    fill: rgba(7, 107, 32, 0.642);
+    stroke: rgba(7, 107, 32, 0.642);
+}
+
+.sensitivity_neg {
+    fill: rgba(40, 6, 151, 0.608);
+    stroke: rgba(71, 6, 151, 0.608);
+}
 </style>

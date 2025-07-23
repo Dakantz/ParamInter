@@ -9,7 +9,7 @@ from sklearn.base import TransformerMixin
 import umap
 import lightgbm as lgb
 
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 try:
     from cuml.neighbors import NearestNeighbors
@@ -24,7 +24,13 @@ except ImportError:
     cuml = None
 
 from .col_defs import column_types, input_types
-from .models import DataDescription, DataPoints, DataPoint, InterpolationResult
+from .models import (
+    DataDescription,
+    DataPoints,
+    DataPoint,
+    InterpolationResult,
+    SensitivityAnalysisResult,
+)
 
 import tqdm
 from pathlib import Path
@@ -49,6 +55,10 @@ nn.fit(cleaned[output_cols].values)
 
 nn_inputs = NearestNeighbors(n_neighbors=1)
 nn_inputs.fit(cleaned[input_cols].values)
+
+
+scaler_outs = StandardScaler()
+scaled_outputs = scaler_outs.fit_transform(cleaned[output_cols].values)
 
 modes = {
     "tsne": TSNE,
@@ -104,6 +114,10 @@ def get_data_description():
         num_samples=len(data),
         num_features=len(input_cols),
         num_outputs=len(output_cols),
+        min_values=cleaned[output_cols].min().to_dict(),
+        max_values=cleaned[output_cols].max().to_dict(),
+        mean_values=cleaned[output_cols].mean().to_dict(),
+        std_values=cleaned[output_cols].std().to_dict(),
     )
 
 
@@ -140,7 +154,10 @@ def get_data_point(index: int) -> DataPoint:
     projected_output = embedded_tsne[index].tolist()
 
     return DataPoint(
-        inputs=input_data, outputs=output_data, projected_outputs=projected_output
+        inputs=input_data,
+        outputs=output_data,
+        projected_outputs=projected_output,
+        index=index,
     )
 
 
@@ -229,26 +246,100 @@ def get_similar_data_points(
     ]
 
     return similar_data_points
+
+
+class DataPointSensitivity(BaseModel):
+    for_outputs: list[str] = []
+    resolution: int = 16
+
+
+@app.post("/data_point/explanations/{idx}")
+def explanations_for_dp(
+    idx: int,
+    data: DataPointSensitivity = Body(DataPointSensitivity),
+) -> list[SensitivityAnalysisResult]:
+    # vary the inputs of the data point at idx
+    if idx < 0 or idx >= cleaned.shape[0]:
+        return []
+    results: list[SensitivityAnalysisResult] = []
+    for out_col in data.for_outputs:
+        estimator = model_ensemble.get(out_col)
+        if not estimator:
+            continue
+        input_data = cleaned[input_cols].iloc[idx].values
+        sensitivities = np.zeros(len(input_cols))
+        for i, input_col in enumerate(input_cols):
+            # vary the input column by 1%
+            perturbed_input = np.empty((data.resolution, len(input_cols)))
+            perturbed_input[:] = input_data
+            perturb_range = np.linspace(
+                input_data[i] - 10, input_data[i] + 10, data.resolution
+            )
+            perturb_range = np.clip(perturb_range, 0.0, 100)
+            perturbed_input[:, i] = perturb_range
+            perturbed_output = estimator.predict(perturbed_input)
+            sensitivities[i] = (perturbed_output[:-1] - perturbed_output[1:]).mean()
+        # normalize sensitivities
+        if np.linalg.norm(sensitivities) == 0:
+            sensitivities = np.zeros_like(sensitivities)
+        else:
+            # normalize sensitivities to unit length
+            sensitivities = sensitivities / np.linalg.norm(sensitivities)
+
+        output_sensitivities = SensitivityAnalysisResult(
+            dp=DataPoint(
+                inputs=cleaned[input_cols].iloc[idx].values.tolist(),
+                outputs=cleaned[output_cols].iloc[idx].values.tolist(),
+                projected_outputs=embedded_tsne[idx].tolist(),
+                index=idx,
+            ),
+            sensitivity_scores=sensitivities.tolist(),
+            out_col=out_col,
+        )
+        results.append(output_sensitivities)
+    return results
+
+
 class DataPointSuggestions(BaseModel):
     base_index: int = None
-    k: int
-    changes: dict[str, float] = {}
+    values: list[float] = []
+    k: int = 5
+    weigh_changes: float = 1.5
+
+
 @app.post("/data_point/suggestions")
-def get_data_point_suggestions(
+def data_point_suggestions(
     q: DataPointSuggestions = Body(DataPointSuggestions),
 ) -> list[DataPoint]:
-    if len(q.values) != len(input_cols):
+    if len(q.values) != len(output_cols):
         return []
-    base_values = cleaned[output_cols].iloc[q.base_index].values
-    values = np.array(q.values).reshape(1, -1)
-    nn_inputs = NearestNeighbors(n_neighbors=q.k)
-    nn_inputs.fit(cleaned[output_cols].values)
-    _, indices = nn_inputs.kneighbors(values, n_neighbors=q.k)
+    # base_values = cleaned[output_cols].iloc[q.base_index].values
+    values = np.array(q.values)
+    weights = np.ones(len(output_cols))
+    scaled_values = scaler_outs.transform(values.reshape(1, -1))
+    if q.base_index is not None:
+        base_values = cleaned[output_cols].iloc[q.base_index].values
+        scaled_base_values = scaler_outs.transform(base_values.reshape(1, -1))
+        weights = np.where(
+            np.abs(scaled_values - scaled_base_values) > 1e-4, q.weigh_changes, 1
+        )
+
+    weights = weights / np.linalg.norm(weights)
+
+    def weighted_distance(a, b):
+        return np.sqrt(np.mean((weights * np.abs(a - b)) ** 2))
+
+    nn_outs = NearestNeighbors(n_neighbors=q.k, metric=weighted_distance)
+    values = values.reshape(1, -1)
+    nn_outs.fit(scaled_outputs)
+    _, indices = nn_outs.kneighbors(scaled_values, n_neighbors=q.k)
     indices = indices.flatten()
+    if q.base_index is not None:
+        indices = indices[indices != q.base_index]
     input_data = cleaned[input_cols].iloc[indices].values.tolist()
     output_data = cleaned[output_cols].iloc[indices].values.tolist()
     projected_output = embedded_tsne[indices].tolist()
-    
+
     suggestions = [
         DataPoint(
             inputs=input_data[i],
