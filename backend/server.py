@@ -60,6 +60,7 @@ nn_inputs.fit(cleaned[input_cols].values)
 scaler_outs = StandardScaler()
 scaled_outputs = scaler_outs.fit_transform(cleaned[output_cols].values)
 
+
 modes = {
     "tsne": TSNE,
     "umap": UMAP,
@@ -175,7 +176,11 @@ def get_embedding(col_type: str) -> list[list[float]]:
 
 @app.get("/interpolation")
 def get_interpolation(
-    from_index: int, to_index: int, n_samples=128, embedding_type: str = "all"
+    from_index: int,
+    to_index: int,
+    n_samples=128,
+    embedding_type: str = "all",
+    include_explainations: bool = False,
 ) -> InterpolationResult:
     dp_idxs = [from_index, to_index]
 
@@ -183,35 +188,55 @@ def get_interpolation(
 
     interpolated_inputs = np.linspace(inputs[0], inputs[1], n_samples)
 
-    outputs_interpolated = np.empty((n_samples, len(model_ensemble)))
+    outputs_interpolated = np.empty((n_samples, len(output_cols)))
 
     for i, cm in enumerate(tqdm.tqdm(model_ensemble.items())):
         _, model = cm
         predictions = model.predict(interpolated_inputs)
         outputs_interpolated[:, i] = predictions
-    # find closest points in the embedding space
-    outputs_interpolated_df = pd.DataFrame(
-        outputs_interpolated,
-        columns=output_cols,
-    )
-    _, indices = nn.kneighbors(outputs_interpolated_df.values)
+    outputs_interpolated_scaled = scaler_outs.transform(outputs_interpolated)
+    # find closest points in the embedding space   
+
+    nn_out_scaled = NearestNeighbors(n_neighbors=1)
+    nn_out_scaled.fit(scaled_outputs)
+
+    _, indices = nn_out_scaled.kneighbors(outputs_interpolated_scaled)
+    indices = indices.flatten()
     indices[0] = from_index
     indices[-1] = to_index
     embeddings_nn: dict[str, list] = {}
     if embedding_type == "all":
         # embeddings_nn["full"] = embedded_tsne[indices.flatten()].tolist()
         for col_name, embedded in embedding_subsets.items():
-            embeddings_nn[col_name] = embedded[indices.flatten()].tolist()
+            embeddings_nn[col_name] = embedded[indices].tolist()
     else:
         if embedding_type in embedding_subsets:
             embeddings_nn[embedding_type] = embedding_subsets[embedding_type][
-                indices.flatten()
+                indices
             ].tolist()
+    explanations = np.zeros_like(outputs_interpolated)
+
+    if include_explainations:
+        for i in range(outputs_interpolated.shape[0]):
+            idx = indices[i]
+            explanations_list = explanations_for_dp(
+                idx, data=DataPointSensitivity(for_outputs=output_cols, resolution=4)
+            )
+            # for each output column
+            explanations[i, :] = np.array(
+                [
+                    np.array(explanation.sensitivity_scores).mean()
+                    for explanation in explanations_list
+                ]
+            )
     return InterpolationResult(
         inputs=interpolated_inputs.tolist(),
         outputs=outputs_interpolated.tolist(),
+        knn_inputs=cleaned[input_cols].values[indices].tolist(),
+        knn_outputs=cleaned[output_cols].values[indices].tolist(),
         projected_outputs=embeddings_nn,
-        indices=indices.flatten().tolist(),
+        indices=indices.tolist(),
+        explainations=explanations.tolist(),
     )
 
 

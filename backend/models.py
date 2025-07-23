@@ -11,7 +11,7 @@ class DataDescription(BaseModel):
     num_samples: int
     num_features: int
     num_outputs: int
-    
+
     min_values: dict[str, float]
     max_values: dict[str, float]
     mean_values: dict[str, float]
@@ -38,13 +38,16 @@ class DataPoint(BaseModel):
     projected_outputs: list[float] = None
     index: int = None
 
+
 class SensitivityAnalysisResult(BaseModel):
     """
     SensitivityAnalysisResult model to represent the result of sensitivity analysis.
     """
+
     dp: DataPoint
     sensitivity_scores: list[float]
     out_col: str
+
 
 class InterpolationResult(BaseModel):
     """
@@ -53,5 +56,8 @@ class InterpolationResult(BaseModel):
 
     inputs: list[list[float]]
     outputs: list[list[float]]
+    knn_inputs: list[list[float]]
+    knn_outputs: list[list[float]]
     projected_outputs: dict[str, list[list[float]]]
     indices: list[int]
+    explainations: list[list[float]] = None

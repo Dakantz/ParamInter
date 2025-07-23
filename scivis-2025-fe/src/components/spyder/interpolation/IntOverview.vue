@@ -2,8 +2,8 @@
     <div class="outputs-overview">
         <h2>{{ cat_name }}</h2>
         <div class="output-item" v-for="(t) in type_indices" :key="t.idx">
-            <IntSingleOut :out_name="t.name" :int_results="int_result" @hover="emit('hover', t.name)"
-                :data_rep="data_rep" :idx="t.idx" />
+            <IntSingleOut :out_name="t.name" :int_results="int_result" v-model="hovered_index" :data_rep="data_rep"
+                :idx="t.idx" @hover="emit('hover', t.name)" @select="emit('select', $event)" />
         </div>
     </div>
 </template>
@@ -13,14 +13,17 @@ import { DataPoint, InterpolationResult } from '../../../api/Api';
 import { DataRepository } from '../../../proc/types';
 import IntSingleOut from './IntSingleOut.vue';
 
-
 const emit = defineEmits<{
     (e: 'hover', name: string): void;
+    (e: 'select', idx: number): void;
 }>();
 
-const int_result = defineModel<InterpolationResult>({ required: true });
+const hovered_index = defineModel<number>({
+    type: Number,
+    default: -1
+});
 
-const { types, data_rep, cat_name } = defineProps({
+const { types, data_rep, cat_name, int_result } = defineProps({
     types: {
         type: Array as () => string[],
         default: () => []
@@ -32,12 +35,16 @@ const { types, data_rep, cat_name } = defineProps({
     cat_name: {
         type: String,
         required: true
+    },
+    int_result: {
+        type: Object as () => InterpolationResult,
+        required: true
     }
 
 });
 const type_indices = types.map((t) => { return { name: t, idx: data_rep.getTypeIndex(t) } });
 watch(() => int_result, (int) => {
-    console.log("New outputs in IntOverview:", int_result.value.outputs);
+    // console.log("New outputs in IntOverview:", int_result.outputs);
 }, { immediate: true });
 </script>
 <style scoped>

@@ -261,7 +261,7 @@ onMounted(() => {
 }
 
 .plot-container {
-    background-color: rgb(245, 235, 222);
+    background-color: rgb(223, 239, 238);
 }
 
 .annotation {

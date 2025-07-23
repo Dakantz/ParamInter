@@ -82,7 +82,8 @@ watch(() => state.selection.selected_indices, (sel) => {
     state.loading = true
     state.data_rep.client.interpolation.getInterpolationInterpolationGet({
       from_index: sel[0],
-      to_index: sel[1]
+      to_index: sel[1],
+      // include_explainations: true
     }).then(resp => {
       state.loading = false
       console.log("Interpolation data:", resp.data);
@@ -104,6 +105,7 @@ function updateSelection(newSelection: number) {
   if (state.selection.selected_indices.length == 2) {
     // If two indices are already selected, replace the first one
     state.selection.selected_indices = [newSelection];
+    state.current_results.interpolation = null; // Reset interpolation when selection changes
   } else {
     state.selection.selected_indices = [...state.selection.selected_indices, newSelection];
   }

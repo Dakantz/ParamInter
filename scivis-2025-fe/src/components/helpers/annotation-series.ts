@@ -133,6 +133,7 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
             // subsample the interpolation data
             let indices = d3.range(0, interpolated_outputs.length,
                 Math.ceil(interpolated_outputs.length / n_interpolation_subsamples));
+            console.log("Interpolation indices:", indices);
             let projected_smalls = indices.map(i => {
                 let d = interpolated_outputs[i];
                 return ({
@@ -140,9 +141,10 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
                     y: yScale(d[1]),
                     data: d,
                     index: i, // no index for interpolation points
-                    inputs: data.interpolation?.inputs[i] || []
+                    inputs: data.interpolation?.knn_inputs[i] || []
                 } as ProjectedData);
             });
+            console.log("Projected smalls:", projected_smalls);
             createSpyderFromProjectedData(sel, projected_smalls, 'interpolation_spyder', spyder_size * 0.6,);
 
         })

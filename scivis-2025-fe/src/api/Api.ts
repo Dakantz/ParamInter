@@ -86,6 +86,11 @@ export interface DataPointSuggestions {
    * @default 5
    */
   k?: number;
+  /**
+   * Weigh Changes
+   * @default 1.5
+   */
+  weigh_changes?: number;
 }
 
 /**
@@ -116,10 +121,16 @@ export interface InterpolationResult {
   inputs: number[][];
   /** Outputs */
   outputs: number[][];
+  /** Knn Inputs */
+  knn_inputs: number[][];
+  /** Knn Outputs */
+  knn_outputs: number[][];
   /** Projected Outputs */
   projected_outputs: Record<string, number[][]>;
   /** Indices */
   indices: number[];
+  /** Explainations */
+  explainations?: number[][];
 }
 
 /**
@@ -516,6 +527,11 @@ export class Api<
          * @default "all"
          */
         embedding_type?: string;
+        /**
+         * Include Explainations
+         * @default false
+         */
+        include_explainations?: boolean;
       },
       params: RequestParams = {},
     ) =>

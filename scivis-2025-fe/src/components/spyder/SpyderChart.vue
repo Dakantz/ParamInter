@@ -45,7 +45,7 @@ function updateChart() {
     const dim_mapped = dimensions.map((dim, i) => {
         return { name: dim, value: dim_data.value[i], idx: i, angle: -1 };
     });
-    console.log("Dimensions:", dimensions, "Data:", dim_data, "Mapped:", dim_mapped);
+    // console.log("Dimensions:", dimensions, "Data:", dim_data, "Mapped:", dim_mapped);
     if (spiderContainer.value && plot.value) {
         const width = spiderContainer.value.clientWidth;
         const height = spiderContainer.value.clientHeight;
@@ -200,8 +200,8 @@ function updateChart() {
                     }
                     const idx = closest_dim.idx;
 
-                    console.log("Mouse moved to:", relX, relY, "Angle:", angle,
-                        "Radius:", radius_mouse, "Closest dimension:", closest_dim.name);
+                    // console.log("Mouse moved to:", relX, relY, "Angle:", angle,
+                        // "Radius:", radius_mouse, "Closest dimension:", closest_dim.name);
 
                     const newValue = Math.max(0, Math.min(1, radius_mouse));
                     dim_data.value[idx] = newValue;
