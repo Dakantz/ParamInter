@@ -8,12 +8,14 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     DatapointGuide: typeof import('./src/components/spyder/DatapointGuide.vue')['default']
+    DatapointInterpolation: typeof import('./src/components/spyder/DatapointInterpolation.vue')['default']
     DatapointSearch: typeof import('./src/components/spyder/DatapointSearch.vue')['default']
-    HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
-    Overview: typeof import('./src/components/spyder/outview/Overview.vue')['default']
+    IntOverview: typeof import('./src/components/spyder/interpolation/IntOverview.vue')['default']
+    IntSingleOut: typeof import('./src/components/spyder/interpolation/IntSingleOut.vue')['default']
+    Overview: typeof import('./src/components/spyder/single/Overview.vue')['default']
     PlotsOverview: typeof import('./src/components/PlotsOverview.vue')['default']
     ReducedDimPlot: typeof import('./src/components/ReducedDimPlot.vue')['default']
-    SingleOut: typeof import('./src/components/spyder/outview/SingleOut.vue')['default']
+    SingleOut: typeof import('./src/components/spyder/single/SingleOut.vue')['default']
     SpyderChart: typeof import('./src/components/spyder/SpyderChart.vue')['default']
   }
 }

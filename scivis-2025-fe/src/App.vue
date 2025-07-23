@@ -15,6 +15,10 @@
           <DatapointGuide :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
             :selected_dp="state.selection.selected_indices[0]" v-if="state.selection.selected_indices.length == 1"
             @preview="previewSelected" @select="updateSelection" />
+          <DatapointInterpolation :data_rep="(state.data_rep as DataRepository)" v-model="state.selection" 
+            :interpolation="state.current_results.interpolation" v-if="state.selection.selected_indices.length == 2"
+            @preview="previewSelected" @select="updateSelection">
+          </DatapointInterpolation>
           <div v-if="state.loading">
             <v-progress-linear :value="state.loading_progress" color="primary" indeterminate></v-progress-linear>
             <span>Loading...</span>
@@ -33,6 +37,7 @@ import { PlotSelection, PlotSelectionResults } from './components/types';
 import PlotsOverview from './components/PlotsOverview.vue';
 import DatapointSearch from './components/spyder/DatapointSearch.vue';
 import DatapointGuide from './components/spyder/DatapointGuide.vue';
+import DatapointInterpolation from './components/spyder/DatapointInterpolation.vue';
 
 const state = reactive({
   data_rep: new DataRepository(),
@@ -112,13 +117,13 @@ function updateSelection(newSelection: number) {
   width: 100%;
   height: 100%;
   display: flex;
-  justify-content: center;
+  justify-content: end;
   align-items: center;
   font-family: 'Roboto Mono', monospace;
 }
 
 .plot_container {
-  width: 75vw;
+  /* width: 75vw; */
   height: 100%;
   display: flex;
   justify-content: center;
@@ -135,6 +140,7 @@ function updateSelection(newSelection: number) {
 
 .search_container {
   width: 24vw;
+  min-width: 400px;
   height: 100vh;
 }
 

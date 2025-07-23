@@ -1,22 +1,25 @@
 <template>
     <div class="datapoint-guide">
-        <h2>Adapt Mixture</h2>
+        <h2>Explore Interpolation</h2>
         <h3>Selection</h3>
-        <SpyderChart v-if="state.dp" :dimensions="state.input_types" v-model="state.dp.inputs" :editable="false"
-            :sensitivities="state.sensitivities_for_hover" />
-        <h3>Target Output Values</h3>
-        <div class="editable-outs" v-if="state.dp">
-            <div v-for="(types, idx) of state.visible_types" :key="idx">
-                <Overview v-model="state.dp" :types="types" :data_rep="data_rep" :cat_name="idx"
+
+        <div class="interpolation-ends" v-if="interpolation">
+            <div v-for="end, i in interpolation_ends" :key="i" class="interpolation-end">
+                <SpyderChart :dimensions="state.input_types" v-model="interpolation_ends[i]" :editable="false" />
+            </div>
+        </div>
+
+
+        <h3>Interpolated Output Values</h3>
+        <div class="editable-outs" v-if="interpolation">
+            <div v-for="(types, cat_name) of state.visible_types" :key="cat_name">
+                <IntOverview v-model="state.interpolation_copy" :types="types" :data_rep="data_rep" :cat_name="cat_name"
                     @hover="showSensitivity($event)" />
             </div>
         </div>
-        <div class="search-results" v-if="state.search_results.length > 0">
-            <h3>Possible Input Targets</h3>
-            <div v-for="(result, idx) in state.search_results" :key="idx" class="search-result-item"
-                @mouseenter="emit('preview', result.index || -1)" @click.capture="emit('select', result.index || -1)">
-                <SpyderChart :dimensions="state.input_types" v-model="result.inputs" :editable="false" />
-            </div>
+        <div class="interpolation-hover" v-if="interpolation && state.hovered_index >= 0 && state.hovered_dp">
+            <SpyderChart :dimensions="state.input_types" v-model="state.hovered_dp.inputs" :editable="false"
+                :sensitivities="state.sensitivities_for_hover" />
         </div>
         <div v-if="state.loading">
             <v-progress-linear color="primary" indeterminate></v-progress-linear>
@@ -27,39 +30,57 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, defineProps, defineModel, watch, onMounted, useTemplateRef } from 'vue';
+import { ref, reactive, defineProps, defineModel, watch, onMounted, useTemplateRef, computed } from 'vue';
 import * as d3 from 'd3';
 import { DataRepository, LoadedDataPoints } from '../../proc/types';
 import SpyderChart from './SpyderChart.vue';
-import { DataPoint } from '../../api/Api';
-import Overview from './single/Overview.vue';
+import { DataPoint, InterpolationResult } from '../../api/Api';
+import Overview from './interpolation/IntOverview.vue';
 import { PlotSelection } from '../types';
-
+import IntOverview from './interpolation/IntOverview.vue';
+onMounted(() => {
+    console.log("Interpolation component mounted");
+});
 const selection = defineModel<PlotSelection>();
 const emit = defineEmits<{
     (e: 'preview', idx: number): void;
     (e: 'select', idx: number): void;
 }>();
-const { data_rep, selected_dp } = defineProps({
+const { data_rep, interpolation } = defineProps({
     data_rep: {
         type: Object as () => DataRepository,
         required: true
     },
-    selected_dp: {
-        type: Number,
-        default: -1
-    }
+    interpolation: {
+        type: Object as () => InterpolationResult | null,
+        default: () => (null)
+    },
 });
+
 
 const state = reactive({
-    dp: null as DataPoint | null,
     loading: false,
+    hovered_index: -1,
+    hovered_dp: null as DataPoint | null,
     sensitivities_for_hover: [] as number[],
-    search_results: [] as DataPoint[],
     visible_types: {} as Record<string, string[]>,
     input_types: [] as string[],
+    interpolation_copy: null as InterpolationResult | null,
 });
-
+watch(() => interpolation, (int) => {
+    if (int) {
+        state.interpolation_copy = JSON.parse(JSON.stringify(int));
+        console.log("New interpolation:", int);
+    } else {
+        state.interpolation_copy = null;
+    }
+}, { immediate: true });
+const interpolation_ends = computed(() => {
+    if (interpolation) {
+        return [interpolation.inputs[0], interpolation.inputs[interpolation.inputs.length - 1]];
+    }
+    return [];
+});
 watch(() => data_rep.all_types, (newTypes) => {
     console.log("New types:", newTypes);
     if (Object.keys(newTypes).length === 0) {
@@ -72,39 +93,21 @@ watch(() => data_rep.all_types, (newTypes) => {
     );
 
 }, { immediate: true });
-watch(() => selected_dp, (newIdx) => {
-    if (newIdx >= 0) {
-        data_rep.dps.getDP(newIdx).then((dp) => {
-            state.dp = dp;
+watch(() => state.hovered_index, (idx) => {
+    if (idx >= 0) {
+        data_rep.dps.getDP(idx).then((dp) => {
+            state.hovered_dp = dp;
             console.log("Selected Data Point:", dp);
         }).catch((error) => {
             console.error("Error fetching data point:", error);
         });
     }
 }, { immediate: true });
-watch(() => state.dp, (dp) => {
-    if (dp) {
-        state.search_results = [];
-        state.loading = true;
-        data_rep.client.dataPoint.dataPointSuggestionsDataPointSuggestionsPost({
-            values: dp.outputs,
-            base_index: dp.index || -1,
-            k: 4
-        }).then((suggestions) => {
-            state.loading = false;
-            console.log("Suggestions results:", suggestions);
-            state.search_results = suggestions.data;
-        }).catch((error) => {
-            state.loading = false;
-            console.error("Error fetching suggested data points:", error);
-        });
-    }
-}, { immediate: true, deep: true });
 
 function showSensitivity(out_col: string) {
-    if (state.dp) {
+    if (state.hovered_dp) {
         data_rep.client.dataPoint.explanationsForDpDataPointExplanationsIdxPost(
-            state.dp.index || -1, {
+            state.hovered_dp.index || -1, {
             for_outputs: [out_col],
             resolution: 16
         }).then((result) => {
@@ -144,25 +147,15 @@ function showSensitivity(out_col: string) {
 }
 
 
-.search-results {
+.interpolation-ends {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 80%;
-}
-
-.search-result-item {
+    flex-direction: row;
+    margin: 10px 0;
     width: 100%;
-    display: flex;
-    justify-content: center;
-    margin: 5px 0;
-    padding: 5px;
-    border: 1px solid #ccc;
-    background-color: #f9f9f9;
-    cursor: grab;
 }
-
-.search-result-item:hover {
-    background-color: #e0e0e0;
+.interpolation_end {
+    flex: 1;
+    margin: 0 10px;
+    width: 50%;
 }
 </style>

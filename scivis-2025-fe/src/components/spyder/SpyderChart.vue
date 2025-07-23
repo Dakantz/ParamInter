@@ -43,7 +43,7 @@ function updateChart() {
     //     .selectAll('*')
     //     .remove();
     const dim_mapped = dimensions.map((dim, i) => {
-        return { name: dim, value: dim_data.value[i], idx: i };
+        return { name: dim, value: dim_data.value[i], idx: i, angle: -1 };
     });
     console.log("Dimensions:", dimensions, "Data:", dim_data, "Mapped:", dim_mapped);
     if (spiderContainer.value && plot.value) {
@@ -78,18 +78,31 @@ function updateChart() {
             .attr('stroke-width', 1);
         const text = g.append('g')
             .attr('class', 'spider-text')
-            .selectAll('text')
+            .selectAll('g.spider-text-item')
             .data(dim_mapped)
-            .join('text')
-            .attr('x', d => (radius + 10) * Math.cos(d.idx * (2 * Math.PI / dim_mapped.length)))
-            .attr('y', d => (radius + 10) * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length)))
-            .attr('text-anchor', d => {
-                let angle = d.idx * (2 * Math.PI / dim_mapped.length);
-                if (angle > Math.PI / 2 && angle < 3 * Math.PI / 2) {
-                    return 'end';
-                } else {
-                    return 'start';
+            .join('g')
+            .attr('transform', d => {
+                let x = (radius + 5) * Math.cos(d.idx * (2 * Math.PI / dim_mapped.length))
+                let y = (radius + 5) * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length))
+                let angle = d.idx * (360 / dim_mapped.length) + 90;
+                if (angle > 180) {
+                    angle -= 360; // Normalize angle to [-180, 180]
                 }
+                if (angle < -90) {
+                    angle += 180; // Adjust for left side text
+                }
+                if (angle > 90) {
+                    angle -= 180; // Adjust for right side text
+                }
+                d.angle = angle; // Store angle for reference
+                return `translate(${x}, ${y}), rotate(${angle})`;
+            })
+            .append('text')
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('text-anchor', d => {
+                return 'middle'; // 'start' or 'end' based on position
+                //rotate the text based on the angle
             })
             .text(d => d.name)
             .attr('font-size', '6px')
@@ -285,7 +298,7 @@ watch(() => sensitivities, (sense) => {
 .spider-container {
     width: 100%;
     height: 100%;
-    min-height: 300px;
+    min-width: 200px;
     display: flex;
     justify-content: center;
     align-items: center;

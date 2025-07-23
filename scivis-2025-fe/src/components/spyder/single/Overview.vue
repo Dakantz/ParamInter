@@ -2,7 +2,7 @@
     <div class="outputs-overview">
         <h2>{{ cat_name }}</h2>
         <div class="output-item" v-for="(t) in type_indices" :key="t.idx">
-            <SingleOut :out_name="t.name" v-model="dp.outputs[t.idx]"  @hover="emit('hover', t.name)" :data_rep="data_rep"/>
+            <SingleOut :out_name="t.name" v-model="dp.outputs[t.idx]"  @hover="emit('hover', t.name)" :data_rep="data_rep" />
         </div>
     </div>
 </template>
