@@ -1,9 +1,10 @@
 import pandas as pd
 import numpy as np
-from fastapi import FastAPI
+from fastapi import Body, FastAPI
 
 # cors
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sklearn.base import TransformerMixin
 import umap
 import lightgbm as lgb
@@ -46,12 +47,15 @@ cleaned = data[input_cols + output_cols].fillna(0)
 nn = NearestNeighbors(n_neighbors=1)
 nn.fit(cleaned[output_cols].values)
 
+nn_inputs = NearestNeighbors(n_neighbors=1)
+nn_inputs.fit(cleaned[input_cols].values)
+
 modes = {
     "tsne": TSNE,
     "umap": UMAP,
 }
 
-mode = "umap"
+mode = "tsne"
 embedding_subsets: dict[str, np.ndarray] = {}
 dim_reducers: dict[str, TransformerMixin] = {}
 for col_name, col_list in tqdm.tqdm(column_types.items(), desc="Creating embeddings"):
@@ -174,9 +178,11 @@ def get_interpolation(
         columns=output_cols,
     )
     _, indices = nn.kneighbors(outputs_interpolated_df.values)
+    indices[0] = from_index
+    indices[-1] = to_index
     embeddings_nn: dict[str, list] = {}
     if embedding_type == "all":
-        embeddings_nn["full"] = embedded_tsne[indices.flatten()].tolist()
+        # embeddings_nn["full"] = embedded_tsne[indices.flatten()].tolist()
         for col_name, embedded in embedding_subsets.items():
             embeddings_nn[col_name] = embedded[indices.flatten()].tolist()
     else:
@@ -190,3 +196,67 @@ def get_interpolation(
         projected_outputs=embeddings_nn,
         indices=indices.flatten().tolist(),
     )
+
+
+class DataPointSimilarity(BaseModel):
+    values: list[float]
+    k: int
+
+
+@app.post("/data_point/similar")
+def get_similar_data_points(
+    q: DataPointSimilarity = Body(DataPointSimilarity),
+) -> list[DataPoint]:
+    if len(q.values) != len(input_cols):
+        return []
+
+    values = np.array(q.values).reshape(1, -1)
+    nn_inputs = NearestNeighbors(n_neighbors=q.k)
+    nn_inputs.fit(cleaned[input_cols].values)
+    _, indices = nn_inputs.kneighbors(values, n_neighbors=q.k)
+    indices = indices.flatten()
+    input_data = cleaned[input_cols].iloc[indices].values.tolist()
+    output_data = cleaned[output_cols].iloc[indices].values.tolist()
+    projected_output = embedded_tsne[indices].tolist()
+    similar_data_points = [
+        DataPoint(
+            inputs=input_data[i],
+            outputs=output_data[i],
+            projected_outputs=projected_output[i],
+            index=indices[i],
+        )
+        for i in range(indices.shape[0])
+    ]
+
+    return similar_data_points
+class DataPointSuggestions(BaseModel):
+    base_index: int = None
+    k: int
+    changes: dict[str, float] = {}
+@app.post("/data_point/suggestions")
+def get_data_point_suggestions(
+    q: DataPointSuggestions = Body(DataPointSuggestions),
+) -> list[DataPoint]:
+    if len(q.values) != len(input_cols):
+        return []
+    base_values = cleaned[output_cols].iloc[q.base_index].values
+    values = np.array(q.values).reshape(1, -1)
+    nn_inputs = NearestNeighbors(n_neighbors=q.k)
+    nn_inputs.fit(cleaned[output_cols].values)
+    _, indices = nn_inputs.kneighbors(values, n_neighbors=q.k)
+    indices = indices.flatten()
+    input_data = cleaned[input_cols].iloc[indices].values.tolist()
+    output_data = cleaned[output_cols].iloc[indices].values.tolist()
+    projected_output = embedded_tsne[indices].tolist()
+    
+    suggestions = [
+        DataPoint(
+            inputs=input_data[i],
+            outputs=output_data[i],
+            projected_outputs=projected_output[i],
+            index=indices[i],
+        )
+        for i in range(indices.shape[0])
+    ]
+
+    return suggestions

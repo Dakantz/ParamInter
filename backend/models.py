@@ -31,6 +31,7 @@ class DataPoint(BaseModel):
     inputs: list[float]
     outputs: list[float]
     projected_outputs: list[float] = None
+    index: int = None
 
 
 class InterpolationResult(BaseModel):

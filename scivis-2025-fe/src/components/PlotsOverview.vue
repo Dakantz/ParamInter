@@ -48,7 +48,7 @@ watch(() => data_rep, (newData) => {
 
 <style scoped>
 .plot-containers {
-    width: 80vw;
+    width: 70vw;
     height: 100%;
     display: flex;
     justify-content: center;

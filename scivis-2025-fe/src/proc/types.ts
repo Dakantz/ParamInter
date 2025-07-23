@@ -45,6 +45,7 @@ export class DataRepository {
     all_embeddings: AllEmbeddings;
     client: Api<unknown>;
     dps: DPCache;
+    all_types: Record<string, string[]> = {};
     constructor() {
         this.data_points = new LoadedDataPoints();
         this.all_embeddings = new AllEmbeddings();
@@ -55,11 +56,11 @@ export class DataRepository {
     }
 
     async loadAll(load_cb: (progress: number, loaded_keys: string[]) => void = () => { }) {
-        const all_types = (await this.client.columnTypes.getColumnTypesColumnTypesGet()).data;
-        for (const type in all_types) {
+        this.all_types = (await this.client.columnTypes.getColumnTypesColumnTypesGet()).data;
+        for (const type in this.all_types) {
             const embeddings = (await this.client.embedding.getEmbeddingEmbeddingColTypeGet(type)).data;
             this.all_embeddings.all_embeddings[type] = new Embeddings(embeddings);
-            load_cb((Object.keys(this.all_embeddings.all_embeddings).length / Object.keys(all_types).length), Object.keys(this.all_embeddings.all_embeddings));
+            load_cb((Object.keys(this.all_embeddings.all_embeddings).length / Object.keys(this.all_types).length), Object.keys(this.all_embeddings.all_embeddings));
         }
         // this.data_points = (await this.client.data.getDataDataGet()).data;
 

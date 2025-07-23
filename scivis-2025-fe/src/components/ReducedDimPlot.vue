@@ -1,7 +1,6 @@
 <template>
     <div class="reduced-dim-plot">
-        <div :id="`plot-${embedding_name}`" class="plot-container" ref="plot"
-            style="width: 360px; height: 360px; background-color: antiquewhite;">
+        <div :id="`plot-${embedding_name}`" class="plot-container" ref="plot" style="width: 360px; height: 360px; ">
         </div>
         <!-- <svg width="360" height="360" xmlns="http://www.w3.org/2000/svg" ref="plot" :id="`plot-${embedding_name}`">
             <g transform="scale(360,360)">
@@ -71,15 +70,15 @@ const pointSeries = fc
     .crossValue(d => d.x)
     .mainValue(d => d.y);
 
-const zoom = d3
-    .zoom()
-    .scaleExtent([0.8, 10])
-    .on("zoom", () => {
-        // update the scales based on current zoom
-        xScale.domain((d3 as any).event.transform.rescaleX(xScaleOriginal).domain());
-        yScale.domain((d3 as any).event.transform.rescaleY(yScaleOriginal).domain());
-        redraw();
-    });
+// const zoom = d3
+//     .zoom()
+//     .scaleExtent([0.8, 10])
+//     .on("zoom", () => {
+//         // update the scales based on current zoom
+//         xScale.domain((d3 as any).event.transform.rescaleX(xScaleOriginal).domain());
+//         yScale.domain((d3 as any).event.transform.rescaleY(yScaleOriginal).domain());
+//         redraw();
+//     });
 let quadtree = d3.quadtree<MappedData>();
 const annotations = [] as MappedData[];
 
@@ -179,15 +178,17 @@ const chart = fc
                 redraw();
             })
             .on("mouseleave", () => {
-                annotations.pop();
+                console.log("Mouse left the plot area, clearing annotations.");
+                selection.value.hovered_index = -1;
+                annotations.length = 0; // Clear the annotations array
                 redraw();
             })
             .call(pointer)
-            // .on("measure.range", () => {
-            //     xScaleOriginal.range([0, (d3 as any).event.detail.width]);
-            //     yScaleOriginal.range([(d3 as any).event.detail.height, 0]);
-            // })
-            .call(zoom as any)
+        // .on("measure.range", () => {
+        //     xScaleOriginal.range([0, (d3 as any).event.detail.width]);
+        //     yScaleOriginal.range([(d3 as any).event.detail.height, 0]);
+        // })
+        // .call(zoom as any)
     ).xAxisHeight('0px').yAxisWidth('0px');
 
 const redraw = () => {
@@ -197,6 +198,7 @@ const redraw = () => {
             svg: {
                 annotations,
                 selection: selection.value.selected_indices.map(i => mapped_data.value[i]),
+                hovered: mapped_data.value[selection.value.hovered_index || -1] || null,
                 interpolation: results.interpolation,
                 embeddinging_name: embedding_name
             } as AnnotationData,
@@ -212,7 +214,7 @@ watch(() => embedded_data, (newData) => {
 }, {});
 
 
-watch(() => selection.value.selected_indices, (newSelection) => {
+watch(() => selection.value, (newSelection) => {
     redraw();
 }, { immediate: true, deep: true });
 
@@ -254,8 +256,12 @@ onMounted(() => {
 
     min-height: 360px;
     max-height: 360px;
-    margin: 10px;
+    margin: 7px;
     display: flex;
+}
+
+.plot-container {
+    background-color: rgb(245, 235, 222);
 }
 
 .annotation {
@@ -270,9 +276,21 @@ onMounted(() => {
     stroke-width: 1px;
 }
 
+.hovered {
+    fill: rgba(128, 255, 0, 0.5);
+    stroke: rgba(58, 128, 0, 0.72);
+    stroke-width: 1px;
+}
+
 .interpolation {
     fill: none;
     stroke: rgba(4, 79, 150, 0.879);
     stroke-width: 2px;
+}
+
+.interpolation_spyder {
+    fill: rgba(4, 79, 150, 0.511);
+    stroke: rgba(0, 0, 128, 0.295);
+    stroke-width: 1px;
 }
 </style>

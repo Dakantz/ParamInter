@@ -9,6 +9,8 @@
         </div>
         <div class="divider"></div>
         <div class="search_container">
+          <DatapointSearch :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
+            @preview="previewSelected" @select="updateSelection" />
           <div v-if="state.loading">
             <v-progress-linear :value="state.loading_progress" color="primary" indeterminate></v-progress-linear>
             <span>Loading...</span>
@@ -25,6 +27,7 @@ import { ref, reactive, defineProps, defineModel, watch, onMounted } from 'vue';
 import { DataRepository } from './proc/types';
 import { PlotSelection, PlotSelectionResults } from './components/types';
 import PlotsOverview from './components/PlotsOverview.vue';
+import DatapointSearch from './components/spyder/DatapointSearch.vue';
 
 const state = reactive({
   data_rep: new DataRepository(),
@@ -81,7 +84,23 @@ watch(() => state.selection.selected_indices, (sel) => {
 
   }
 }, { immediate: true, deep: true });
-
+function previewSelected(idx: number) {
+  console.log("Previewing selected index:", idx);
+  // Set the hovered index in the selection
+  state.selection.hovered_index = idx
+}
+function updateSelection(newSelection: number) {
+  console.log("Updating selection:", newSelection);
+  if( state.selection.selected_indices.length==2){
+    // If two indices are already selected, replace the first one
+    state.selection.selected_indices = [newSelection];
+  } else {
+    state.selection.selected_indices = [...state.selection.selected_indices, newSelection];
+  }
+  state.selection.hovered_index = null;
+  // Emit the updated selection to parent components if needed
+  // emit('update:selection', newSelection);
+}
 </script>
 <style scoped>
 .main_container {
@@ -90,10 +109,11 @@ watch(() => state.selection.selected_indices, (sel) => {
   display: flex;
   justify-content: center;
   align-items: center;
+  font-family: 'Roboto Mono', monospace;
 }
 
 .plot_container {
-  width: 80vw;
+  width: 75vw;
   height: 100%;
   display: flex;
   justify-content: center;
@@ -109,10 +129,11 @@ watch(() => state.selection.selected_indices, (sel) => {
 }
 
 .search_container {
-  width: 19vw;
+  width: 24vw;
   height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-direction: column;
 }
 </style>

@@ -38,6 +38,16 @@ export interface DataPoint {
   outputs: number[];
   /** Projected Outputs */
   projected_outputs?: number[];
+  /** Index */
+  index?: number;
+}
+
+/** DataPointSimilarity */
+export interface DataPointSimilarity {
+  /** Values */
+  values: number[];
+  /** K */
+  k: number;
 }
 
 /**
@@ -331,6 +341,26 @@ export class Api<
       this.request<DataPoint, HTTPValidationError>({
         path: `/data_point/idx/${index}`,
         method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name GetSimilarDataPointsDataPointSimilarPost
+     * @summary Get Similar Data Points
+     * @request POST:/data_point/similar
+     */
+    getSimilarDataPointsDataPointSimilarPost: (
+      data: DataPointSimilarity,
+      params: RequestParams = {},
+    ) =>
+      this.request<DataPoint[], HTTPValidationError>({
+        path: `/data_point/similar`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
