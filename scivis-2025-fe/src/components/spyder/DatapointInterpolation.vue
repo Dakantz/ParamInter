@@ -15,7 +15,7 @@
             <div v-for="(types, cat_name) of state.visible_types" :key="cat_name">
                 <IntOverview :int_result="(state.interpolation_copy as InterpolationResult)" :types="types"
                     :data_rep="data_rep" :cat_name="cat_name" @hover="state.hovered_value = $event"
-                    v-model="state.hovered_offset" @select="emit('select', $event)"/>
+                    v-model="state.hovered_offset" @select="selectDp($event)" />
             </div>
         </div>
         <h3>Interpolated Input Values</h3>
@@ -71,6 +71,15 @@ const state = reactive({
     hovered_value: "",
     hovered_index: -1,
 });
+function selectDp(idx: number) {
+    console.log("Selecting Data Point:", idx);
+    if (idx >= 0) {
+        const true_idx = state.interpolation_copy?.indices[idx];
+        if (true_idx !== undefined) {
+            emit('select', true_idx);
+        }
+    }
+}
 watch(() => state.hovered_offset, (idx) => {
     // console.log("Hovered index:", idx);
     if (idx >= 0 && state.interpolation_copy) {
@@ -133,11 +142,6 @@ function showSensitivity(out_col: string, hovered_index: number) {
         });
     }
 }
-watch(() => state.hovered_offset, (idx) => {
-    if (idx >= 0 && state.hovered_value) {
-        showSensitivity(state.hovered_value, idx);
-    }
-}, { immediate: true });
 </script>
 
 <style scoped>

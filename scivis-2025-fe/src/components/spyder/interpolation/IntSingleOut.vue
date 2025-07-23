@@ -47,7 +47,7 @@ const { int_results, idx, out_name, data_rep } = defineProps({
 })
 const out_values = computed(() => {
     if (int_results.outputs && int_results.outputs[idx]) {
-        return int_results.outputs.map(out_array => out_array[idx]);
+        return int_results.knn_outputs.map(out_array => out_array[idx]);
     }
     return [];
 });

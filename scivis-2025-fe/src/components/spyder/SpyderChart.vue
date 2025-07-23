@@ -138,7 +138,7 @@ function updateChart() {
         const filtered_sensitivities = sensitivities.map((s, i) => {
             return { sense: s, idx: i, val: dim_mapped[i].value, name: dim_mapped[i].name, effective_length: radius * (s / (factor * 0.02)) };
         }).filter(d => Math.abs(d.sense) > 0.2)
-        console.log("Filtered sensitivities:", filtered_sensitivities);
+        // console.log("Filtered sensitivities:", filtered_sensitivities);
         const sensitivity = g
             .selectAll('path.sensitivity')
             .data(filtered_sensitivities) // filter out very small sensitivities
@@ -299,6 +299,7 @@ watch(() => sensitivities, (sense) => {
     width: 100%;
     height: 100%;
     min-width: 200px;
+    min-height: 200px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -317,7 +318,7 @@ watch(() => sensitivities, (sense) => {
 
 .plot-svg {
     width: 100%;
-    height: 100%;
+    /* height: 100%; */
 }
 
 .fixed-spider {

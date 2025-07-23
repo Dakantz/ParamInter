@@ -75,8 +75,8 @@ column_types = {
     "input_types": input_types,
     "elements": elements,
     "phase_formations": phase_formations,
-    # "phase_temps": phase_temps,
-    # "deltas": deltas,
+    "phase_temps": phase_temps,
+    "deltas": deltas,
     # "physical_properties": physical_properties,
     "full": elements + phase_formations + phase_temps + deltas + physical_properties,
 }

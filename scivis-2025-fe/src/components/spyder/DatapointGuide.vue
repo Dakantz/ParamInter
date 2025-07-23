@@ -92,7 +92,7 @@ watch(() => state.dp, (dp) => {
             k: 4
         }).then((suggestions) => {
             state.loading = false;
-            console.log("Suggestions results:", suggestions);
+            // console.log("Suggestions results:", suggestions);
             state.search_results = suggestions.data;
         }).catch((error) => {
             state.loading = false;
@@ -108,7 +108,7 @@ function showSensitivity(out_col: string) {
             for_outputs: [out_col],
             resolution: 16
         }).then((result) => {
-            console.log("Sensitivity Analysis Result:", result);
+            // console.log("Sensitivity Analysis Result:", result);
             state.sensitivities_for_hover = result.data[0].sensitivity_scores;
         }).catch((error) => {
             console.error("Error fetching sensitivity analysis:", error);
@@ -138,6 +138,8 @@ function showSensitivity(out_col: string) {
 .editable-outs {
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
     align-items: start;
     justify-content: start;
     margin: 4px;

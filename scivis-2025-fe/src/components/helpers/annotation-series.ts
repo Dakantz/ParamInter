@@ -48,10 +48,10 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
     let xScale = d3.scaleLinear();
     let yScale = d3.scaleLinear();
     function createSpyderFromProjectedData(sel: d3.Selection<any, any, any, any>, data: ProjectedData[], annotation_cls: string, size = spyder_size) {
+        sel.selectAll(`.${annotation_cls}`).remove();
         if (!data || !data.length) {
             return;
         }
-        sel.selectAll(`.${annotation_cls}`).remove();
         sel.selectAll(`.${annotation_cls}`)
             .data(data)
             .join("g")
@@ -80,6 +80,7 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
             })
     }
     function createSpyderFromPoints(sel: d3.Selection<any, any, any, any>, data: MappedData[], annotation_cls: string, spyder_size: number) {
+        sel.selectAll(`.${annotation_cls}`).remove();
         if (!data || !data.length) {
             return;
         }

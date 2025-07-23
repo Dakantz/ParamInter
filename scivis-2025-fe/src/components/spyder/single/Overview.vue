@@ -41,14 +41,14 @@ const type_indices = types.map((t) => { return { name: t, idx: data_rep.getTypeI
     display: flex;
     flex-direction: column;
     font-size: 8px;
-    margin: 4px;
+    margin: 2px;
     align-items: center;
 }
 h2{
     font-size: 1.2em;
-    margin-left: 10px;
+    margin-left: 0px;
 }
 .output-item {
-    margin: 2px 0;
+    margin: 1px 0;
 }
 </style>

@@ -8,21 +8,23 @@
           </PlotsOverview>
         </div>
         <div class="divider"></div>
-        <div class="search_container">
-
-          <DatapointSearch :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
-            @preview="previewSelected" @select="updateSelection" v-if="state.selection.selected_indices.length == 0" />
-          <DatapointGuide :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
-            :selected_dp="state.selection.selected_indices[0]" v-if="state.selection.selected_indices.length == 1"
-            @preview="previewSelected" @select="updateSelection" />
-          <DatapointInterpolation :data_rep="(state.data_rep as DataRepository)" v-model="state.selection" 
-            :interpolation="state.current_results.interpolation" v-if="state.selection.selected_indices.length == 2"
-            @preview="previewSelected" @select="updateSelection">
-          </DatapointInterpolation>
+        <div class="search-bar-container">
+          <div class="search-bar">
+            <DatapointSearch :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
+              @preview="previewSelected" @select="updateSelection" v-if="state.selection.selected_indices.length == 0" />
+            <DatapointGuide :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
+              :selected_dp="state.selection.selected_indices[0]" v-if="state.selection.selected_indices.length == 1"
+              @preview="previewSelected" @select="updateSelection" />
+            <DatapointInterpolation :data_rep="(state.data_rep as DataRepository)" v-model="state.selection" 
+              :interpolation="state.current_results.interpolation" v-if="state.selection.selected_indices.length == 2"
+              @preview="previewSelected" @select="updateSelection">
+            </DatapointInterpolation>
+          </div>
           <div v-if="state.loading">
             <v-progress-linear :value="state.loading_progress" color="primary" indeterminate></v-progress-linear>
             <span>Loading...</span>
           </div>
+          <button @click="reset" class="reset-button">Reset Selection</button>
 
         </div>
       </div>
@@ -113,6 +115,12 @@ function updateSelection(newSelection: number) {
   // Emit the updated selection to parent components if needed
   // emit('update:selection', newSelection);
 }
+function reset() {
+  console.log("Resetting selection");
+  state.selection.selected_indices = [];
+  state.selection.hovered_index = null;
+  state.current_results.interpolation = null;
+}
 </script>
 <style>
 .main_container {
@@ -140,12 +148,27 @@ function updateSelection(newSelection: number) {
   background-color: #ccc;
 }
 
-.search_container {
+.search-bar-container {
   width: 24vw;
-  min-width: 400px;
+  min-width: 450px;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-items: center;
+  align-items: center;
 }
 
+.search-bar {
+  width: 100%;
+  height: 95vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: scroll;
+}
+.reset-button {
+  margin: 10px 20px;
+}
 button {
   background-color: #ffd79f;
   border: none;

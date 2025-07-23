@@ -3,9 +3,9 @@
         <span class="out-name">{{ out_name }} <span>({{ min_value.toFixed(2) }}, {{
             max_value.toFixed(2)}})</span></span>
         <div class="out-value">
-            <button @click="increase">+</button>
-            <span class="value">{{ val.toFixed(2) }}</span>
             <button @click="decrease">-</button>
+            <span class="value">{{ val.toFixed(2) }}</span>
+            <button @click="increase">+</button>
         </div>
     </div>
 </template>
@@ -88,7 +88,7 @@ onMounted(() => {
 }
 
 .out-value .value {
-    margin: 0 10px;
+    margin: 0 5px;
     font-size: 1.2em;
 }
 </style>

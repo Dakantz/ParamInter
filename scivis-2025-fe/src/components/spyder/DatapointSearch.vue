@@ -55,7 +55,7 @@ watch(() => state.dim_data, (dim_data) => {
             values: dim_data.map((v) => v * 100),
             k: 4
         }).then((similarity) => {
-            console.log("Similarity results:", similarity);
+            // console.log("Similarity results:", similarity);
             state.search_results = similarity.data;
         }).catch((error) => {
             console.error("Error fetching similar data points:", error);
