@@ -119,14 +119,14 @@ function showSensitivity(out_col: string) {
 
 <style scoped>
 .datapoint-guide {
+    width:100%;
     min-height: 100vh;
     max-height: 100vh;
-    overflow-y: auto;
     display: flex;
     flex-direction: column;
     justify-items: center;
     align-items: center;
-    padding: 5px;
+    padding: 7px;
 }
 
 

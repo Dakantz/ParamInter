@@ -2,20 +2,15 @@
   <v-app>
     <v-main>
       <div class="main_container">
-        <div class="plot_container">
-          <PlotsOverview :data_rep='(state.data_rep as DataRepository)' :loaded_keys="state.loaded_keys"
-            v-model="state.selection" :results="state.current_results">
-          </PlotsOverview>
-        </div>
-        <div class="divider"></div>
         <div class="search-bar-container">
           <div class="search-bar">
             <DatapointSearch :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
-              @preview="previewSelected" @select="updateSelection" v-if="state.selection.selected_indices.length == 0" />
+              @preview="previewSelected" @select="updateSelection"
+              v-if="state.selection.selected_indices.length == 0" />
             <DatapointGuide :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
               :selected_dp="state.selection.selected_indices[0]" v-if="state.selection.selected_indices.length == 1"
               @preview="previewSelected" @select="updateSelection" />
-            <DatapointInterpolation :data_rep="(state.data_rep as DataRepository)" v-model="state.selection" 
+            <DatapointInterpolation :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
               :interpolation="state.current_results.interpolation" v-if="state.selection.selected_indices.length == 2"
               @preview="previewSelected" @select="updateSelection">
             </DatapointInterpolation>
@@ -26,6 +21,12 @@
           </div>
           <button @click="reset" class="reset-button">Reset Selection</button>
 
+        </div>
+        <div class="divider"></div>
+        <div class="plot_container">
+          <PlotsOverview :data_rep='(state.data_rep as DataRepository)' :loaded_keys="state.loaded_keys"
+            v-model="state.selection" :results="state.current_results">
+          </PlotsOverview>
         </div>
       </div>
     </v-main>
@@ -127,7 +128,7 @@ function reset() {
   width: 100%;
   height: 100%;
   display: flex;
-  justify-content: end;
+  justify-content: start;
   align-items: center;
   font-family: 'Roboto Mono', monospace;
 }
@@ -166,9 +167,11 @@ function reset() {
   align-items: center;
   overflow-y: scroll;
 }
+
 .reset-button {
   margin: 10px 20px;
 }
+
 button {
   background-color: #ffd79f;
   border: none;

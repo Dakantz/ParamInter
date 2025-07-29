@@ -139,7 +139,7 @@ def get_similar_data_point(index: int) -> list[float]:
 
     input_data = cleaned[input_cols].iloc[index].values
 
-    similarities = np.abs(cleaned[input_cols].values / 100 * input_data / 100).sum(
+    similarities = np.abs((cleaned[input_cols].values / 100) * (input_data / 100)).sum(
         axis=1
     )
     return similarities

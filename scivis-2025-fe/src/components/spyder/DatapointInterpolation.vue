@@ -146,9 +146,6 @@ function showSensitivity(out_col: string, hovered_index: number) {
 
 <style scoped>
 .datapoint-guide {
-    min-height: 100vh;
-    max-height: 100vh;
-    overflow-y: auto;
     display: flex;
     flex-direction: column;
     justify-items: center;

@@ -52,7 +52,7 @@ function updateChart() {
         const svg = d3.select(plot.value)
             .attr('width', width)
             .attr('height', height);
-        const radius = Math.min(width, height) / 2 - 60; // Padding
+        const radius = Math.min(width, height) / 2 - 20; // Padding
         const center = { x: width / 2, y: height / 2 };
 
         const angleScale = d3.scaleLinear()
@@ -230,8 +230,8 @@ function updateChart() {
 }
 onMounted(() => {
 
-    const markerBoxWidth = 10;
-    const markerBoxHeight = 10;
+    const markerBoxWidth = 5;
+    const markerBoxHeight = 5;
     const refX = markerBoxWidth / 2;
     const refY = markerBoxHeight / 2;
     const arrowPoints = [
