@@ -9,3 +9,6 @@ export const webglColor = (color: string) => {
     const { r, g, b, opacity } = (d3.color(color) as d3.RGBColor).rgb();
     return [r / 255, g / 255, b / 255, opacity];
 };
+export function reSpider(val){
+    return Math.sqrt(val);
+}

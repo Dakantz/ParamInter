@@ -8,6 +8,7 @@
 <script lang="ts" setup>
 import { ref, reactive, defineProps, defineModel, watch, onMounted, useTemplateRef } from 'vue';
 import * as d3 from 'd3';
+import { reSpider } from '../helpers/utils';
 const dim_data = defineModel<Array<number>>({
     default: () => []
 });
@@ -43,7 +44,7 @@ function updateChart() {
     //     .selectAll('*')
     //     .remove();
     const dim_mapped = dimensions.map((dim, i) => {
-        return { name: dim, value: dim_data.value[i], idx: i, angle: -1 };
+        return { name: dim, value: dim_data.value[i], rescale_val: reSpider(dim_data.value[i]), idx: i, angle: -1 };
     });
     // console.log("Dimensions:", dimensions, "Data:", dim_data, "Mapped:", dim_mapped);
     if (spiderContainer.value && plot.value) {
@@ -116,8 +117,8 @@ function updateChart() {
             .attr('d', d => {
                 let pieces = d.map((v, i) => {
                     let angle = (i / d.length) * 2 * Math.PI;
-                    let x = Math.cos(angle) * radius * (v.value / factor);
-                    let y = Math.sin(angle) * radius * (v.value / factor);
+                    let x = Math.cos(angle) * radius * (v.rescale_val / factor);
+                    let y = Math.sin(angle) * radius * (v.rescale_val / factor);
                     return { x, y };
                 });
                 let path = d3.path();
@@ -136,7 +137,7 @@ function updateChart() {
                 return editable ? 'spider-path' : 'fixed-spider';
             })
         const filtered_sensitivities = sensitivities.map((s, i) => {
-            return { sense: s, idx: i, val: dim_mapped[i].value, name: dim_mapped[i].name, effective_length: radius * (s / (factor * 0.02)) };
+            return { sense: s, idx: i, val: dim_mapped[i].rescale_val, name: dim_mapped[i].name, effective_length: radius * (s / (factor * 0.02)) };
         }).filter(d => Math.abs(d.sense) > 0.2)
         // console.log("Filtered sensitivities:", filtered_sensitivities);
         const sensitivity = g

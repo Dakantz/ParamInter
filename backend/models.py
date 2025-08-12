@@ -61,3 +61,23 @@ class InterpolationResult(BaseModel):
     projected_outputs: dict[str, list[list[float]]]
     indices: list[int]
     explainations: list[list[float]] = None
+
+
+class DataPointSensitivity(BaseModel):
+    for_outputs: list[str] = []
+    resolution: int = 16
+
+
+
+class DataPointSimilarity(BaseModel):
+    values: list[float]
+    k: int
+
+
+class DataPointSuggestions(BaseModel):
+    base_index: int = None
+    values: list[float] = []
+    k: int = 5
+    weigh_changes: float = 1.5
+    
+    

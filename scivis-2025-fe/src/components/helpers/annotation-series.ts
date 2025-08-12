@@ -4,6 +4,7 @@ import * as fc from "d3fc";
 import { DataRepository } from "../../proc/types";
 import { MappedData } from "../types";
 import { InterpolationResult } from "../../api/Api";
+import { reSpider } from "./utils";
 export interface AnnotationData {
     annotations: MappedData[];
     selection: MappedData[];
@@ -62,9 +63,10 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
             .attr('d', (d) => {
                 let input_data = d.inputs;
                 let pieces = input_data.map((value, i) => {
+                    let rescaled_value = reSpider(value);
                     let angle = (i / input_data.length) * 2 * Math.PI;
-                    let x = Math.cos(angle) * size * value;
-                    let y = Math.sin(angle) * size * value;
+                    let x = Math.cos(angle) * size * rescaled_value;
+                    let y = Math.sin(angle) * size * rescaled_value;
                     return { x, y };
                 });
                 let path = d3.path();

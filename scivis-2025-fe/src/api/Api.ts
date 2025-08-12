@@ -338,33 +338,65 @@ export class HttpClient<SecurityDataType = unknown> {
 export class Api<
   SecurityDataType extends unknown,
 > extends HttpClient<SecurityDataType> {
-  dataDescription = {
+  data = {
     /**
      * No description
      *
      * @name GetDataDescriptionDataDescriptionGet
      * @summary Get Data Description
-     * @request GET:/data_description
+     * @request GET:/data/description
      */
     getDataDescriptionDataDescriptionGet: (params: RequestParams = {}) =>
       this.request<DataDescription, any>({
-        path: `/data_description`,
+        path: `/data/description`,
         method: "GET",
         format: "json",
         ...params,
       }),
-  };
-  data = {
+
     /**
      * No description
      *
      * @name GetDataDataGet
      * @summary Get Data
-     * @request GET:/data
+     * @request GET:/data/
      */
     getDataDataGet: (params: RequestParams = {}) =>
       this.request<DataPoints, any>({
-        path: `/data`,
+        path: `/data/`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name GetColumnTypesDataColumnTypesGet
+     * @summary Get Column Types
+     * @request GET:/data/column_types
+     */
+    getColumnTypesDataColumnTypesGet: (params: RequestParams = {}) =>
+      this.request<Record<string, string[]>, any>({
+        path: `/data/column_types`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name GetEmbeddingDataEmbeddingColTypeGet
+     * @summary Get Embedding
+     * @request GET:/data/embedding/{col_type}
+     */
+    getEmbeddingDataEmbeddingColTypeGet: (
+      colType: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<number[][], HTTPValidationError>({
+        path: `/data/embedding/${colType}`,
         method: "GET",
         format: "json",
         ...params,
@@ -376,14 +408,14 @@ export class Api<
      *
      * @name GetSimilarDataPointDataPointSimilarityScoresIndexGet
      * @summary Get Similar Data Point
-     * @request GET:/data_point/similarity-scores/{index}
+     * @request GET:/data-point/similarity-scores/{index}
      */
     getSimilarDataPointDataPointSimilarityScoresIndexGet: (
       index: number,
       params: RequestParams = {},
     ) =>
       this.request<number[], HTTPValidationError>({
-        path: `/data_point/similarity-scores/${index}`,
+        path: `/data-point/similarity-scores/${index}`,
         method: "GET",
         format: "json",
         ...params,
@@ -394,14 +426,14 @@ export class Api<
      *
      * @name GetDataPointDataPointIdxIndexGet
      * @summary Get Data Point
-     * @request GET:/data_point/idx/{index}
+     * @request GET:/data-point/idx/{index}
      */
     getDataPointDataPointIdxIndexGet: (
       index: number,
       params: RequestParams = {},
     ) =>
       this.request<DataPoint, HTTPValidationError>({
-        path: `/data_point/idx/${index}`,
+        path: `/data-point/idx/${index}`,
         method: "GET",
         format: "json",
         ...params,
@@ -410,108 +442,11 @@ export class Api<
     /**
      * No description
      *
-     * @name GetSimilarDataPointsDataPointSimilarPost
-     * @summary Get Similar Data Points
-     * @request POST:/data_point/similar
-     */
-    getSimilarDataPointsDataPointSimilarPost: (
-      data: DataPointSimilarity,
-      params: RequestParams = {},
-    ) =>
-      this.request<DataPoint[], HTTPValidationError>({
-        path: `/data_point/similar`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @name ExplanationsForDpDataPointExplanationsIdxPost
-     * @summary Explanations For Dp
-     * @request POST:/data_point/explanations/{idx}
-     */
-    explanationsForDpDataPointExplanationsIdxPost: (
-      idx: number,
-      data: DataPointSensitivity,
-      params: RequestParams = {},
-    ) =>
-      this.request<SensitivityAnalysisResult[], HTTPValidationError>({
-        path: `/data_point/explanations/${idx}`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @name DataPointSuggestionsDataPointSuggestionsPost
-     * @summary Data Point Suggestions
-     * @request POST:/data_point/suggestions
-     */
-    dataPointSuggestionsDataPointSuggestionsPost: (
-      data: DataPointSuggestions,
-      params: RequestParams = {},
-    ) =>
-      this.request<DataPoint[], HTTPValidationError>({
-        path: `/data_point/suggestions`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-  };
-  columnTypes = {
-    /**
-     * No description
-     *
-     * @name GetColumnTypesColumnTypesGet
-     * @summary Get Column Types
-     * @request GET:/column_types
-     */
-    getColumnTypesColumnTypesGet: (params: RequestParams = {}) =>
-      this.request<Record<string, string[]>, any>({
-        path: `/column_types`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-  };
-  embedding = {
-    /**
-     * No description
-     *
-     * @name GetEmbeddingEmbeddingColTypeGet
-     * @summary Get Embedding
-     * @request GET:/embedding/{col_type}
-     */
-    getEmbeddingEmbeddingColTypeGet: (
-      colType: string,
-      params: RequestParams = {},
-    ) =>
-      this.request<number[][], HTTPValidationError>({
-        path: `/embedding/${colType}`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-  };
-  interpolation = {
-    /**
-     * No description
-     *
-     * @name GetInterpolationInterpolationGet
+     * @name GetInterpolationDataPointInterpolationGet
      * @summary Get Interpolation
-     * @request GET:/interpolation
+     * @request GET:/data-point/interpolation
      */
-    getInterpolationInterpolationGet: (
+    getInterpolationDataPointInterpolationGet: (
       query: {
         /** From Index */
         from_index: number;
@@ -536,9 +471,70 @@ export class Api<
       params: RequestParams = {},
     ) =>
       this.request<InterpolationResult, HTTPValidationError>({
-        path: `/interpolation`,
+        path: `/data-point/interpolation`,
         method: "GET",
         query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name GetSimilarDataPointsDataPointSimilarPost
+     * @summary Get Similar Data Points
+     * @request POST:/data-point/similar
+     */
+    getSimilarDataPointsDataPointSimilarPost: (
+      data: DataPointSimilarity,
+      params: RequestParams = {},
+    ) =>
+      this.request<DataPoint[], HTTPValidationError>({
+        path: `/data-point/similar`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name ExplanationsForDpDataPointExplanationsIdxPost
+     * @summary Explanations For Dp
+     * @request POST:/data-point/explanations/{idx}
+     */
+    explanationsForDpDataPointExplanationsIdxPost: (
+      idx: number,
+      data: DataPointSensitivity,
+      params: RequestParams = {},
+    ) =>
+      this.request<SensitivityAnalysisResult[], HTTPValidationError>({
+        path: `/data-point/explanations/${idx}`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name DataPointSuggestionsDataPointSuggestionsPost
+     * @summary Data Point Suggestions
+     * @request POST:/data-point/suggestions
+     */
+    dataPointSuggestionsDataPointSuggestionsPost: (
+      data: DataPointSuggestions,
+      params: RequestParams = {},
+    ) =>
+      this.request<DataPoint[], HTTPValidationError>({
+        path: `/data-point/suggestions`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
