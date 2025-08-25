@@ -26,7 +26,11 @@ export default defineConfig({
       },
     }),
   ],
-  define: { 'process.env': {} },
+  base: '/alloy_inter/api',
+  define: {
+    'process.env': {},
+    'API_BASE_URL': JSON.stringify(process.env.API_BASE_URL)
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
