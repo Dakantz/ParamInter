@@ -27,10 +27,6 @@ export default defineConfig({
     }),
   ],
   base: '/alloy_inter/demo',
-  define: {
-    'process.env': {},
-    'API_BASE_URL': JSON.stringify(process.env.API_BASE_URL)
-  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -48,4 +44,6 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+
+  envPrefix: 'ALLOY_',
 })
