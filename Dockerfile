@@ -12,4 +12,4 @@ WORKDIR /app
 
 EXPOSE 8000
 ENV DATA_DIR=/app/data
-CMD [ "python", "-m", "uvicorn", "backend:app", "--port", "8000" ]
+CMD [ "python", "-m", "uvicorn", "backend:app", "--host", "0.0.0.0", "--port", "8000" ]
