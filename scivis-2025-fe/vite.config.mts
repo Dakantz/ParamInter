@@ -26,7 +26,7 @@ export default defineConfig({
       },
     }),
   ],
-  base: '/alloy_inter/api',
+  base: '/alloy_inter/demo',
   define: {
     'process.env': {},
     'API_BASE_URL': JSON.stringify(process.env.API_BASE_URL)
