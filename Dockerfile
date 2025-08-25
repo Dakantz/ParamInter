@@ -8,6 +8,8 @@ WORKDIR /app
 
 ADD . /app
 
-WORKDIR /app/src
+WORKDIR /app
 
+EXPOSE 8000
+ENV DATA_DIR=/app/data
 CMD [ "python", "-m", "uvicorn", "backend:app", "--port", "8000" ]

@@ -24,16 +24,17 @@ import numpy as np
 
 import tqdm
 from pathlib import Path
+import os
 
 
 # https://stackoverflow.com/questions/6760685/what-is-the-best-way-of-implementing-a-singleton-in-python
 class DataMan:
-    def __init__(self, data_table: str = "./alloy_data.txt", mode="tsne"):
-        self.data_table = data_table
+    def __init__(self, base_dir: str = "./data", mode="tsne"):
+        self.base_dir = Path(base_dir)
         self.mode = mode
 
     def load(self):
-        data = pd.read_table(self.data_table)
+        data = pd.read_table(self.base_dir / "alloy_data.txt")
         input_cols = data.columns.to_list()[:6]
         output_cols = data.columns.to_list()[6:70]
         cleaned = data[input_cols + output_cols].fillna(0)
@@ -81,7 +82,7 @@ class DataMan:
             col_name = col_name.replace(".", "_")
             col_name = col_name.replace("/", "_")
             model = lgb.Booster(
-                model_file=f"models/{col_name}_model.txt",
+                model_file=f"data/models/{col_name}_model.txt",
             )
             model_ensemble[output_col] = model
 
@@ -99,8 +100,11 @@ class DataMan:
 
         self.input_cols = input_cols
         self.output_cols = output_cols
-        
+
         self.column_types = column_types
 
-dataman = DataMan()
+
+dataman = DataMan(
+    base_dir=os.getenv("DATA_DIR", "./data"), mode=os.getenv("EMBEDDING", "tsne")
+)
 dataman.load()
