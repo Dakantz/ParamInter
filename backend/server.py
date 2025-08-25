@@ -1,22 +1,7 @@
-import pandas as pd
-import numpy as np
-from fastapi import Body, FastAPI
+from fastapi import FastAPI
 
 # cors
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
-
-from backend.models import DataPointSensitivity
-
-from .models import (
-    DataDescription,
-    DataPoints,
-    DataPoint,
-    InterpolationResult,
-    SensitivityAnalysisResult,
-)
 from .routers import data_router, dp_router
 
 

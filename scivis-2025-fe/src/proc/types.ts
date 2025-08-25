@@ -57,13 +57,13 @@ export class DataRepository {
     }
 
     async loadAll(load_cb: (progress: number, loaded_keys: string[]) => void = () => { }) {
-        this.all_types = (await this.client.columnTypes.getColumnTypesColumnTypesGet()).data;
+        this.all_types = (await this.client.data.getColumnTypesDataColumnTypesGet()).data;
         for (const type in this.all_types) {
-            const embeddings = (await this.client.embedding.getEmbeddingEmbeddingColTypeGet(type)).data;
+            const embeddings = (await this.client.data.getEmbeddingDataEmbeddingColTypeGet(type)).data;
             this.all_embeddings.all_embeddings[type] = new Embeddings(embeddings);
             load_cb((Object.keys(this.all_embeddings.all_embeddings).length / Object.keys(this.all_types).length), Object.keys(this.all_embeddings.all_embeddings));
         }
-        this.description = (await this.client.dataDescription.getDataDescriptionDataDescriptionGet()).data;
+        this.description = (await this.client.data.getDataDescriptionDataDescriptionGet()).data;
         // this.data_points = (await this.client.data.getDataDataGet()).data;
 
     }

@@ -83,7 +83,7 @@ watch(() => state.selection.selected_indices, (sel) => {
   if (sel.length == 2) {
 
     state.loading = true
-    state.data_rep.client.interpolation.getInterpolationInterpolationGet({
+    state.data_rep.client.dataPoint.getInterpolationDataPointInterpolationGet({
       from_index: sel[0],
       to_index: sel[1],
       // include_explainations: true

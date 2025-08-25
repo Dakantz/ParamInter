@@ -99,5 +99,8 @@ class DataMan:
 
         self.input_cols = input_cols
         self.output_cols = output_cols
+        
+        self.column_types = column_types
 
-DATAMAN = DataMan()
+dataman = DataMan()
+dataman.load()

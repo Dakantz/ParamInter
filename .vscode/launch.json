@@ -12,7 +12,9 @@
             "cwd": "${workspaceFolder}",
             "args": [
                 "backend:app",
-                "--reload"
+                "--reload",
+                "--port",
+                "8090"
             ],
             "jinja": true
         }
