@@ -1,0 +1,10 @@
+torch
+torchvision
+lightgbm
+jupyter
+ipywidgets
+scikit-learn
+umap-learn
+fastapi
+uvicorn
+pandas
