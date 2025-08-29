@@ -26,7 +26,7 @@ export default defineConfig({
       },
     }),
   ],
-  base: '/alloy_inter/demo',
+  base: '/alloy-inter',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
