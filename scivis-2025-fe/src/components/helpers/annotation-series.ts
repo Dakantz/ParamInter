@@ -70,12 +70,12 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
                     return { x, y };
                 });
                 let path = d3.path();
+                path.moveTo(0,0);
                 pieces.forEach((piece, i) => {
-                    if (i === 0) {
-                        path.moveTo(piece.x, piece.y);
-                    } else {
-                        path.lineTo(piece.x, piece.y);
-                    }
+                    path.moveTo(0,0);
+                    path.lineTo(piece.x, piece.y);
+                    let next_piece = pieces[(i + 1) % pieces.length];
+                    path.lineTo(next_piece.x, next_piece.y);
                 });
                 path.closePath();
                 return path.toString();

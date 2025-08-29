@@ -12,3 +12,6 @@ export const webglColor = (color: string) => {
 export function reSpider(val){
     return Math.sqrt(val);
 }
+export function inverseSpider(val){
+    return Math.pow(val, 2);
+}

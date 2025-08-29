@@ -70,7 +70,7 @@ watch(() => state.dim_data, (dim_data) => {
     width:100%;
     min-height: 100vh;
     max-height: 100vh;
-    overflow-y: auto;
+    /* overflow-y: auto; */
     display: flex;
     flex-direction: column;
     justify-items: center;

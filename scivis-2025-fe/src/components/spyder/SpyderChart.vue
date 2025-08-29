@@ -8,7 +8,7 @@
 <script lang="ts" setup>
 import { ref, reactive, defineProps, defineModel, watch, onMounted, useTemplateRef } from 'vue';
 import * as d3 from 'd3';
-import { reSpider } from '../helpers/utils';
+import { inverseSpider, reSpider } from '../helpers/utils';
 const dim_data = defineModel<Array<number>>({
     default: () => []
 });
@@ -23,7 +23,7 @@ const { dimensions, editable, factor, sensitivities } = defineProps({
     },
     factor: {
         type: Number,
-        default: 100.0
+        default: 10
     },
     sensitivities: {
         type: Array as () => Array<number>,
@@ -106,7 +106,7 @@ function updateChart() {
                 //rotate the text based on the angle
             })
             .text(d => d.name)
-            .attr('font-size', '6px')
+            .attr('font-size', '10px')
             .attr('fill', 'black')
             .attr('class', 'spider-text-item')
         const spider = g
@@ -137,7 +137,7 @@ function updateChart() {
                 return editable ? 'spider-path' : 'fixed-spider';
             })
         const filtered_sensitivities = sensitivities.map((s, i) => {
-            return { sense: s, idx: i, val: dim_mapped[i].rescale_val, name: dim_mapped[i].name, effective_length: radius * (s / (factor * 0.02)) };
+            return { sense: s, idx: i, val: dim_mapped[i].rescale_val, name: dim_mapped[i].name, effective_length: radius * (s / (factor * 0.2)) };
         }).filter(d => Math.abs(d.sense) > 0.2)
         // console.log("Filtered sensitivities:", filtered_sensitivities);
         const sensitivity = g
@@ -202,9 +202,11 @@ function updateChart() {
                     const idx = closest_dim.idx;
 
                     // console.log("Mouse moved to:", relX, relY, "Angle:", angle,
-                        // "Radius:", radius_mouse, "Closest dimension:", closest_dim.name);
+                    // "Radius:", radius_mouse, "Closest dimension:", closest_dim.name);
+                    // clamp the radius to [0, 1]
 
-                    const newValue = Math.max(0, Math.min(1, radius_mouse));
+                    let newValue = Math.max(0, Math.min(1, radius_mouse));
+                    newValue = inverseSpider(newValue);
                     dim_data.value[idx] = newValue;
                     //normalize the other values
                     const sum = dim_data.value.reduce((a, b) => a + b, 0);
@@ -300,7 +302,7 @@ watch(() => sensitivities, (sense) => {
     width: 100%;
     height: 100%;
     min-width: 200px;
-    min-height: 200px;
+    min-height: 20vw;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -329,7 +331,7 @@ watch(() => sensitivities, (sense) => {
 }
 
 .sensitivity {
-    stroke-width: 1.5px;
+    stroke-width: 3px;
 }
 
 .sensitivity_pos {

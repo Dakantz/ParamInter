@@ -161,7 +161,7 @@ function reset() {
 
 .search-bar {
   width: 100%;
-  height: 95vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
