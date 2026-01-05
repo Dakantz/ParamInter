@@ -4,34 +4,44 @@ from pydantic import BaseModel
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 
-from backend.models import DataDescription, DataPoint, DataPointSensitivity, DataPointSimilarity, DataPointSuggestions, DataPoints, InterpolationResult, SensitivityAnalysisResult
+from backend.models import (
+    DataDescription,
+    DataPoint,
+    DataPointSensitivity,
+    DataPointSimilarity,
+    DataPointSuggestions,
+    DataPoints,
+    InterpolationResult,
+    SensitivityAnalysisResult,
+)
 
-from backend.dataman import dataman
+from backend.dataman import data_man
 
 
-dp_router = APIRouter(prefix='/data-point')
+dp_router = APIRouter(prefix="/data-point")
+
 
 @dp_router.get("/similarity-scores/{index}")
 def get_similar_data_point(index: int) -> list[float]:
-    if index < 0 or index >= len(dataman.data):
+    if index < 0 or index >= len(data_man.data):
         return {"error": "Index out of bounds"}
 
-    input_data = dataman.cleaned[dataman.input_cols].iloc[index].values
+    input_data = data_man.cleaned[data_man.input_cols].iloc[index].values
 
-    similarities = np.abs((dataman.cleaned[dataman.input_cols].values / 100) * (input_data / 100)).sum(
-        axis=1
-    )
+    similarities = np.abs(
+        (data_man.cleaned[data_man.input_cols].values / 100) * (input_data / 100)
+    ).sum(axis=1)
     return similarities
 
 
 @dp_router.get("/idx/{index}")
 def get_data_point(index: int) -> DataPoint:
-    if index < 0 or index >= len(dataman.data):
+    if index < 0 or index >= len(data_man.data):
         return None
 
-    input_data = dataman.cleaned[dataman.input_cols].iloc[index].values.tolist()
-    output_data = dataman.cleaned[dataman.output_cols].iloc[index].values.tolist()
-    projected_output = dataman.embedded_tsne[index].tolist()
+    input_data = data_man.cleaned[data_man.input_cols].iloc[index].values.tolist()
+    output_data = data_man.cleaned[data_man.output_cols].iloc[index].values.tolist()
+    projected_output = data_man.embedded_tsne[index].tolist()
 
     return DataPoint(
         inputs=input_data,
@@ -39,8 +49,6 @@ def get_data_point(index: int) -> DataPoint:
         projected_outputs=projected_output,
         index=index,
     )
-
-
 
 
 @dp_router.get("/interpolation")
@@ -53,21 +61,21 @@ def get_interpolation(
 ) -> InterpolationResult:
     dp_idxs = [from_index, to_index]
 
-    inputs = dataman.cleaned[dataman.input_cols].values[dp_idxs]
+    inputs = data_man.cleaned[data_man.input_cols].values[dp_idxs]
 
     interpolated_inputs = np.linspace(inputs[0], inputs[1], n_samples)
 
-    outputs_interpolated = np.empty((n_samples, len(dataman.output_cols)))
+    outputs_interpolated = np.empty((n_samples, len(data_man.output_cols)))
 
-    for i, cm in enumerate(tqdm(dataman.model_ensemble.items())):
+    for i, cm in enumerate(tqdm(data_man.model_ensemble.items())):
         _, model = cm
         predictions = model.predict(interpolated_inputs)
         outputs_interpolated[:, i] = predictions
-    outputs_interpolated_scaled = dataman.scaler_outs.transform(outputs_interpolated)
-    # find closest points in the embedding space   
+    outputs_interpolated_scaled = data_man.scaler_outs.transform(outputs_interpolated)
+    # find closest points in the embedding space
 
     nn_out_scaled = NearestNeighbors(n_neighbors=1)
-    nn_out_scaled.fit(dataman.scaled_outputs)
+    nn_out_scaled.fit(data_man.scaled_outputs)
 
     _, indices = nn_out_scaled.kneighbors(outputs_interpolated_scaled)
     indices = indices.flatten()
@@ -76,11 +84,11 @@ def get_interpolation(
     embeddings_nn: dict[str, list] = {}
     if embedding_type == "all":
         # embeddings_nn["full"] = embedded_tsne[indices.flatten()].tolist()
-        for col_name, embedded in dataman.embedding_subsets.items():
+        for col_name, embedded in data_man.embedding_subsets.items():
             embeddings_nn[col_name] = embedded[indices].tolist()
     else:
-        if embedding_type in dataman.embedding_subsets:
-            embeddings_nn[embedding_type] = dataman.embedding_subsets[embedding_type][
+        if embedding_type in data_man.embedding_subsets:
+            embeddings_nn[embedding_type] = data_man.embedding_subsets[embedding_type][
                 indices
             ].tolist()
     explanations = np.zeros_like(outputs_interpolated)
@@ -89,7 +97,10 @@ def get_interpolation(
         for i in range(outputs_interpolated.shape[0]):
             idx = indices[i]
             explanations_list = explanations_for_dp(
-                idx, data=DataPointSensitivity(for_outputs=dataman.output_cols, resolution=4)
+                idx,
+                data=DataPointSensitivity(
+                    for_outputs=data_man.output_cols, resolution=4
+                ),
             )
             # for each output column
             explanations[i, :] = np.array(
@@ -101,28 +112,29 @@ def get_interpolation(
     return InterpolationResult(
         inputs=interpolated_inputs.tolist(),
         outputs=outputs_interpolated.tolist(),
-        knn_inputs=dataman.cleaned[dataman.input_cols].values[indices].tolist(),
-        knn_outputs=dataman.cleaned[dataman.output_cols].values[indices].tolist(),
+        knn_inputs=data_man.cleaned[data_man.input_cols].values[indices].tolist(),
+        knn_outputs=data_man.cleaned[data_man.output_cols].values[indices].tolist(),
         projected_outputs=embeddings_nn,
         indices=indices.tolist(),
         explainations=explanations.tolist(),
     )
 
+
 @dp_router.post("/similar")
 def get_similar_data_points(
     q: DataPointSimilarity = Body(DataPointSimilarity),
 ) -> list[DataPoint]:
-    if len(q.values) != len(dataman.input_cols):
+    if len(q.values) != len(data_man.input_cols):
         return []
 
     values = np.array(q.values).reshape(1, -1)
     nn_inputs = NearestNeighbors(n_neighbors=q.k)
-    nn_inputs.fit(dataman.cleaned[dataman.input_cols].values)
+    nn_inputs.fit(data_man.cleaned[data_man.input_cols].values)
     _, indices = nn_inputs.kneighbors(values, n_neighbors=q.k)
     indices = indices.flatten()
-    input_data = dataman.cleaned[dataman.input_cols].iloc[indices].values.tolist()
-    output_data = dataman.cleaned[dataman.output_cols].iloc[indices].values.tolist()
-    projected_output = dataman.embedded_tsne[indices].tolist()
+    input_data = data_man.cleaned[data_man.input_cols].iloc[indices].values.tolist()
+    output_data = data_man.cleaned[data_man.output_cols].iloc[indices].values.tolist()
+    projected_output = data_man.embedded_tsne[indices].tolist()
     similar_data_points = [
         DataPoint(
             inputs=input_data[i],
@@ -142,18 +154,18 @@ def explanations_for_dp(
     data: DataPointSensitivity = Body(DataPointSensitivity),
 ) -> list[SensitivityAnalysisResult]:
     # vary the inputs of the data point at idx
-    if idx < 0 or idx >= dataman.cleaned.shape[0]:
+    if idx < 0 or idx >= data_man.cleaned.shape[0]:
         return []
     results: list[SensitivityAnalysisResult] = []
     for out_col in data.for_outputs:
-        estimator = dataman.model_ensemble.get(out_col)
+        estimator = data_man.model_ensemble.get(out_col)
         if not estimator:
             continue
-        input_data = dataman.cleaned[dataman.input_cols].iloc[idx].values
-        sensitivities = np.zeros(len(dataman.input_cols))
-        for i, input_col in enumerate(dataman.input_cols):
+        input_data = data_man.cleaned[data_man.input_cols].iloc[idx].values
+        sensitivities = np.zeros(len(data_man.input_cols))
+        for i, input_col in enumerate(data_man.input_cols):
             # vary the input column by 1%
-            perturbed_input = np.empty((data.resolution, len(dataman.input_cols)))
+            perturbed_input = np.empty((data.resolution, len(data_man.input_cols)))
             perturbed_input[:] = input_data
             perturb_range = np.linspace(
                 input_data[i] - 10, input_data[i] + 10, data.resolution
@@ -171,9 +183,11 @@ def explanations_for_dp(
 
         output_sensitivities = SensitivityAnalysisResult(
             dp=DataPoint(
-                inputs=dataman.cleaned[dataman.input_cols].iloc[idx].values.tolist(),
-                outputs=dataman.cleaned[dataman.output_cols].iloc[idx].values.tolist(),
-                projected_outputs=dataman.embedded_tsne[idx].tolist(),
+                inputs=data_man.cleaned[data_man.input_cols].iloc[idx].values.tolist(),
+                outputs=data_man.cleaned[data_man.output_cols]
+                .iloc[idx]
+                .values.tolist(),
+                projected_outputs=data_man.embedded_tsne[idx].tolist(),
                 index=idx,
             ),
             sensitivity_scores=sensitivities.tolist(),
@@ -183,21 +197,19 @@ def explanations_for_dp(
     return results
 
 
-
-
 @dp_router.post("/suggestions")
 def data_point_suggestions(
     q: DataPointSuggestions = Body(DataPointSuggestions),
 ) -> list[DataPoint]:
-    if len(q.values) != len(dataman.output_cols):
+    if len(q.values) != len(data_man.output_cols):
         return []
     # base_values = DATAMAN.cleaned[output_cols].iloc[q.base_index].values
     values = np.array(q.values)
-    weights = np.ones(len(dataman.output_cols))
-    scaled_values = dataman.scaler_outs.transform(values.reshape(1, -1))
+    weights = np.ones(len(data_man.output_cols))
+    scaled_values = data_man.scaler_outs.transform(values.reshape(1, -1))
     if q.base_index is not None:
-        base_values = dataman.cleaned[dataman.output_cols].iloc[q.base_index].values
-        scaled_base_values = dataman.scaler_outs.transform(base_values.reshape(1, -1))
+        base_values = data_man.cleaned[data_man.output_cols].iloc[q.base_index].values
+        scaled_base_values = data_man.scaler_outs.transform(base_values.reshape(1, -1))
         weights = np.where(
             np.abs(scaled_values - scaled_base_values) > 1e-4, q.weigh_changes, 1
         )
@@ -209,14 +221,14 @@ def data_point_suggestions(
 
     nn_outs = NearestNeighbors(n_neighbors=q.k, metric=weighted_distance)
     values = values.reshape(1, -1)
-    nn_outs.fit(dataman.scaled_outputs)
+    nn_outs.fit(data_man.scaled_outputs)
     _, indices = nn_outs.kneighbors(scaled_values, n_neighbors=q.k)
     indices = indices.flatten()
     if q.base_index is not None:
         indices = indices[indices != q.base_index]
-    input_data = dataman.cleaned[dataman.input_cols].iloc[indices].values.tolist()
-    output_data = dataman.cleaned[dataman.output_cols].iloc[indices].values.tolist()
-    projected_output = dataman.embedded_tsne[indices].tolist()
+    input_data = data_man.cleaned[data_man.input_cols].iloc[indices].values.tolist()
+    output_data = data_man.cleaned[data_man.output_cols].iloc[indices].values.tolist()
+    projected_output = data_man.embedded_tsne[indices].tolist()
 
     suggestions = [
         DataPoint(

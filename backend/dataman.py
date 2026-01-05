@@ -6,17 +6,17 @@ import lightgbm as lgb
 from backend.utils import Singleton
 
 
+from sklearn.neighbors import NearestNeighbors
+
 try:
     from cuml.neighbors import NearestNeighbors
     from cuml.manifold.umap import UMAP
     from cuml import TSNE
 except ImportError:
-    from sklearn.neighbors import NearestNeighbors
-    from sklearn.manifold import TSNE
-    from umap import UMAP
-
     print("Cuml not found, using CPU-based libraries.")
     cuml = None
+    from sklearn.manifold import TSNE
+    from umap import UMAP
 
 from .col_defs import column_types, input_types
 import pandas as pd
@@ -29,15 +29,48 @@ import os
 
 # https://stackoverflow.com/questions/6760685/what-is-the-best-way-of-implementing-a-singleton-in-python
 class DataMan:
-    def __init__(self, base_dir: str = "./data", mode="tsne"):
+    def __init__(
+        self,
+        base_dir: str = "data",
+        mode="tsne",
+        data_file="./alloy_data.txt",
+        data_name="Aloy Data",
+        short_data_name="scivis",
+        input_cols=6,
+        output_cols=64,
+        time_col: int | None = None,
+    ):
         self.base_dir = Path(base_dir)
         self.mode = mode
+        self.data_file = data_file
+        self.data_name = data_name
+        self.short_data_name = short_data_name
+        self.input_cols = input_cols
+        self.output_cols = output_cols
+        self.dataset_path = Path(base_dir) / Path("datasets") / Path(short_data_name)
+        self.time_col = time_col
 
     def load(self):
-        data = pd.read_table(self.base_dir / "alloy_data.txt")
-        input_cols = data.columns.to_list()[:6]
-        output_cols = data.columns.to_list()[6:70]
+        print(f"Loading dataset from {self.data_file}...")
+
+        if self.dataset_path.exists() is False:
+            os.makedirs(self.dataset_path)
+
+        if self.data_file.endswith(".csv"):
+            data = pd.read_csv(self.data_file)
+        else:
+            data = pd.read_table(self.data_file)
+
+        input_cols = data.columns.to_list()[self.time_col + 1 : self.input_cols + 1]
+        output_cols = data.columns.to_list()[
+            self.input_cols + 1 : self.input_cols + 1 + self.output_cols
+        ]
         cleaned = data[input_cols + output_cols].fillna(0)
+
+        if self.time_col is not None:
+            time = data.iloc[:, self.time_col]
+        else:
+            time = None
 
         nn = NearestNeighbors(n_neighbors=1)
         nn.fit(cleaned[output_cols].values)
@@ -50,10 +83,20 @@ class DataMan:
 
         embedding_subsets: dict[str, np.ndarray] = {}
         dim_reducers: dict[str, TransformerMixin] = {}
+
+        self.column_types_loaded = column_types
+        if self.short_data_name != "scivis":
+            # For other datasets, use all columns as a single type
+            self.column_types_loaded = {
+                "Input": input_cols,
+                "All": input_cols + output_cols,
+                "Output": output_cols,
+            }
+
         for col_name, col_list in tqdm.tqdm(
-            column_types.items(), desc="Creating embeddings"
+            self.column_types_loaded.items(), desc="Creating embeddings"
         ):
-            data_path = Path(f"data/{col_name}_{self.mode}.npy")
+            data_path = self.dataset_path / Path(f"{col_name}_{self.mode}.npy")
             if data_path.exists():
                 embedded_tsne = np.load(data_path)
                 embedding_subsets[col_name] = embedded_tsne
@@ -76,13 +119,28 @@ class DataMan:
                 embedding_subsets[col_name] = scaled_tsne
 
         model_ensemble: dict[str, lgb.LGBMRegressor] = {}
+        models_path = self.dataset_path / Path("models")
+        if not models_path.exists():
+            os.makedirs(models_path)
         for output_col in tqdm.tqdm(output_cols, desc="Loading models"):
             col_name = output_col.encode("ascii", "ignore").decode("ascii")
             col_name = col_name.replace(" ", "_")
             col_name = col_name.replace(".", "_")
             col_name = col_name.replace("/", "_")
+
+            model_path = models_path / Path(f"{col_name}_model.txt")
+            if not model_path.exists():
+                print(f"Model file {model_path} does not exist. Skipping.")
+                # train model here if needed
+                model = lgb.LGBMRegressor()
+                model.fit(
+                    cleaned[input_cols].values,
+                    cleaned[output_col].values,
+                )
+                model.booster_.save_model(str(model_path))
+
             model = lgb.Booster(
-                model_file=f"data/models/{col_name}_model.txt",
+                model_file=str(model_path),
             )
             model_ensemble[output_col] = model
 
@@ -101,10 +159,37 @@ class DataMan:
         self.input_cols = input_cols
         self.output_cols = output_cols
 
-        self.column_types = column_types
+        self.column_types = self.column_types_loaded
 
 
-dataman = DataMan(
+scivis_man = DataMan(
     base_dir=os.getenv("DATA_DIR", "./data"), mode=os.getenv("EMBEDDING", "tsne")
 )
-dataman.load()
+# scivis_man.load()
+
+privbayes_man = DataMan(
+    base_dir=os.getenv("DATA_DIR", "./data"),
+    mode=os.getenv("EMBEDDING", "tsne"),
+    data_file="./privbayes_encoded.csv",
+    data_name="PrivBayes Data",
+    short_data_name="privbayes",
+    input_cols=18,
+    output_cols=27,
+    time_col=0,
+)
+# privbayes_man.load()
+
+
+mast_man = DataMan(
+    base_dir=os.getenv("DATA_DIR", "./data"),
+    mode=os.getenv("EMBEDDING", "tsne"),
+    data_file="./data/mast/processed_mast_data.csv",
+    data_name="MAST Data",
+    short_data_name="mast",
+    input_cols=8,
+    output_cols=10,
+    time_col=0,
+)
+mast_man.load()
+
+data_man = mast_man

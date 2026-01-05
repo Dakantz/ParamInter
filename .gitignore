@@ -12,3 +12,4 @@ wheels/
 alloy_data.txt
 models
 data
+*.csv
