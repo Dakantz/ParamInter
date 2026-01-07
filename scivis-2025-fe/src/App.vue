@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, defineProps, defineModel, watch, onMounted } from 'vue';
+import { ref, reactive, watch, onMounted } from 'vue';
 import { DataRepository } from './proc/types';
 import { PlotSelection, PlotSelectionResults } from './components/types';
 import PlotsOverview from './components/PlotsOverview.vue';
@@ -118,6 +118,9 @@ function updateSelection(newSelection: number) {
 }
 function reset() {
   console.log("Resetting selection");
+  if (!state.selection) {
+    state.selection = new PlotSelection();
+  }
   state.selection.selected_indices = [];
   state.selection.hovered_index = null;
   state.current_results.interpolation = null;

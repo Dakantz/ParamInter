@@ -22,6 +22,10 @@ export class LoadedDataPoints implements DataPoints {
     inputs: number[][];
     outputs: number[][];
     projected_outputs?: number[][] | undefined;
+    public constructor() {
+        this.inputs = [];
+        this.outputs = [];
+    }
 
 }
 export class DPCache {
@@ -47,6 +51,7 @@ export class DataRepository {
     dps: DPCache;
     all_types: Record<string, string[]> = {};
     description: DataDescription | null = null;
+
     constructor() {
         this.data_points = new LoadedDataPoints();
         this.all_embeddings = new AllEmbeddings();
@@ -58,17 +63,17 @@ export class DataRepository {
 
     async loadAll(load_cb: (progress: number, loaded_keys: string[]) => void = () => { }) {
         this.all_types = (await this.client.data.getColumnTypesDataColumnTypesGet()).data;
+        this.description = (await this.client.data.getDataDescriptionDataDescriptionGet()).data;
         for (const type in this.all_types) {
             const embeddings = (await this.client.data.getEmbeddingDataEmbeddingColTypeGet(type)).data;
             this.all_embeddings.all_embeddings[type] = new Embeddings(embeddings);
             load_cb((Object.keys(this.all_embeddings.all_embeddings).length / Object.keys(this.all_types).length), Object.keys(this.all_embeddings.all_embeddings));
         }
-        this.description = (await this.client.data.getDataDescriptionDataDescriptionGet()).data;
         // this.data_points = (await this.client.data.getDataDataGet()).data;
 
     }
     getTypeIndex(type: string): number {
-        return this.all_types["full"].indexOf(type);
+        return this.description?.all_columns.indexOf(type) ?? -1;
     }
 
 }

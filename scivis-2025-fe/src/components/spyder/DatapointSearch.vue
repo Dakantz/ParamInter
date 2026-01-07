@@ -1,18 +1,18 @@
 <template>
     <div class="search-container">
         <h2>Similar Points</h2>
-        <SpyderChart :dimensions="state.dimensions" v-model="state.dim_data" :editable="true" :factor="1" />
+        <SpyderChart :rep="data_rep" v-model="state.dim_data" :editable="true" />
         <div class="search-results">
             <div v-for="(result, idx) in state.search_results" :key="idx" class="search-result-item"
                 @mouseenter="emit('preview', result.index || -1)" @click.capture="emit('select', result.index || -1)">
-                <SpyderChart :dimensions="state.dimensions" v-model="result.inputs" :editable="false" />
+                <SpyderChart :rep="data_rep" v-model="result.inputs" :editable="false" />
             </div>
         </div>
     </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, defineProps, defineModel, watch, onMounted, useTemplateRef } from 'vue';
+import { ref, reactive, watch, onMounted, useTemplateRef } from 'vue';
 import * as d3 from 'd3';
 import { DataRepository } from '../../proc/types';
 import SpyderChart from './SpyderChart.vue';
@@ -67,7 +67,7 @@ watch(() => state.dim_data, (dim_data) => {
 
 <style scoped>
 .search-container {
-    width:100%;
+    width: 100%;
     min-height: 100vh;
     max-height: 100vh;
     /* overflow-y: auto; */

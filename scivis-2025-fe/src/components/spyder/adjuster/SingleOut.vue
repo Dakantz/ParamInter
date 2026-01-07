@@ -1,7 +1,7 @@
 <template>
     <div class="single-outview" @mouseenter="emit('hover');">
         <span class="out-name">{{ out_name }} <span>({{ min_value.toFixed(2) }}, {{
-            max_value.toFixed(2)}})</span></span>
+            max_value.toFixed(2) }})</span></span>
         <div class="out-value">
             <button @click="decrease">-</button>
             <span class="value">{{ val.toFixed(2) }}</span>
@@ -12,24 +12,45 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive } from 'vue';
 import { DataRepository } from '../../../proc/types';
+import { DataPoint } from '../../../api/Api';
 
 
 const emit = defineEmits<{
     (e: 'hover'): void;
 }>();
 
-const val = defineModel<number>({
-    type: Number,
-    default: -1,
+const dp = defineModel<DataPoint>({ required: true });
+const idx = computed(() => {
+    return data_rep.getTypeIndex(out_name);
+});
+const val = computed({
+    get() {
+        if (idx.value >= dp.value.inputs.length) {
+            return dp.value.outputs[idx.value - dp.value.inputs.length];
+        } else {
+            return dp.value.inputs[idx.value];
+        }
+    },
+    set(newVal: number) {
+        if (idx.value >= dp.value.inputs.length) {
+            dp.value.outputs[idx.value - dp.value.inputs.length] = newVal;
+        } else {
+            dp.value.inputs[idx.value] = newVal;
+        }
+    }
 });
 function increase() {
-    if (val.value == 0) {
-        val.value = 0.1; // set to a small positive value if it was 0
+    val.value = val.value * 1.1;
+    if (val.value >= max_value.value) {
+        val.value = max_value.value;
     }
-    val.value = val.value * 1.1
+
 }
 function decrease() {
-    val.value = val.value * 0.9
+    val.value = val.value * 0.9;
+    if (val.value <= min_value.value) {
+        val.value = min_value.value;
+    }
 }
 const min_value = computed(() => {
     if (data_rep.description) {

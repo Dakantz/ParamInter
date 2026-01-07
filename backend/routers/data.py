@@ -14,10 +14,11 @@ def get_data_description():
         num_samples=len(data_man.data),
         num_features=len(data_man.input_cols),
         num_outputs=len(data_man.output_cols),
-        min_values=data_man.cleaned[data_man.output_cols].min().to_dict(),
-        max_values=data_man.cleaned[data_man.output_cols].max().to_dict(),
-        mean_values=data_man.cleaned[data_man.output_cols].mean().to_dict(),
-        std_values=data_man.cleaned[data_man.output_cols].std().to_dict(),
+        min_values=data_man.cleaned.min().to_dict(),
+        max_values=data_man.cleaned.max().to_dict(),
+        mean_values=data_man.cleaned.mean().to_dict(),
+        std_values=data_man.cleaned.std().to_dict(),
+        all_columns=data_man.cleaned.columns.tolist(),
     )
 
 

@@ -2,7 +2,7 @@
     <div class="datapoint-guide">
         <h2>Adapt Mixture</h2>
         <h3>Selection</h3>
-        <SpyderChart v-if="state.dp" :dimensions="state.input_types" v-model="state.dp.inputs" :editable="false"
+        <SpyderChart v-if="state.dp" :rep="data_rep" v-model="state.dp.inputs" :editable="false"
             :sensitivities="state.sensitivities_for_hover" />
         <h3>Target Output Values</h3>
         <div class="editable-outs" v-if="state.dp">
@@ -15,7 +15,7 @@
             <h3>Possible Input Targets</h3>
             <div v-for="(result, idx) in state.search_results" :key="idx" class="search-result-item"
                 @mouseenter="emit('preview', result.index || -1)" @click.capture="emit('select', result.index || -1)">
-                <SpyderChart :dimensions="state.input_types" v-model="result.inputs" :editable="false" />
+                <SpyderChart :rep="data_rep" v-model="result.inputs" :editable="false" />
             </div>
         </div>
         <div v-if="state.loading">
@@ -27,12 +27,12 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, defineProps, defineModel, watch, onMounted, useTemplateRef } from 'vue';
+import { ref, reactive, watch, onMounted, useTemplateRef } from 'vue';
 import * as d3 from 'd3';
 import { DataRepository, LoadedDataPoints } from '../../proc/types';
 import SpyderChart from './SpyderChart.vue';
 import { DataPoint } from '../../api/Api';
-import Overview from './single/Overview.vue';
+import Overview from './adjuster/Overview.vue';
 import { PlotSelection } from '../types';
 
 const selection = defineModel<PlotSelection>();
@@ -57,7 +57,6 @@ const state = reactive({
     sensitivities_for_hover: [] as number[],
     search_results: [] as DataPoint[],
     visible_types: {} as Record<string, string[]>,
-    input_types: [] as string[],
 });
 
 watch(() => data_rep.all_types, (newTypes) => {
@@ -66,10 +65,19 @@ watch(() => data_rep.all_types, (newTypes) => {
         console.warn("No types available in data repository.");
         return;
     }
-    state.input_types = newTypes[Object.keys(newTypes)[0]];
-    state.visible_types = Object.fromEntries(
-        Object.entries(newTypes).filter((kv, i) => i !== 0 && i < Object.entries(newTypes).length - 1).map(([key, value]) => [key, value])
-    );
+    if (Object.entries(newTypes).length <= 3) {
+        console.log("Showing only Outputs category.");
+        state.visible_types = {
+            "Input": newTypes["Input"],
+            "Output": newTypes["Output"]
+        };
+    } else {
+        state.visible_types = Object.fromEntries(
+            Object.entries(newTypes)
+                .filter((kv, i) => i !== 0 && i < Object.entries(newTypes).length - 1)
+                .map(([key, value]) => [key, value])
+        );
+    }
 
 }, { immediate: true });
 watch(() => selected_dp, (newIdx) => {
@@ -119,7 +127,7 @@ function showSensitivity(out_col: string) {
 
 <style scoped>
 .datapoint-guide {
-    width:100%;
+    width: 100%;
     min-height: 100vh;
     max-height: 100vh;
     display: flex;

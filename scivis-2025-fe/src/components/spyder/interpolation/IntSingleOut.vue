@@ -17,6 +17,7 @@ import { computed, onMounted, useTemplateRef, watch, onUpdated, reactive } from 
 import { DataRepository } from '../../../proc/types';
 import * as d3 from 'd3';
 import { InterpolationResult } from '../../../api/Api';
+import { outValues } from '../../helpers/utils';
 
 const emit = defineEmits<{
     (e: 'hover', index: number): void;
@@ -46,10 +47,10 @@ const { int_results, idx, out_name, data_rep } = defineProps({
 
 })
 const out_values = computed(() => {
-    if (int_results.outputs && int_results.outputs[idx]) {
-        return int_results.knn_outputs.map(out_array => out_array[idx]);
-    }
-    return [];
+    return outValues(
+        int_results,
+        idx
+    );
 });
 const min_value = computed(() => {
     if (data_rep.description) {
@@ -86,8 +87,8 @@ let yScale = d3.scaleLinear()
 function updateGraph() {
     if (!svg_ref.value || !wrapper_ref.value) return;
 
-    const width = wrapper_ref.value.clientWidth;
-    const height = wrapper_ref.value.clientHeight;
+    const width = wrapper_ref.value.clientWidth - 5;
+    const height = wrapper_ref.value.clientHeight - 5;
     // console.log("Updating graph with width:", width, "height:", height);
     const svg = d3.select(svg_ref.value)
         .attr('width', width)
@@ -102,9 +103,6 @@ function updateGraph() {
     yScale = d3.scaleLinear()
         .domain([min_value.value, max_value.value])
         .range([height, 0]);
-
-
-    console.log("Updating graph with values:", out_values.value, "min:", min_value.value, "max:", max_value.value);
     svg.append('path')
         .datum(out_values.value)
         .attr('class', 'output-line')

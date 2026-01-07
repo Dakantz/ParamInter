@@ -48,6 +48,8 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
 
     let xScale = d3.scaleLinear();
     let yScale = d3.scaleLinear();
+    let min_values = data_rep.description?.input_cols.map((col) => data_rep.description?.min_values[col] || 0) || [];
+    let max_values = data_rep.description?.input_cols.map((col) => data_rep.description?.max_values[col] || 1) || [];
     function createSpyderFromProjectedData(sel: d3.Selection<any, any, any, any>, data: ProjectedData[], annotation_cls: string, size = spyder_size) {
         sel.selectAll(`.${annotation_cls}`).remove();
         if (!data || !data.length) {
@@ -63,16 +65,16 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
             .attr('d', (d) => {
                 let input_data = d.inputs;
                 let pieces = input_data.map((value, i) => {
-                    let rescaled_value = reSpider(value);
+                    let rescaled_value = reSpider(value, min_values[i], max_values[i]);
                     let angle = (i / input_data.length) * 2 * Math.PI;
                     let x = Math.cos(angle) * size * rescaled_value;
                     let y = Math.sin(angle) * size * rescaled_value;
                     return { x, y };
                 });
                 let path = d3.path();
-                path.moveTo(0,0);
+                path.moveTo(0, 0);
                 pieces.forEach((piece, i) => {
-                    path.moveTo(0,0);
+                    path.moveTo(0, 0);
                     path.lineTo(piece.x, piece.y);
                     let next_piece = pieces[(i + 1) % pieces.length];
                     path.lineTo(next_piece.x, next_piece.y);
@@ -144,7 +146,7 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
                     y: yScale(d[1]),
                     data: d,
                     index: i, // no index for interpolation points
-                    inputs: data.interpolation?.knn_inputs[i] || []
+                    inputs: data.interpolation?.knn_inputs[i] || [],
                 } as ProjectedData);
             });
             console.log("Projected smalls:", projected_smalls);
@@ -152,7 +154,7 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
 
         })
     };
-    series.xScale = (...args) => {
+    series.xScale = (...args: [d3.ScaleLinear<number, number>] | []) => {
         if (!args.length) {
             return xScale;
         }
@@ -160,7 +162,7 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
         return series;
     };
 
-    series.yScale = (...args) => {
+    series.yScale = (...args: [d3.ScaleLinear<number, number>] | []) => {
         if (!args.length) {
             return yScale;
         }

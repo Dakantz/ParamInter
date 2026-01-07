@@ -91,10 +91,10 @@ def get_interpolation(
             embeddings_nn[embedding_type] = data_man.embedding_subsets[embedding_type][
                 indices
             ].tolist()
-    explanations = np.zeros_like(outputs_interpolated)
+    explanations = np.zeros_like(outputs_interpolated_scaled)
 
     if include_explainations:
-        for i in range(outputs_interpolated.shape[0]):
+        for i in range(outputs_interpolated_scaled.shape[0]):
             idx = indices[i]
             explanations_list = explanations_for_dp(
                 idx,

@@ -19,6 +19,8 @@ export interface DataDescription {
   input_cols: string[];
   /** Output Cols */
   output_cols: string[];
+  /** All Columns */
+  all_columns: string[];
   /** Num Samples */
   num_samples: number;
   /** Num Features */

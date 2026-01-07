@@ -5,7 +5,7 @@
 
         <div class="interpolation-ends" v-if="interpolation">
             <div v-for="end, i in interpolation_ends" :key="i" class="interpolation-end">
-                <SpyderChart :dimensions="state.input_types" v-model="interpolation_ends[i]" :editable="false" />
+                <SpyderChart :rep="data_rep" v-model="interpolation_ends[i]" :editable="false" />
             </div>
         </div>
 
@@ -20,7 +20,7 @@
         </div>
         <h3>Interpolated Input Values</h3>
         <div class="interpolation-hover" v-if="interpolation && state.hovered_offset >= 0 && state.hovered_dp">
-            <SpyderChart :dimensions="state.input_types" v-model="state.hovered_dp.inputs" :editable="false"
+            <SpyderChart :rep="data_rep" v-model="state.hovered_dp.inputs" :editable="false"
                 :sensitivities="state.sensitivities_for_hover" />
         </div>
         <div v-if="state.loading">
@@ -32,7 +32,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, defineProps, defineModel, watch, onMounted, useTemplateRef, computed } from 'vue';
+import { ref, reactive, watch, onMounted, useTemplateRef, computed } from 'vue';
 import * as d3 from 'd3';
 import { DataRepository, LoadedDataPoints } from '../../proc/types';
 import SpyderChart from './SpyderChart.vue';
@@ -100,16 +100,14 @@ const interpolation_ends = computed(() => {
     }
     return [];
 });
-watch(() => data_rep.all_types, (newTypes) => {
-    console.log("New types:", newTypes);
-    if (Object.keys(newTypes).length === 0) {
+watch(() => data_rep.description, (desc) => {
+    console.log("New types:", desc);
+    if (desc?.all_columns.length === 0) {
         console.warn("No types available in data repository.");
         return;
     }
-    state.input_types = newTypes[Object.keys(newTypes)[0]];
-    state.visible_types = Object.fromEntries(
-        Object.entries(newTypes).filter((kv, i) => i !== 0 && i < Object.entries(newTypes).length - 1).map(([key, value]) => [key, value])
-    );
+    state.input_types = desc?.input_cols || [];
+    state.visible_types = data_rep.all_types;
 
 }, { immediate: true });
 watch(() => state.hovered_index, (idx) => {

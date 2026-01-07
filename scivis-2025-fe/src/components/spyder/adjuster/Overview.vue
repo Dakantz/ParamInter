@@ -2,7 +2,7 @@
     <div class="outputs-overview">
         <h2>{{ cat_name }}</h2>
         <div class="output-item" v-for="(t) in type_indices" :key="t.idx">
-            <SingleOut :out_name="t.name" v-model="dp.outputs[t.idx]"  @hover="emit('hover', t.name)" :data_rep="data_rep" />
+            <SingleOut :out_name="t.name" v-model="dp" @hover="emit('hover', t.name)" :data_rep="data_rep" />
         </div>
     </div>
 </template>
@@ -18,7 +18,7 @@ const emit = defineEmits<{
 
 const dp = defineModel<DataPoint>({ required: true });
 
-const { types, data_rep , cat_name} = defineProps({
+const { types, data_rep, cat_name } = defineProps({
     types: {
         type: Array as () => string[],
         default: () => []
@@ -44,10 +44,12 @@ const type_indices = types.map((t) => { return { name: t, idx: data_rep.getTypeI
     margin: 2px;
     align-items: center;
 }
-h2{
+
+h2 {
     font-size: 1.2em;
     margin-left: 0px;
 }
+
 .output-item {
     margin: 1px 0;
 }

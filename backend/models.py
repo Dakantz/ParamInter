@@ -8,6 +8,7 @@ class DataDescription(BaseModel):
 
     input_cols: list[str]
     output_cols: list[str]
+    all_columns: list[str]
     num_samples: int
     num_features: int
     num_outputs: int
@@ -68,7 +69,6 @@ class DataPointSensitivity(BaseModel):
     resolution: int = 16
 
 
-
 class DataPointSimilarity(BaseModel):
     values: list[float]
     k: int
@@ -79,5 +79,3 @@ class DataPointSuggestions(BaseModel):
     values: list[float] = []
     k: int = 5
     weigh_changes: float = 1.5
-    
-    

@@ -6,16 +6,18 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, defineProps, defineModel, watch, onMounted, useTemplateRef } from 'vue';
+import { ref, reactive, watch, onMounted, useTemplateRef, computed } from 'vue';
 import * as d3 from 'd3';
 import { inverseSpider, reSpider } from '../helpers/utils';
+import { DataDescription } from '../../api/Api';
+import { DataRepository } from '../../proc/types';
 const dim_data = defineModel<Array<number>>({
     default: () => []
 });
-const { dimensions, editable, factor, sensitivities } = defineProps({
-    dimensions: {
-        type: Array as () => Array<string>,
-        required: true
+const { editable, factor, sensitivities, rep } = defineProps({
+    rep: {
+        type: Object as () => DataRepository,
+        default: () => (null)
     },
     editable: {
         type: Boolean,
@@ -23,7 +25,7 @@ const { dimensions, editable, factor, sensitivities } = defineProps({
     },
     factor: {
         type: Number,
-        default: 10
+        default: 1
     },
     sensitivities: {
         type: Array as () => Array<number>,
@@ -33,6 +35,17 @@ const { dimensions, editable, factor, sensitivities } = defineProps({
 const plot = useTemplateRef('plot');
 const spiderContainer = useTemplateRef('spider-container');
 
+const dimensions = ref<string[]>([]);
+watch(() => rep, (newRep) => {
+    if (newRep && newRep.description) {
+        if (dimensions.value.length === 0) {
+            // initialize dim_data
+            dimensions.value = [...newRep.description.input_cols];
+            updateChart();
+        }
+
+    }
+}, { immediate: true, deep: true });
 
 const state = reactive({
     dim_data: dim_data,
@@ -43,8 +56,19 @@ function updateChart() {
     // d3.select(plot.value)
     //     .selectAll('*')
     //     .remove();
-    const dim_mapped = dimensions.map((dim, i) => {
-        return { name: dim, value: dim_data.value[i], rescale_val: reSpider(dim_data.value[i]), idx: i, angle: -1 };
+    const dim_mapped = dimensions.value.map((dim, i) => {
+
+        let min = rep && rep.description ? rep.description.min_values[dim] : 0;
+        let max = rep && rep.description ? rep.description.max_values[dim] : 1;
+        return {
+            name: dim,
+            value: dim_data.value[i],
+            rescale_val: reSpider(dim_data.value[i], min, max),
+            idx: i,
+            angle: -1,
+            min,
+            max,
+        };
     });
     // console.log("Dimensions:", dimensions, "Data:", dim_data, "Mapped:", dim_mapped);
     if (spiderContainer.value && plot.value) {
@@ -137,7 +161,7 @@ function updateChart() {
                 return editable ? 'spider-path' : 'fixed-spider';
             })
         const filtered_sensitivities = sensitivities.map((s, i) => {
-            return { sense: s, idx: i, val: dim_mapped[i].rescale_val, name: dim_mapped[i].name, effective_length: radius * (s / (factor * 0.2)) };
+            return { sense: s, idx: i, val: dim_mapped[i].rescale_val, name: dim_mapped[i].name, effective_length: radius * (s / (factor)) };
         }).filter(d => Math.abs(d.sense) > 0.2)
         // console.log("Filtered sensitivities:", filtered_sensitivities);
         const sensitivity = g
@@ -206,7 +230,7 @@ function updateChart() {
                     // clamp the radius to [0, 1]
 
                     let newValue = Math.max(0, Math.min(1, radius_mouse));
-                    newValue = inverseSpider(newValue);
+                    newValue = inverseSpider(newValue, closest_dim.min, closest_dim.max);
                     dim_data.value[idx] = newValue;
                     //normalize the other values
                     const sum = dim_data.value.reduce((a, b) => a + b, 0);

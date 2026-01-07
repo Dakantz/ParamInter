@@ -51,7 +51,7 @@ const selection: ModelRef<PlotSelection> = defineModel({
 
 const ui_params = reactive({
     point_size: 2,
-    spyder_size: 5
+    spyder_size: 64
 });
 
 const plot = useTemplateRef('plot');
