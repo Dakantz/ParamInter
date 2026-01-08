@@ -7,6 +7,7 @@ from tqdm import tqdm
 from backend.models import (
     DataDescription,
     DataPoint,
+    DataPointMinimzer,
     DataPointSensitivity,
     DataPointSimilarity,
     DataPointSuggestions,
@@ -118,6 +119,50 @@ def get_interpolation(
         indices=indices.tolist(),
         explainations=explanations.tolist(),
     )
+
+
+@dp_router.post("/minimize/cost")
+def get_objective_costs(
+    q: DataPointMinimzer = Body(DataPointMinimzer),
+) -> list[float]:
+    costs: dict[str, np.ndarray] = {}
+    for target in q.targets:
+        costs_target = data_man.cleaned[target.name].to_numpy() - target.val
+        costs[target.name] = target.weight * costs_target
+    total_cost = np.empty((len(q.targets), data_man.cleaned.shape[0]))
+    for i, cost in enumerate(costs.values()):
+        total_cost[i, :] = cost**2
+
+    total_cost_clean: np.ndarray = np.sqrt(total_cost).sum(axis=0)
+    total_cost_clean_normed = (total_cost_clean - total_cost_clean.min()) / (
+        total_cost_clean.max() - total_cost_clean.min()
+    )
+    return total_cost_clean_normed.tolist()
+
+
+@dp_router.post("/minimze")
+def get_minimization(
+    q: DataPointMinimzer = Body(DataPointMinimzer),
+) -> InterpolationResult:
+    # values = np.array(q.values).reshape(1, -1)
+    # nn_inputs = NearestNeighbors(n_neighbors=q.k)
+    # nn_inputs.fit(data_man.cleaned[data_man.input_cols].values)
+    # _, indices = nn_inputs.kneighbors(values, n_neighbors=q.k)
+    # indices = indices.flatten()
+    # input_data = data_man.cleaned[data_man.input_cols].iloc[indices].values.tolist()
+    # output_data = data_man.cleaned[data_man.output_cols].iloc[indices].values.tolist()
+    # projected_output = data_man.embedded_tsne[indices].tolist()
+    # similar_data_points = [
+    #     DataPoint(
+    #         inputs=input_data[i],
+    #         outputs=output_data[i],
+    #         projected_outputs=projected_output[i],
+    #         index=indices[i],
+    #     )
+    #     for i in range(indices.shape[0])
+    # ]
+
+    return InterpolationResult()
 
 
 @dp_router.post("/similar")

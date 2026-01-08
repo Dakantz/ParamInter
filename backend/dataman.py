@@ -196,5 +196,5 @@ mast_man = DataMan(
 )
 # mast_man.load()
 
-data_man = privbayes_man
+data_man = mast_man
 data_man.load()

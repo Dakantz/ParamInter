@@ -67,18 +67,31 @@ onMounted(() => {
     state.loading = false;
   });
 });
+watch(() => state.selection.target, (target) => {
+  if (!target) return;
+  state.loading = true
+  state.data_rep.client.dataPoint.getObjectiveCostsDataPointMinimizeCostPost(target).then((similarity) => {
+    state.current_results.similarities = similarity.data;
+    state.loading = false
+    // console.log("Current similarity scores:", state.current_results.similarities);
+  }).catch((error) => {
+    state.loading = false
+    console.error('Error fetching objective costs:', error);
+  });
+}, { immediate: true, deep: true });
 watch(() => state.selection.selected_indices, (sel) => {
   console.log("Selected indices changed:", sel);
   if (sel.length > 0) {
-    state.loading = true
-    state.data_rep.client.dataPoint.getSimilarDataPointDataPointSimilarityScoresIndexGet(sel[0]).then((similarity) => {
-      state.current_results.similarities = similarity.data;
-      state.loading = false
-      // console.log("Current similarity scores:", state.current_results.similarities);
-    }).catch((error) => {
-      state.loading = false
-      console.error('Error fetching similarity scores:', error);
-    });
+    // state.loading = true
+    // state.data_rep.client.dataPoint.getSimilarDataPointDataPointSimilarityScoresIndexGet(sel[0]).then((similarity) => {
+    //   state.current_results.similarities = similarity.data;
+    //   state.loading = false
+    //   // console.log("Current similarity scores:", state.current_results.similarities);
+    // }).catch((error) => {
+    //   state.loading = false
+    //   console.error('Error fetching similarity scores:', error);
+    // });
+
   }
   if (sel.length == 2) {
 

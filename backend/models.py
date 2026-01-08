@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from torch.utils.hipify.hipify_python import value
 
 
 class DataDescription(BaseModel):
@@ -72,6 +73,17 @@ class DataPointSensitivity(BaseModel):
 class DataPointSimilarity(BaseModel):
     values: list[float]
     k: int
+
+
+class LinearTarget(BaseModel):
+    name: str
+    weight: float
+    val: float
+
+
+class DataPointMinimzer(BaseModel):
+    targets: list[LinearTarget] = []
+    k: int = 5
 
 
 class DataPointSuggestions(BaseModel):

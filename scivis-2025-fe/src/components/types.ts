@@ -1,9 +1,10 @@
-import { InterpolationResult } from "../api/Api";
+import { DataPoint, DataPointMinimzer, InterpolationResult } from "../api/Api";
 
 export class PlotSelection {
     constructor(
         public selected_indices: number[] = [],
-        public hovered_index: number | null = null
+        public hovered_index: number | null = null,
+        public target: DataPointMinimzer | null = null,
     ) { }
     public addIndex(index: number) {
         if (!this.selected_indices.includes(index)) {
@@ -15,6 +16,12 @@ export class PlotSelection {
         if (idx !== -1) {
             this.selected_indices.splice(idx, 1);
         }
+    }
+    public clearSelection() {
+        this.selected_indices = [];
+    }
+    public setTarget(target: DataPointMinimzer | null) {
+        this.target = target;
     }
 }
 export class PlotSelectionResults {

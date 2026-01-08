@@ -2,8 +2,11 @@
     <div class="outputs-overview">
         <h2>{{ cat_name }}</h2>
         <div class="output-item" v-for="(t) in type_indices" :key="t.idx">
-            <SingleOut :out_name="t.name" v-model="dp" @hover="emit('hover', t.name)" :data_rep="data_rep" />
+            <!-- <SingleOut :out_name="t.name" v-model="dp" @hover="emit('hover', t.name)" :data_rep="data_rep" /> -->
+            <button @click="addToSet(t.name, dp)" @mouseenter="emit('hover', t.name)">Add {{ t.name }} (@ {{
+                valueOf(t.name).toFixed(2) }})</button>
         </div>
+
     </div>
 </template>
 <script lang="ts" setup>
@@ -14,6 +17,7 @@ import SingleOut from './SingleOut.vue';
 
 const emit = defineEmits<{
     (e: 'hover', name: string): void;
+    (e: 'add', name: string): void;
 }>();
 
 const dp = defineModel<DataPoint>({ required: true });
@@ -34,6 +38,18 @@ const { types, data_rep, cat_name } = defineProps({
 
 });
 const type_indices = types.map((t) => { return { name: t, idx: data_rep.getTypeIndex(t) } });
+function valueOf(name: string) {
+    const idx = data_rep.getTypeIndex(name);
+    if (idx >= dp.value.inputs.length) {
+        return dp.value.outputs[idx - dp.value.inputs.length];
+    } else {
+        return dp.value.inputs[idx];
+    }
+};
+const addToSet = (name: string, dp: DataPoint) => {
+    console.log("Adding to set:", name);
+    emit('add', name);
+};
 
 </script>
 <style scoped>

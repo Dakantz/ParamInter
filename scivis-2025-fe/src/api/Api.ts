@@ -52,6 +52,20 @@ export interface DataPoint {
   index?: number;
 }
 
+/** DataPointMinimzer */
+export interface DataPointMinimzer {
+  /**
+   * Targets
+   * @default []
+   */
+  targets?: LinearTarget[];
+  /**
+   * K
+   * @default 5
+   */
+  k?: number;
+}
+
 /** DataPointSensitivity */
 export interface DataPointSensitivity {
   /**
@@ -133,6 +147,16 @@ export interface InterpolationResult {
   indices: number[];
   /** Explainations */
   explainations?: number[][];
+}
+
+/** LinearTarget */
+export interface LinearTarget {
+  /** Name */
+  name: string;
+  /** Weight */
+  weight: number;
+  /** Val */
+  val: number;
 }
 
 /**
@@ -476,6 +500,46 @@ export class Api<
         path: `/data-point/interpolation`,
         method: "GET",
         query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name GetObjectiveCostsDataPointMinimizeCostPost
+     * @summary Get Objective Costs
+     * @request POST:/data-point/minimize/cost
+     */
+    getObjectiveCostsDataPointMinimizeCostPost: (
+      data: DataPointMinimzer,
+      params: RequestParams = {},
+    ) =>
+      this.request<number[], HTTPValidationError>({
+        path: `/data-point/minimize/cost`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name GetMinimizationDataPointMinimzePost
+     * @summary Get Minimization
+     * @request POST:/data-point/minimze
+     */
+    getMinimizationDataPointMinimzePost: (
+      data: DataPointMinimzer,
+      params: RequestParams = {},
+    ) =>
+      this.request<InterpolationResult, HTTPValidationError>({
+        path: `/data-point/minimze`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
