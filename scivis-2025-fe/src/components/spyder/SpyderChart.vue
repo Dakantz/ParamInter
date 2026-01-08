@@ -315,7 +315,7 @@ watch(() => editable, (editing) => {
 
 watch(() => sensitivities, (sense) => {
     if (sense.length > 0) {
-        console.log("Updating sensitivities:", sense);
+        // console.log("Updating sensitivities:", sense);
         updateChart();
     }
 }, { immediate: true });

@@ -74,7 +74,7 @@ watch(() => state.selection.selected_indices, (sel) => {
     state.data_rep.client.dataPoint.getSimilarDataPointDataPointSimilarityScoresIndexGet(sel[0]).then((similarity) => {
       state.current_results.similarities = similarity.data;
       state.loading = false
-      console.log("Current similarity scores:", state.current_results.similarities);
+      // console.log("Current similarity scores:", state.current_results.similarities);
     }).catch((error) => {
       state.loading = false
       console.error('Error fetching similarity scores:', error);
@@ -89,7 +89,7 @@ watch(() => state.selection.selected_indices, (sel) => {
       // include_explainations: true
     }).then(resp => {
       state.loading = false
-      console.log("Interpolation data:", resp.data);
+      // console.log("Interpolation data:", resp.data);
       state.current_results.interpolation = resp.data
     }).catch((error) => {
       state.loading = false
@@ -99,12 +99,12 @@ watch(() => state.selection.selected_indices, (sel) => {
   }
 }, { immediate: true, deep: true });
 function previewSelected(idx: number) {
-  console.log("Previewing selected index:", idx);
+  // console.log("Previewing selected index:", idx);
   // Set the hovered index in the selection
   state.selection.hovered_index = idx
 }
 function updateSelection(newSelection: number) {
-  console.log("Updating selection:", newSelection);
+  // console.log("Updating selection:", newSelection);
   if (state.selection.selected_indices.length == 2) {
     // If two indices are already selected, replace the first one
     state.selection.selected_indices = [newSelection];
