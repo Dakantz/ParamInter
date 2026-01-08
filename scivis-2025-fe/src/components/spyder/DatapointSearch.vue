@@ -39,20 +39,19 @@ const state = reactive({
     search_results: [] as DataPoint[],
 });
 
-watch(() => data_rep.all_types, (newTypes) => {
-    console.log("New types:", newTypes);
-    if (Object.keys(newTypes).length === 0) {
-        console.warn("No types available in data repository.");
-        return;
-    }
-    state.dimensions = newTypes[Object.keys(newTypes)[0]];
-    state.dim_data = state.dimensions.map(type => 1 / state.dimensions.length);
+watch(() => data_rep.description, (desc) => {
+    console.log("New types:", desc);
+    if (!desc) return;
+
+    state.dimensions = data_rep.description?.input_cols || [];
+    let max_sum = Object.keys(data_rep.description?.max_values || {}).filter((k) => state.dimensions.includes(k)).reduce((sum, k) => sum + (data_rep.description?.max_values[k] || 0), 0);
+    state.dim_data = state.dimensions.map(type => (data_rep.description?.max_values?.[type] || 0) / state.dimensions.length);
 }, { immediate: true });
 
 watch(() => state.dim_data, (dim_data) => {
     if (dim_data.length > 0) {
         data_rep.client.dataPoint.getSimilarDataPointsDataPointSimilarPost({
-            values: dim_data.map((v) => v * 100),
+            values: dim_data.map((v) => v),
             k: 4
         }).then((similarity) => {
             // console.log("Similarity results:", similarity);

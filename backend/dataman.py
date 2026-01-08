@@ -60,10 +60,14 @@ class DataMan:
             data = pd.read_csv(self.data_file)
         else:
             data = pd.read_table(self.data_file)
-
-        input_cols = data.columns.to_list()[self.time_col + 1 : self.input_cols + 1]
+        time_col_offset = 1 if self.time_col is not None else 0
+        input_cols = data.columns.to_list()[
+            time_col_offset : self.input_cols + time_col_offset
+        ]
         output_cols = data.columns.to_list()[
-            self.input_cols + 1 : self.input_cols + 1 + self.output_cols
+            self.input_cols + time_col_offset : self.input_cols
+            + time_col_offset
+            + self.output_cols
         ]
         cleaned = data[input_cols + output_cols].fillna(0)
 
@@ -190,6 +194,7 @@ mast_man = DataMan(
     output_cols=10,
     time_col=0,
 )
-mast_man.load()
+# mast_man.load()
 
-data_man = mast_man
+data_man = privbayes_man
+data_man.load()

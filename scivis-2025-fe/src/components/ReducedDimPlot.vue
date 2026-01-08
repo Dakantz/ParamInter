@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, defineProps, defineModel, watch, useTemplateRef, onMounted, computed } from 'vue';
+import { ref, reactive, watch, useTemplateRef, onMounted, computed } from 'vue';
 import { DataRepository, Embeddings, LoadedDataPoints } from '../proc/types';
 import * as d3 from 'd3';
 import * as fc from 'd3fc';
@@ -65,10 +65,10 @@ const yScaleOriginal = yScale.copy();
 
 const pointSeries = fc
     .seriesWebglPoint()
-    .equals((a, b) => a === b)
+    .equals((a: MappedData, b: MappedData) => a === b)
     .size(1)
-    .crossValue(d => d.x)
-    .mainValue(d => d.y);
+    .crossValue((d: MappedData) => d.x)
+    .mainValue((d: MappedData) => d.y);
 
 // const zoom = d3
 //     .zoom()
@@ -86,7 +86,7 @@ const annotations = [] as MappedData[];
 //   .notePadding(15)
 //   .type(d3.annotationCallout);
 
-const pointer = fc.pointer().on("point", ([coord]) => {
+const pointer = fc.pointer().on("point", ([coord]: any) => {
     annotations.pop();
     // console.log("Pointer coordinates:", coord);
     if (!coord || !quadtree) {
@@ -147,13 +147,13 @@ const chart = fc
         fc
             .seriesWebglMulti()
             .series([pointSeries])
-            .mapping(d => d.data)
+            .mapping((d: any) => d.data)
     )
     .svgPlotArea(
         // // only render the annotations series on the SVG layer
         fc.seriesSvgMulti()
             .series([annotationSeries])
-            .mapping(d => d.svg)
+            .mapping((d: any) => d.svg)
     )
     // .svgPlotArea(
     //     // render the selection series on the SVG layer
@@ -234,7 +234,7 @@ watch(() => results.similarities, (sim) => {
         return webglColor(color);
     };
     const point_color = fc.webglFillColor().value(similarityFill).data(mapped_data.value);
-    pointSeries.decorate(program => point_color(program));
+    pointSeries.decorate((program: any) => point_color(program));
     if (plot.value) {
         redraw();
     }

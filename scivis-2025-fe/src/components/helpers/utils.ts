@@ -29,7 +29,7 @@ export function outValues(int_results: InterpolationResult, idx: number) {
         console.warn("Index out of range for inputs and outputs:", idx);
         return [];
     }
-    console.log("Considered map:", considered_map, "offset idx:", offset_idx, "idx:", idx);
+    // console.log("Considered map:", considered_map, "offset idx:", offset_idx, "idx:", idx);
     if (considered_map) {
         if (offset_idx >= 0 && offset_idx < considered_map[0].length) {
             return considered_map.map(row => row[offset_idx]);
