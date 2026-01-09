@@ -35,6 +35,11 @@ export interface DataDescription {
   mean_values: Record<string, number>;
   /** Std Values */
   std_values: Record<string, number>;
+  /**
+   * Inputs Constrained
+   * @default true
+   */
+  inputs_constrained?: boolean;
 }
 
 /**
@@ -59,11 +64,28 @@ export interface DataPointMinimzer {
    * @default []
    */
   targets?: LinearTarget[];
+}
+
+/** DataPointMinimzerInterpolation */
+export interface DataPointMinimzerInterpolation {
+  min: DataPointMinimzer;
+  /** Start Idx */
+  start_idx: number;
   /**
-   * K
-   * @default 5
+   * Samples
+   * @default 256
    */
-  k?: number;
+  samples?: number;
+  /**
+   * Div Penalty
+   * @default 0.25
+   */
+  div_penalty?: number;
+  /**
+   * Cost Penalty
+   * @default 0.25
+   */
+  cost_penalty?: number;
 }
 
 /** DataPointSensitivity */
@@ -527,12 +549,12 @@ export class Api<
     /**
      * No description
      *
-     * @name GetMinimizationDataPointMinimzePost
-     * @summary Get Minimization
+     * @name GetMinimizationInterpolationDataPointMinimzePost
+     * @summary Get Minimization Interpolation
      * @request POST:/data-point/minimze
      */
-    getMinimizationDataPointMinimzePost: (
-      data: DataPointMinimzer,
+    getMinimizationInterpolationDataPointMinimzePost: (
+      data: DataPointMinimzerInterpolation,
       params: RequestParams = {},
     ) =>
       this.request<InterpolationResult, HTTPValidationError>({

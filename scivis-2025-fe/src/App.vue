@@ -11,7 +11,7 @@
               :selected_dp="state.selection.selected_indices[0]" v-if="state.selection.selected_indices.length == 1"
               @preview="previewSelected" @select="updateSelection" />
             <DatapointInterpolation :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
-              :interpolation="state.current_results.interpolation" v-if="state.selection.selected_indices.length == 2"
+              :interpolation="state.current_results.interpolation" v-if="state.current_results.interpolation"
               @preview="previewSelected" @select="updateSelection">
             </DatapointInterpolation>
           </div>
@@ -25,7 +25,7 @@
         <div class="divider"></div>
         <div class="plot_container">
           <PlotsOverview :data_rep='(state.data_rep as DataRepository)' :loaded_keys="state.loaded_keys"
-            v-model="state.selection" :results="state.current_results">
+            v-model="state.selection" :results="state.current_results" :all_embeddings="all_embeddings">
           </PlotsOverview>
         </div>
       </div>
@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from 'vue';
-import { DataRepository } from './proc/types';
+import { AllEmbeddings, DataRepository } from './proc/types';
 import { PlotSelection, PlotSelectionResults } from './components/types';
 import PlotsOverview from './components/PlotsOverview.vue';
 import DatapointSearch from './components/spyder/DatapointSearch.vue';
@@ -50,24 +50,25 @@ const state = reactive({
   loading_progress: 0,
   loaded_keys: [] as string[],
 });
-
+const all_embeddings = new AllEmbeddings();
 onMounted(() => {
-  // Initialize data_rep here or fetch it from an API
-  state.data_rep = new DataRepository(); // Example initialization
+  state.data_rep = new DataRepository();
   state.loading = true;
   state.data_rep.loadAll((p, keys) => {
     state.loading_progress = p;
     state.loaded_keys = keys;
 
     console.log("Loading progress:", p, keys);
-  }).then(() => {
+  }, all_embeddings).then(() => {
     state.loading = false;
   }).catch((error) => {
     console.error('Error loading data:', error);
     state.loading = false;
   });
 });
-watch(() => state.selection.target, (target) => {
+function refetchSelectionState() {
+  console.log("Refetching selection state");
+  let target = state.selection.target;
   if (!target) return;
   state.loading = true
   state.data_rep.client.dataPoint.getObjectiveCostsDataPointMinimizeCostPost(target).then((similarity) => {
@@ -78,38 +79,28 @@ watch(() => state.selection.target, (target) => {
     state.loading = false
     console.error('Error fetching objective costs:', error);
   });
-}, { immediate: true, deep: true });
-watch(() => state.selection.selected_indices, (sel) => {
-  console.log("Selected indices changed:", sel);
-  if (sel.length > 0) {
-    // state.loading = true
-    // state.data_rep.client.dataPoint.getSimilarDataPointDataPointSimilarityScoresIndexGet(sel[0]).then((similarity) => {
-    //   state.current_results.similarities = similarity.data;
-    //   state.loading = false
-    //   // console.log("Current similarity scores:", state.current_results.similarities);
-    // }).catch((error) => {
-    //   state.loading = false
-    //   console.error('Error fetching similarity scores:', error);
-    // });
-
-  }
-  if (sel.length == 2) {
-
+  if (state.selection.selected_indices.length == 1) {
+    state.selection.hovered_index = null;
+    const sel = state.selection.selected_indices[0];
     state.loading = true
-    state.data_rep.client.dataPoint.getInterpolationDataPointInterpolationGet({
-      from_index: sel[0],
-      to_index: sel[1],
-      // include_explainations: true
-    }).then(resp => {
+    state.data_rep.client.dataPoint.getMinimizationInterpolationDataPointMinimzePost({
+      start_idx: sel,
+      min: target,
+    }).then((int) => {
+      state.current_results.interpolation = int.data;
       state.loading = false
-      // console.log("Interpolation data:", resp.data);
-      state.current_results.interpolation = resp.data
+      // console.log("Current similarity scores:", state.current_results.similarities);
     }).catch((error) => {
       state.loading = false
       console.error('Error fetching interpolation data:', error);
     });
-
   }
+}
+watch(() => state.selection.target, (target) => {
+  refetchSelectionState();
+}, { immediate: true, deep: true });
+watch(() => state.selection.selected_indices, (sel) => {
+  refetchSelectionState();
 }, { immediate: true, deep: true });
 function previewSelected(idx: number) {
   // console.log("Previewing selected index:", idx);
@@ -117,14 +108,15 @@ function previewSelected(idx: number) {
   state.selection.hovered_index = idx
 }
 function updateSelection(newSelection: number) {
-  // console.log("Updating selection:", newSelection);
-  if (state.selection.selected_indices.length == 2) {
-    // If two indices are already selected, replace the first one
-    state.selection.selected_indices = [newSelection];
-    state.current_results.interpolation = null; // Reset interpolation when selection changes
-  } else {
-    state.selection.selected_indices = [...state.selection.selected_indices, newSelection];
-  }
+  console.log("Updating selection:", newSelection);
+  // if (state.selection.selected_indices.length == 2) {
+  //   // If two indices are already selected, replace the first one
+  //   state.selection.selected_indices = [newSelection];
+  //   state.current_results.interpolation = null; // Reset interpolation when selection changes
+  // } else {
+  //   state.selection.selected_indices = [...state.selection.selected_indices, newSelection];
+  // }
+  state.selection.selected_indices = [newSelection];
   state.selection.hovered_index = null;
   // Emit the updated selection to parent components if needed
   // emit('update:selection', newSelection);
@@ -166,7 +158,7 @@ function reset() {
 }
 
 .search-bar-container {
-  width: 24vw;
+  /* width: 24vw; */
   min-width: 450px;
   height: 100vh;
   display: flex;

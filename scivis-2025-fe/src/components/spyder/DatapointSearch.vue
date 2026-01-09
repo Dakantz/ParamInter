@@ -44,8 +44,14 @@ watch(() => data_rep.description, (desc) => {
     if (!desc) return;
 
     state.dimensions = data_rep.description?.input_cols || [];
-    let max_sum = Object.keys(data_rep.description?.max_values || {}).filter((k) => state.dimensions.includes(k)).reduce((sum, k) => sum + (data_rep.description?.max_values[k] || 0), 0);
-    state.dim_data = state.dimensions.map(type => (data_rep.description?.max_values?.[type] || 0) / state.dimensions.length);
+
+    if (data_rep && data_rep.description && data_rep.description.inputs_constrained) {
+        let max_sum = Object.keys(data_rep.description?.max_values || {}).filter((k) => state.dimensions.includes(k)).reduce((sum, k) => sum + (data_rep.description?.max_values[k] || 0), 0);
+        state.dim_data = state.dimensions.map(type => (data_rep.description?.max_values?.[type] || 0) / state.dimensions.length);
+    } else {
+        state.dim_data = state.dimensions.map((type) => data_rep.description?.mean_values?.[type] || 0);
+    }
+    console.log("Initialized dim_data:", state.dim_data);
 }, { immediate: true });
 
 watch(() => state.dim_data, (dim_data) => {

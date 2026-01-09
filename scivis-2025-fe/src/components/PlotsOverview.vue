@@ -2,15 +2,14 @@
     <div ref="plot" class="plot-containers">
         <div v-for="emb_key in loaded_keys" :key="emb_key">
             <h3>{{ emb_key }}</h3>
-            <ReducedDimPlot :embedded_data="data_rep.all_embeddings.all_embeddings[emb_key]"
-                :full_data="data_rep.data_points" v-model="selection" :embedding_name="emb_key" :data_rep="data_rep"
-                :results="results" />
+            <ReducedDimPlot :embedded_data='all_embeddings.all_embeddings[emb_key]' :full_data="data_rep.data_points"
+                v-model="selection" :embedding_name="emb_key" :data_rep="data_rep" :results="results" />
         </div>
     </div>
 </template>
 <script lang="ts" setup>
-import { defineProps, defineModel, reactive, watch, ref, onMounted, ModelRef } from 'vue';
-import { DataRepository } from '../proc/types';
+import { reactive, watch, ref, onMounted, ModelRef } from 'vue';
+import { AllEmbeddings, DataRepository, Embeddings } from '../proc/types';
 import { PlotSelection, PlotSelectionResults } from './types';
 import ReducedDimPlot from './ReducedDimPlot.vue';
 
@@ -22,6 +21,10 @@ const selection: ModelRef<PlotSelection> = defineModel({
 const { data_rep, loaded_keys, results } = defineProps({
     data_rep: {
         type: DataRepository,
+        required: true
+    },
+    all_embeddings: {
+        type: Object as () => AllEmbeddings,
         required: true
     },
     loaded_keys: {
@@ -38,12 +41,6 @@ const { data_rep, loaded_keys, results } = defineProps({
 const ui_params = reactive({
     // all_embeddings: [] as string[],
 });
-watch(() => data_rep, (newData) => {
-    if (newData) {
-        // ui_params.all_embeddings = Object.keys(newData.all_embeddings.all_embeddings)
-        // console.log("Updated embeddings list:", ui_params.all_embeddings);
-    }
-}, { immediate: true });
 </script>
 
 <style scoped>

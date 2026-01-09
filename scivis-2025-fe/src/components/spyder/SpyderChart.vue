@@ -14,7 +14,7 @@ import { DataRepository } from '../../proc/types';
 const dim_data = defineModel<Array<number>>({
     default: () => []
 });
-const { editable, factor, sensitivities, rep } = defineProps({
+const { editable, factor, sensitivities, rep, height } = defineProps({
     rep: {
         type: Object as () => DataRepository,
         default: () => (null)
@@ -30,7 +30,11 @@ const { editable, factor, sensitivities, rep } = defineProps({
     sensitivities: {
         type: Array as () => Array<number>,
         default: () => []
-    }
+    },
+    height: {
+        type: String,
+        default: '20vh'
+    },
 });
 const plot = useTemplateRef('plot');
 const spiderContainer = useTemplateRef('spider-container');
@@ -232,9 +236,26 @@ function updateChart() {
                     let newValue = Math.max(0, Math.min(1, radius_mouse));
                     newValue = inverseSpider(newValue, closest_dim.min, closest_dim.max);
                     dim_data.value[idx] = newValue;
+
                     //normalize the other values
-                    const sum = dim_data.value.reduce((a, b) => a + b, 0);
-                    dim_data.value = dim_data.value.map(v => v / sum);
+                    if (rep && rep.description && rep.description.inputs_constrained) {
+                        let min_values = rep.description.min_values;
+                        let max_values = rep.description.max_values;
+                        let normed_values = dim_data.value.map((v, i) => {
+                            let dim_name = dimensions.value[i];
+                            return (v - min_values[dim_name]) / (max_values[dim_name] - min_values[dim_name]);
+                        });
+                        const current_sum = normed_values.reduce((a, b) => a + b, 0);
+                        const rescaled_values = normed_values.map((v, i) => {
+                            return v / current_sum;
+                        });
+                        dim_data.value = rescaled_values.map((v, i) => {
+                            let dim_name = dimensions.value[i];
+                            return v * (max_values[dim_name] - min_values[dim_name]) + min_values[dim_name];
+                        });
+                    } else {
+                        dim_data.value = [...dim_data.value];
+                    }
                     updateChart();
                 }
             })
@@ -326,7 +347,7 @@ watch(() => sensitivities, (sense) => {
     width: 100%;
     height: 100%;
     min-width: 200px;
-    min-height: 20vw;
+    min-height: v-bind(height);
     display: flex;
     justify-content: center;
     align-items: center;

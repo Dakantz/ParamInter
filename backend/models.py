@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from torch.utils.hipify.hipify_python import value
 
 
 class DataDescription(BaseModel):
@@ -18,6 +17,7 @@ class DataDescription(BaseModel):
     max_values: dict[str, float]
     mean_values: dict[str, float]
     std_values: dict[str, float]
+    inputs_constrained: bool = True
 
 
 class DataPoints(BaseModel):
@@ -83,7 +83,14 @@ class LinearTarget(BaseModel):
 
 class DataPointMinimzer(BaseModel):
     targets: list[LinearTarget] = []
-    k: int = 5
+
+
+class DataPointMinimzerInterpolation(BaseModel):
+    min: DataPointMinimzer
+    start_idx: int
+    samples: int = 256
+    div_penalty: float = 0.25
+    cost_penalty: float = 0.25
 
 
 class DataPointSuggestions(BaseModel):

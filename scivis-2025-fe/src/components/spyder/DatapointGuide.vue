@@ -28,13 +28,13 @@
                     v-if="idx < state.linear_combination.length - 1"> + <br /> </span>
             </span>
         </div>
-        <h3>Possible Input Targets</h3>
+        <!-- <h3>Possible Input Targets</h3>
         <div class="search-results" v-if="state.search_results.length > 0">
             <div v-for="(result, idx) in state.search_results" :key="idx" class="search-result-item"
                 @mouseenter="emit('preview', result.index || -1)" @click.capture="emit('select', result.index || -1)">
                 <SpyderChart :rep="data_rep" v-model="result.inputs" :editable="false" />
             </div>
-        </div>
+        </div> -->
         <div v-if="state.loading">
             <v-progress-linear color="primary" indeterminate></v-progress-linear>
             <span>Loading...</span>
@@ -81,25 +81,9 @@ const state = reactive({
 });
 
 watch(() => data_rep.all_types, (newTypes) => {
-    console.log("New types:", newTypes);
-    if (Object.keys(newTypes).length === 0) {
-        console.warn("No types available in data repository.");
-        return;
+    if (newTypes) {
+        state.visible_types = data_rep.getVisisbleTypes();
     }
-    if (Object.entries(newTypes).length <= 3) {
-        console.log("Showing only Outputs category.");
-        state.visible_types = {
-            "Input": newTypes["Input"],
-            "Output": newTypes["Output"]
-        };
-    } else {
-        state.visible_types = Object.fromEntries(
-            Object.entries(newTypes)
-                .filter((kv, i) => i !== 0 && i < Object.entries(newTypes).length - 1)
-                .map(([key, value]) => [key, value])
-        );
-    }
-
 }, { immediate: true });
 watch(() => selected_dp, (newIdx) => {
     if (newIdx >= 0) {
@@ -182,8 +166,6 @@ watch(() => state.linear_combination, (newComb) => {
 <style scoped>
 .datapoint-guide {
     width: 100%;
-    min-height: 100vh;
-    max-height: 100vh;
     display: flex;
     flex-direction: column;
     justify-items: center;

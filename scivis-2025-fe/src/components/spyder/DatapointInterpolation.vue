@@ -5,7 +5,8 @@
 
         <div class="interpolation-ends" v-if="interpolation">
             <div v-for="end, i in interpolation_ends" :key="i" class="interpolation-end">
-                <SpyderChart :rep="data_rep" v-model="interpolation_ends[i]" :editable="false" />
+                <div class="interpolation-end-label">{{ i === 0 ? 'Start Point' : 'End Point' }}</div>
+                <SpyderChart :rep="data_rep" v-model="interpolation_ends[i]" :editable="false" :height="'10vh'" />
             </div>
         </div>
 
@@ -107,9 +108,9 @@ watch(() => data_rep.description, (desc) => {
         return;
     }
     state.input_types = desc?.input_cols || [];
-    state.visible_types = data_rep.all_types;
+    state.visible_types = data_rep.getVisisbleTypes();
 
-}, { immediate: true });
+}, { immediate: true, deep: true });
 watch(() => state.hovered_index, (idx) => {
     console.log("Hovered index:", idx);
     if (idx && idx >= 0) {
@@ -171,11 +172,20 @@ function showSensitivity(out_col: string, hovered_index: number) {
     flex-direction: row;
     margin: 10px 0;
     width: 100%;
+    max-height: 15vh;
 }
 
 .interpolation_end {
     flex: 1;
     margin: 0 10px;
     width: 50%;
+    display: flex;
+    align-items: center;
+}
+
+.interpolation-end-label {
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 5px;
 }
 </style>

@@ -22,7 +22,7 @@ import { AnnotationData, seriesSvgAnnotation } from './helpers/annotation-series
 import { webglColor } from './helpers/utils';
 const { embedded_data, full_data, data_rep, results, embedding_name } = defineProps({
     embedded_data: {
-        type: Embeddings,
+        type: Embeddings || null,
         required: true
     },
     full_data: {
@@ -142,18 +142,18 @@ const chart = fc
         xScale: xScale,
         yScale: yScale,
     })
+    .svgPlotArea(
+        // // only render the annotations series on the SVG layer
+        fc.seriesSvgMulti()
+            .series([annotationSeries])
+            .mapping((d: any) => d.svg)
+    )
     .webglPlotArea(
         // only render the point series on the WebGL layer
         fc
             .seriesWebglMulti()
             .series([pointSeries])
             .mapping((d: any) => d.data)
-    )
-    .svgPlotArea(
-        // // only render the annotations series on the SVG layer
-        fc.seriesSvgMulti()
-            .series([annotationSeries])
-            .mapping((d: any) => d.svg)
     )
     // .svgPlotArea(
     //     // render the selection series on the SVG layer
@@ -192,12 +192,16 @@ const chart = fc
     ).xAxisHeight('0px').yAxisWidth('0px');
 
 const redraw = () => {
-    // console.log("Redrawing plot with data:", mapped_data.value, "and annotations:", annotations, "on plot:", plot.value?.id);
+    console.log("Redrawing plot with data:", mapped_data.value, "and annotations:", annotations, "on plot:", plot.value?.id);
+    let selection_idx = selection.value.selected_indices;
+    if (results.interpolation && selection_idx.length < 2) {
+        selection_idx = [...selection_idx, results.interpolation.indices[results.interpolation.indices.length - 1]];
+    }
     d3.select(plot.value)
         .datum({
             svg: {
                 annotations,
-                selection: selection.value.selected_indices.map(i => mapped_data.value[i]),
+                selection: selection_idx.map(i => mapped_data.value[i]),
                 hovered: mapped_data.value[selection.value.hovered_index || -1] || null,
                 interpolation: results.interpolation,
                 embeddinging_name: embedding_name

@@ -1,13 +1,17 @@
 from fastapi import APIRouter, Body, Depends
 import numpy as np
+import pandas as pd
 from pydantic import BaseModel
 from sklearn.neighbors import NearestNeighbors
+from torch import argmin
+from torch.onnx.symbolic_opset9 import to
 from tqdm import tqdm
 
 from backend.models import (
     DataDescription,
     DataPoint,
     DataPointMinimzer,
+    DataPointMinimzerInterpolation,
     DataPointSensitivity,
     DataPointSimilarity,
     DataPointSuggestions,
@@ -140,29 +144,79 @@ def get_objective_costs(
     return total_cost_clean_normed.tolist()
 
 
-@dp_router.post("/minimze")
-def get_minimization(
-    q: DataPointMinimzer = Body(DataPointMinimzer),
-) -> InterpolationResult:
-    # values = np.array(q.values).reshape(1, -1)
-    # nn_inputs = NearestNeighbors(n_neighbors=q.k)
-    # nn_inputs.fit(data_man.cleaned[data_man.input_cols].values)
-    # _, indices = nn_inputs.kneighbors(values, n_neighbors=q.k)
-    # indices = indices.flatten()
-    # input_data = data_man.cleaned[data_man.input_cols].iloc[indices].values.tolist()
-    # output_data = data_man.cleaned[data_man.output_cols].iloc[indices].values.tolist()
-    # projected_output = data_man.embedded_tsne[indices].tolist()
-    # similar_data_points = [
-    #     DataPoint(
-    #         inputs=input_data[i],
-    #         outputs=output_data[i],
-    #         projected_outputs=projected_output[i],
-    #         index=indices[i],
-    #     )
-    #     for i in range(indices.shape[0])
-    # ]
+def get_costs(targets: list[DataPointMinimzer], data: pd.DataFrame) -> np.ndarray:
+    costs_dict: dict[str, np.ndarray] = {}
+    for target in targets:
+        costs_target = data[target.name].to_numpy() - target.val
+        costs_dict[target.name] = target.weight * costs_target
+    costs = np.empty(
+        (
+            data.shape[0],
+            len(targets),
+        )
+    )
+    for i, cost in enumerate(costs_dict.values()):
+        costs[:, i] = cost**2
+    costs_sum: np.ndarray = np.sqrt(costs).sum(axis=-1)
+    return costs_sum
 
-    return InterpolationResult()
+
+@dp_router.post("/minimze")
+def get_minimization_interpolation(
+    q: DataPointMinimzerInterpolation = Body(DataPointMinimzerInterpolation),
+) -> InterpolationResult:
+    costs_sum = get_costs(q.min.targets, data_man.cleaned)
+
+    argmin_index = np.argmin(costs_sum)
+    dp_idxs = [q.start_idx, argmin_index]
+
+    inputs = data_man.cleaned[data_man.input_cols].values[dp_idxs]
+
+    inputs_interpolated: np.ndarray = np.linspace(inputs[0], inputs[1], q.samples)
+
+    outputs_interpolated: np.ndarray = np.empty((q.samples, len(data_man.output_cols)))
+
+    for i, cm in enumerate(tqdm(data_man.model_ensemble.items())):
+        _, model = cm
+        predictions = model.predict(inputs_interpolated)
+        outputs_interpolated[:, i] = predictions
+    interpolated = np.concatenate([inputs_interpolated, outputs_interpolated], axis=1)
+    interpolated_data = pd.DataFrame(
+        interpolated,
+        columns=data_man.cleaned.columns,
+    )
+    interpolated_costs = get_costs(q.min.targets, interpolated_data)
+
+    nn_stacked_X = np.concatenate(
+        [
+            data_man.cleaned[data_man.input_cols].to_numpy(),
+            q.cost_penalty * costs_sum.reshape(-1, 1),
+        ],
+        axis=1,
+    )
+    nn_stacked_query = np.concatenate(
+        [inputs_interpolated, q.cost_penalty * interpolated_costs.reshape(-1, 1)],
+        axis=1,
+    )
+
+    nn_inputs = NearestNeighbors(n_neighbors=1)
+    nn_inputs.fit(nn_stacked_X)
+    _, indices = nn_inputs.kneighbors(nn_stacked_query)
+    indices = indices.flatten()
+    indices[0] = q.start_idx
+    indices[-1] = argmin_index
+    embeddings_nn: dict[str, list] = {}
+
+    for col_name, embedded in data_man.embedding_subsets.items():
+        embeddings_nn[col_name] = embedded[indices].tolist()
+    return InterpolationResult(
+        inputs=inputs_interpolated.tolist(),
+        outputs=outputs_interpolated.tolist(),
+        knn_inputs=data_man.cleaned[data_man.input_cols].values[indices].tolist(),
+        knn_outputs=data_man.cleaned[data_man.output_cols].values[indices].tolist(),
+        projected_outputs=embeddings_nn,
+        indices=indices.tolist(),
+    )
 
 
 @dp_router.post("/similar")
