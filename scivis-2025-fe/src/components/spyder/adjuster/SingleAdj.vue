@@ -126,7 +126,7 @@ watch(() => selected_value.value, () => {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 80%;
+    min-width: 80%;
 }
 
 .single-outview:hover {

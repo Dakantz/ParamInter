@@ -345,9 +345,8 @@ watch(() => sensitivities, (sense) => {
 <style>
 .spider-container {
     width: 100%;
-    height: 100%;
     min-width: 200px;
-    min-height: v-bind(height);
+    height: v-bind(height);
     display: flex;
     justify-content: center;
     align-items: center;
