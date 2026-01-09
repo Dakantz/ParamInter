@@ -89,7 +89,7 @@ function updateGraph() {
         .y((d) => yScale(0.5));
     svg.append('path')
         .datum([min_value.value, selected_value.value])
-        .attr('class', 'output-line')
+        .attr('class', 'select-line')
         .attr('d', line);
     svg.append('path')
         .datum([min_value.value, max_value.value])
@@ -155,7 +155,7 @@ watch(() => selected_value.value, () => {
     min-height: 32px;
 }
 
-.output-line {
+.select-line {
     fill: none;
     stroke: rgb(52, 166, 220);
     stroke-width: 1.5;

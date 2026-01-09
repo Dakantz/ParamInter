@@ -1,28 +1,30 @@
 <template>
     <div class="datapoint-guide">
         <h2>Explore Interpolation</h2>
-        <h3>Selection</h3>
+        <h3>Ends</h3>
 
-        <div class="interpolation-ends" v-if="interpolation">
-            <div v-for="end, i in interpolation_ends" :key="i" class="interpolation-end">
-                <div class="interpolation-end-label">{{ i === 0 ? 'Start Point' : 'End Point' }}</div>
-                <SpyderChart :rep="data_rep" v-model="interpolation_ends[i]" :editable="false" :height="'15vh'" />
+        <div class="interpolation-ends">
+            <div v-for="end, i in interpolation_ends" :key="i" class="interpolation-end"
+                :class="highlightClass(state.hovered_interpolation.interpolation_idx, i)">
+                <SpyderChart :rep="data_rep" v-model="interpolation_ends[i]" :editable="false" :height="'13vh'"
+                    :color="colorForIndex(i)" />
             </div>
         </div>
 
 
         <h3>Interpolated Output Values</h3>
-        <div class="editable-outs" v-if="interpolation">
+        <div class="editable-outs">
             <div v-for="(types, cat_name) of state.visible_types" :key="cat_name">
-                <IntOverview :int_result="(state.interpolation_copy as InterpolationResult)" :types="types"
+                <IntOverview :int_result="(state.interpolation_copy as InterpolationResult[])" :types="types"
                     :data_rep="data_rep" :cat_name="cat_name" @hover="state.hovered_value = $event"
-                    v-model="state.hovered_offset" @select="selectDp($event)" />
+                    v-model="state.hovered_interpolation" @select="selectDp($event)" />
             </div>
         </div>
         <h3>Interpolated Input Values</h3>
-        <div class="interpolation-hover" v-if="interpolation && state.hovered_offset >= 0 && state.hovered_dp">
+        <div class="interpolation-hover" v-if="state.hovered_dp">
             <SpyderChart :rep="data_rep" v-model="state.hovered_dp.inputs" :editable="false"
-                :sensitivities="state.sensitivities_for_hover" />
+                :sensitivities="state.sensitivities_for_hover" :height="'20vh'"
+                :color="colorForIndex(state.hovered_interpolation.interpolation_idx)" />
         </div>
         <div v-if="state.loading">
             <v-progress-linear color="primary" indeterminate></v-progress-linear>
@@ -35,59 +37,77 @@
 <script lang="ts" setup>
 import { ref, reactive, watch, onMounted, useTemplateRef, computed } from 'vue';
 import * as d3 from 'd3';
-import { DataRepository, LoadedDataPoints } from '../../proc/types';
+import { colorForIndex, DataRepository, LoadedDataPoints } from '../../proc/types';
 import SpyderChart from './SpyderChart.vue';
 import { DataPoint, InterpolationResult } from '../../api/Api';
 import Overview from './interpolation/IntOverview.vue';
-import { PlotSelection } from '../types';
+import { HoveredInterpolation, PlotSelection } from '../types';
 import IntOverview from './interpolation/IntOverview.vue';
 onMounted(() => {
     console.log("Interpolation component mounted");
 });
-const selection = defineModel<PlotSelection>();
+const selection = defineModel<PlotSelection>(
+    {
+        required: true,
+    }
+);
 const emit = defineEmits<{
     (e: 'preview', idx: number): void;
     (e: 'select', idx: number): void;
 }>();
-const { data_rep, interpolation } = defineProps({
+const { data_rep, interpolations } = defineProps({
     data_rep: {
         type: Object as () => DataRepository,
         required: true
     },
-    interpolation: {
-        type: Object as () => InterpolationResult | null,
+    interpolations: {
+        type: Object as () => InterpolationResult[] | null,
         default: () => (null)
     },
 });
-
+function highlightClass(selected_idx: number, current_idx: number) {
+    return selected_idx === current_idx ? 'highlighted_spyder' : 'normal_spyder';
+}
 
 const state = reactive({
     loading: false,
-    hovered_offset: -1,
+    hovered_interpolation: { interpolation_idx: -1, index_in_interpolation: -1 } as HoveredInterpolation,
     hovered_dp: null as DataPoint | null,
     sensitivities_for_hover: [] as number[],
     visible_types: {} as Record<string, string[]>,
     input_types: [] as string[],
-    interpolation_copy: null as InterpolationResult | null,
+    interpolation_copy: null as InterpolationResult[] | null,
     hovered_value: "",
     hovered_index: -1,
 });
-function selectDp(idx: number) {
+function selectDp(idx: HoveredInterpolation) {
     console.log("Selecting Data Point:", idx);
-    if (idx >= 0) {
-        const true_idx = state.interpolation_copy?.indices[idx];
+    if (idx.interpolation_idx >= 0) {
+        const true_idx = state.interpolation_copy?.[idx.interpolation_idx]?.indices[idx.index_in_interpolation];
         if (true_idx !== undefined) {
             emit('select', true_idx);
         }
     }
 }
-watch(() => state.hovered_offset, (idx) => {
+watch(() => state.hovered_interpolation, (hovered_interpolation) => {
     // console.log("Hovered index:", idx);
-    if (idx >= 0 && state.interpolation_copy) {
-        state.hovered_index = state.interpolation_copy.indices[idx];
+    if (hovered_interpolation.index_in_interpolation >= 0 && state.interpolation_copy) {
+        state.hovered_index = state.interpolation_copy[hovered_interpolation.interpolation_idx].indices[hovered_interpolation.index_in_interpolation];
+        if (state.hovered_value) {
+            showSensitivity(state.hovered_value, state.hovered_index);
+        }
+        data_rep.dps.getDP(state.hovered_index).then((dp) => {
+            state.hovered_dp = dp;
+            showSensitivity(state.hovered_value, state.hovered_index);
+        }).catch((error) => {
+            console.error("Error fetching data point:", error);
+        });
+    } else {
+        console.log("No valid hovered interpolation.");
     }
-}, { immediate: true });
-watch(() => interpolation, (int) => {
+    selection.value.hovered_int = hovered_interpolation;
+}, { immediate: true, deep: true });
+watch(() => interpolations, (int) => {
     if (int) {
         state.interpolation_copy = JSON.parse(JSON.stringify(int));
         // console.log("New interpolation:", int);
@@ -96,8 +116,8 @@ watch(() => interpolation, (int) => {
     }
 }, { immediate: true });
 const interpolation_ends = computed(() => {
-    if (interpolation) {
-        return [interpolation.inputs[0], interpolation.inputs[interpolation.inputs.length - 1]];
+    if (interpolations) {
+        return interpolations.map(int => int.inputs[int.inputs.length - 1]);
     }
     return [];
 });
@@ -111,21 +131,6 @@ watch(() => data_rep.description, (desc) => {
     state.visible_types = data_rep.getVisisbleTypes();
 
 }, { immediate: true, deep: true });
-watch(() => state.hovered_index, (idx) => {
-    console.log("Hovered index:", idx);
-    if (idx && idx >= 0) {
-        if (state.hovered_value) {
-            showSensitivity(state.hovered_value, idx);
-        }
-        emit('preview', idx);
-        data_rep.dps.getDP(idx).then((dp) => {
-            state.hovered_dp = dp;
-            // console.log("Selected Data Point:", dp);
-        }).catch((error) => {
-            console.error("Error fetching data point:", error);
-        });
-    }
-}, { immediate: true });
 
 function showSensitivity(out_col: string, hovered_index: number) {
     if (state.hovered_dp) {
@@ -187,5 +192,21 @@ function showSensitivity(out_col: string, hovered_index: number) {
     font-weight: bold;
     text-align: center;
     margin-bottom: 5px;
+}
+
+.highlighted_spyder {
+    border: 2px solid #d4d4d4;
+    padding: 2px;
+}
+
+.normal_spyder {
+    border: 2px solid #ff990000;
+    ;
+    padding: 2px;
+}
+
+.interpolation-hover {
+    margin-top: 15px;
+    width: 90%;
 }
 </style>

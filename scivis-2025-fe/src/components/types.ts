@@ -3,7 +3,8 @@ import { DataPoint, DataPointMinimzer, InterpolationResult } from "../api/Api";
 export class PlotSelection {
     constructor(
         public selected_indices: number[] = [],
-        public hovered_index: number | null = null,
+        public hovered_int: HoveredInterpolation | null = null,
+        public previewed_index: number | null = null,
         public target: DataPointMinimzer | null = null,
     ) { }
     public addIndex(index: number) {
@@ -27,7 +28,6 @@ export class PlotSelection {
 export class PlotSelectionResults {
     constructor(
         public similarities: number[] = [],
-        public interpolation: InterpolationResult | null = null,
     ) { }
 }
 
@@ -36,4 +36,8 @@ export interface MappedData {
     y: number;
     data: any;
     index: number;
+}
+export interface HoveredInterpolation {
+    interpolation_idx: number;
+    index_in_interpolation: number;
 }

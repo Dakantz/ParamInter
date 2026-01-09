@@ -86,6 +86,11 @@ export interface DataPointMinimzerInterpolation {
    * @default 0.25
    */
   cost_penalty?: number;
+  /**
+   * K Options
+   * @default 4
+   */
+  k_options?: number;
 }
 
 /** DataPointSensitivity */
@@ -454,6 +459,46 @@ export class Api<
     /**
      * No description
      *
+     * @name GetObjectiveCostsDataPointMinimizeCostPost
+     * @summary Get Objective Costs
+     * @request POST:/data-point/minimize/cost
+     */
+    getObjectiveCostsDataPointMinimizeCostPost: (
+      data: DataPointMinimzer,
+      params: RequestParams = {},
+    ) =>
+      this.request<number[], HTTPValidationError>({
+        path: `/data-point/minimize/cost`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name GetMinimizationInterpolationDataPointMinimizeInterpolationPost
+     * @summary Get Minimization Interpolation
+     * @request POST:/data-point/minimize/interpolation
+     */
+    getMinimizationInterpolationDataPointMinimizeInterpolationPost: (
+      data: DataPointMinimzerInterpolation,
+      params: RequestParams = {},
+    ) =>
+      this.request<InterpolationResult[], HTTPValidationError>({
+        path: `/data-point/minimize/interpolation`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
      * @name GetSimilarDataPointDataPointSimilarityScoresIndexGet
      * @summary Get Similar Data Point
      * @request GET:/data-point/similarity-scores/{index}
@@ -522,46 +567,6 @@ export class Api<
         path: `/data-point/interpolation`,
         method: "GET",
         query: query,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @name GetObjectiveCostsDataPointMinimizeCostPost
-     * @summary Get Objective Costs
-     * @request POST:/data-point/minimize/cost
-     */
-    getObjectiveCostsDataPointMinimizeCostPost: (
-      data: DataPointMinimzer,
-      params: RequestParams = {},
-    ) =>
-      this.request<number[], HTTPValidationError>({
-        path: `/data-point/minimize/cost`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @name GetMinimizationInterpolationDataPointMinimzePost
-     * @summary Get Minimization Interpolation
-     * @request POST:/data-point/minimze
-     */
-    getMinimizationInterpolationDataPointMinimzePost: (
-      data: DataPointMinimzerInterpolation,
-      params: RequestParams = {},
-    ) =>
-      this.request<InterpolationResult, HTTPValidationError>({
-        path: `/data-point/minimze`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
         format: "json",
         ...params,
       }),

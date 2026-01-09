@@ -20,7 +20,8 @@ import { ModelRef } from 'vue';
 import { MappedData, PlotSelection, PlotSelectionResults } from './types';
 import { AnnotationData, seriesSvgAnnotation } from './helpers/annotation-series';
 import { webglColor } from './helpers/utils';
-const { embedded_data, full_data, data_rep, results, embedding_name } = defineProps({
+import { InterpolationResult } from '../api/Api';
+const { embedded_data, full_data, data_rep, results, embedding_name, interpolations } = defineProps({
     embedded_data: {
         type: Embeddings || null,
         required: true
@@ -36,6 +37,10 @@ const { embedded_data, full_data, data_rep, results, embedding_name } = definePr
     embedding_name: {
         type: String,
         required: true
+    },
+    interpolations: {
+        type: Object as () => InterpolationResult[] | null,
+        default: () => []
     },
     results: {
         type: Object as () => PlotSelectionResults,
@@ -173,13 +178,12 @@ const chart = fc
                         selection.value.selected_indices = [];
                     }
                     selection.value.selected_indices = [...selection.value.selected_indices, clickedData.index];
-                    results.interpolation = null
                 }
                 redraw();
             })
             .on("mouseleave", () => {
                 console.log("Mouse left the plot area, clearing annotations.");
-                selection.value.hovered_index = -1;
+
                 annotations.length = 0; // Clear the annotations array
                 redraw();
             })
@@ -192,19 +196,18 @@ const chart = fc
     ).xAxisHeight('0px').yAxisWidth('0px');
 
 const redraw = () => {
-    console.log("Redrawing plot with data:", mapped_data.value, "and annotations:", annotations, "on plot:", plot.value?.id);
+    // console.log("Redrawing plot with data:", mapped_data.value, "and annotations:", annotations, "on plot:", plot.value?.id);
     let selection_idx = selection.value.selected_indices;
-    if (results.interpolation && selection_idx.length < 2) {
-        selection_idx = [...selection_idx, results.interpolation.indices[results.interpolation.indices.length - 1]];
-    }
+
     d3.select(plot.value)
         .datum({
             svg: {
                 annotations,
                 selection: selection_idx.map(i => mapped_data.value[i]),
-                hovered: mapped_data.value[selection.value.hovered_index || -1] || null,
-                interpolation: results.interpolation,
-                embeddinging_name: embedding_name
+                hovered: selection.value.hovered_int,
+                interpolations: interpolations,
+                embeddinging_name: embedding_name,
+                previewed_data: selection.value.previewed_index !== null ? mapped_data.value[selection.value.previewed_index] : null
             } as AnnotationData,
             data: mapped_data.value
         })
@@ -243,9 +246,9 @@ watch(() => results.similarities, (sim) => {
         redraw();
     }
 }, { immediate: true });
-watch(() => results.interpolation, (int) => {
+watch(() => interpolations, (int) => {
     redraw();
-}, { immediate: true, deep: true });
+}, { immediate: true });
 onMounted(() => {
     if (plot.value) {
         updateData();

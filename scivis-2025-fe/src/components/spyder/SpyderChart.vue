@@ -14,7 +14,7 @@ import { DataRepository } from '../../proc/types';
 const dim_data = defineModel<Array<number>>({
     default: () => []
 });
-const { editable, factor, sensitivities, rep, height } = defineProps({
+const { editable, factor, sensitivities, rep, height, color } = defineProps({
     rep: {
         type: Object as () => DataRepository,
         default: () => (null)
@@ -35,6 +35,10 @@ const { editable, factor, sensitivities, rep, height } = defineProps({
         type: String,
         default: '20vh'
     },
+    color: {
+        type: String,
+        default: 'rgba(58, 128, 0, 0.72)'
+    }
 });
 const plot = useTemplateRef('plot');
 const spiderContainer = useTemplateRef('spider-container');
@@ -162,7 +166,7 @@ function updateChart() {
             })
             // .attr('class', 'spider-path')
             .attr('class', () => {
-                return editable ? 'spider-path' : 'fixed-spider';
+                return 'spider-path';
             })
         const filtered_sensitivities = sensitivities.map((s, i) => {
             return { sense: s, idx: i, val: dim_mapped[i].rescale_val, name: dim_mapped[i].name, effective_length: radius * (s / (factor)) };
@@ -340,12 +344,36 @@ watch(() => sensitivities, (sense) => {
         updateChart();
     }
 }, { immediate: true });
+
+const light_color = computed(() => {
+    if (editable) {
+        return "rgba(173, 216, 230, 0.541)"
+    }
+    if (!editable) {
+        let col = d3.color(color);
+        if (!col) return color;
+        col.opacity = 0.6;
+        return col.brighter(2).toString();
+    }
+});
+const dark_color = computed(() => {
+    if (editable) {
+        return "darkblue"
+    }
+    if (!editable) {
+        let col = d3.color(color);
+        if (!col) return color;
+        col.opacity = 0.6;
+        return col.toString();
+    }
+});
+
 </script>
 
 <style>
 .spider-container {
     width: 100%;
-    min-width: 200px;
+    min-width: 140px;
     height: v-bind(height);
     display: flex;
     justify-content: center;
@@ -354,8 +382,8 @@ watch(() => sensitivities, (sense) => {
 }
 
 .spider-path {
-    fill: rgba(173, 216, 230, 0.541);
-    stroke: darkblue;
+    fill: v-bind(light_color);
+    stroke: v-bind(dark_color);
     stroke-width: 1px;
 }
 
@@ -366,12 +394,6 @@ watch(() => sensitivities, (sense) => {
 .plot-svg {
     width: 100%;
     /* height: 100%; */
-}
-
-.fixed-spider {
-    fill: rgba(128, 255, 0, 0.5);
-    stroke: rgba(58, 128, 0, 0.72);
-    stroke-width: 1px;
 }
 
 .sensitivity {

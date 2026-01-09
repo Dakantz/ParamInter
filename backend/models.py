@@ -91,6 +91,7 @@ class DataPointMinimzerInterpolation(BaseModel):
     samples: int = 256
     div_penalty: float = 0.25
     cost_penalty: float = 0.25
+    k_options: int = 3
 
 
 class DataPointSuggestions(BaseModel):

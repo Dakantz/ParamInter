@@ -11,8 +11,8 @@
               :selected_dp="state.selection.selected_indices[0]" v-if="state.selection.selected_indices.length == 1"
               @preview="previewSelected" @select="updateSelection" />
             <DatapointInterpolation :data_rep="(state.data_rep as DataRepository)" v-model="state.selection"
-              :interpolation="state.current_results.interpolation" v-if="state.current_results.interpolation"
-              @preview="previewSelected" @select="updateSelection">
+              :interpolations="interpolations" v-if="interpolations" @preview="previewSelected"
+              @select="updateSelection">
             </DatapointInterpolation>
           </div>
           <div v-if="state.loading">
@@ -25,7 +25,8 @@
         <div class="divider"></div>
         <div class="plot_container">
           <PlotsOverview :data_rep='(state.data_rep as DataRepository)' :loaded_keys="state.loaded_keys"
-            v-model="state.selection" :results="state.current_results" :all_embeddings="all_embeddings">
+            v-model="state.selection" :results="state.current_results" :all_embeddings="all_embeddings"
+            :interpolations="interpolations">
           </PlotsOverview>
         </div>
       </div>
@@ -41,6 +42,7 @@ import PlotsOverview from './components/PlotsOverview.vue';
 import DatapointSearch from './components/spyder/DatapointSearch.vue';
 import DatapointGuide from './components/spyder/DatapointGuide.vue';
 import DatapointInterpolation from './components/spyder/DatapointInterpolation.vue';
+import { InterpolationResult } from './api/Api';
 
 const state = reactive({
   data_rep: new DataRepository(),
@@ -51,6 +53,7 @@ const state = reactive({
   loaded_keys: [] as string[],
 });
 const all_embeddings = new AllEmbeddings();
+let interpolations = null as InterpolationResult[] | null;
 onMounted(() => {
   state.data_rep = new DataRepository();
   state.loading = true;
@@ -80,14 +83,14 @@ function refetchSelectionState() {
     console.error('Error fetching objective costs:', error);
   });
   if (state.selection.selected_indices.length == 1) {
-    state.selection.hovered_index = null;
+    state.selection.previewed_index = null;
     const sel = state.selection.selected_indices[0];
     state.loading = true
-    state.data_rep.client.dataPoint.getMinimizationInterpolationDataPointMinimzePost({
+    state.data_rep.client.dataPoint.getMinimizationInterpolationDataPointMinimizeInterpolationPost({
       start_idx: sel,
       min: target,
     }).then((int) => {
-      state.current_results.interpolation = int.data;
+      interpolations = int.data;
       state.loading = false
       // console.log("Current similarity scores:", state.current_results.similarities);
     }).catch((error) => {
@@ -105,7 +108,7 @@ watch(() => state.selection.selected_indices, (sel) => {
 function previewSelected(idx: number) {
   // console.log("Previewing selected index:", idx);
   // Set the hovered index in the selection
-  state.selection.hovered_index = idx
+  state.selection.previewed_index = idx
 }
 function updateSelection(newSelection: number) {
   console.log("Updating selection:", newSelection);
@@ -117,7 +120,7 @@ function updateSelection(newSelection: number) {
   //   state.selection.selected_indices = [...state.selection.selected_indices, newSelection];
   // }
   state.selection.selected_indices = [newSelection];
-  state.selection.hovered_index = null;
+  state.selection.previewed_index = null;
   // Emit the updated selection to parent components if needed
   // emit('update:selection', newSelection);
 }
@@ -127,8 +130,8 @@ function reset() {
     state.selection = new PlotSelection();
   }
   state.selection.selected_indices = [];
-  state.selection.hovered_index = null;
-  state.current_results.interpolation = null;
+  state.selection.previewed_index = null;
+  interpolations = null;
 }
 </script>
 <style>
@@ -159,7 +162,7 @@ function reset() {
 
 .search-bar-container {
   /* width: 24vw; */
-  min-width: 450px;
+  min-width: 620px;
   height: 100vh;
   display: flex;
   flex-direction: column;

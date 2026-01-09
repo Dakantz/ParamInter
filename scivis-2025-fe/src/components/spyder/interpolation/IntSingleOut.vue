@@ -1,5 +1,5 @@
 <template>
-    <div class="single-outview" @mouseenter="emit('hover', hovered_index)">
+    <div class="single-outview" @mouseenter="emit('hover', out_idx)">
         <span class="out-name">{{ out_name }} {{ hovered_value }} <span>({{ min_value.toFixed(2) }}, {{
             max_value.toFixed(2) }})</span></span>
         <div class="out-value" ref="wrapper_ref" @compositionend="updateGraph">
@@ -14,25 +14,26 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, useTemplateRef, watch, onUpdated, reactive } from 'vue';
-import { DataRepository } from '../../../proc/types';
+import { colorForIndex, DataRepository } from '../../../proc/types';
 import * as d3 from 'd3';
 import { InterpolationResult } from '../../../api/Api';
 import { outValues } from '../../helpers/utils';
+import { HoveredInterpolation } from '../../types';
 
 const emit = defineEmits<{
     (e: 'hover', index: number): void;
-    (e: 'select', idx: number): void;
+    (e: 'select', idx: HoveredInterpolation): void;
 }>();
-const hovered_index = defineModel<number>({
-    type: Number,
-    default: -1
+const hovered_index = defineModel<HoveredInterpolation>({
+    type: Object as () => HoveredInterpolation,
+    default: { interpolation_idx: -1, index_in_interpolation: -1 }
 });
-const { int_results, idx, out_name, data_rep } = defineProps({
+const { int_results, out_idx, out_name, data_rep } = defineProps({
     int_results: {
-        type: Object as () => InterpolationResult,
+        type: Object as () => InterpolationResult[],
         required: true
     },
-    idx: {
+    out_idx: {
         type: Number,
         required: true
     },
@@ -47,10 +48,10 @@ const { int_results, idx, out_name, data_rep } = defineProps({
 
 })
 const out_values = computed(() => {
-    return outValues(
-        int_results,
-        idx
-    );
+    return int_results.map(int => outValues(
+        int,
+        out_idx
+    ));
 });
 const min_value = computed(() => {
     if (data_rep.description) {
@@ -65,8 +66,11 @@ const max_value = computed(() => {
     return 1;
 });
 const hovered_value = computed(() => {
-    if (hovered_index.value >= 0 && hovered_index.value < out_values.value.length) {
-        return out_values.value[hovered_index.value].toFixed(2);
+    if (hovered_index.value.interpolation_idx >= 0
+        && hovered_index.value.interpolation_idx < out_values.value.length
+        && hovered_index.value.index_in_interpolation >= 0
+        && hovered_index.value.index_in_interpolation < out_values.value[hovered_index.value.interpolation_idx].length) {
+        return `- ${out_values.value[hovered_index.value.interpolation_idx][hovered_index.value.index_in_interpolation].toFixed(2)}`;
     }
     return "--";
 });
@@ -94,18 +98,19 @@ function updateGraph() {
         .attr('width', width)
         .attr('height', height);
 
-    svg.selectAll('path').remove(); // Clear previous content
 
     xScale = d3.scaleLinear()
-        .domain([0, out_values.value.length - 1])
+        .domain([0, out_values.value[0].length - 1])
         .range([0, width]);
 
     yScale = d3.scaleLinear()
         .domain([min_value.value, max_value.value])
         .range([height, 0]);
-    svg.append('path')
-        .datum(out_values.value)
+    svg.selectAll('.output-line')
+        .data(out_values.value)
+        .join('path')
         .attr('class', 'output-line')
+        .attr('stroke', (d, i) => colorForIndex(i, 0))
         .attr('d', d3.line<number>()
             .x((d, i) => xScale(i))
             .y(d => yScale(d))
@@ -113,30 +118,50 @@ function updateGraph() {
 }
 watch(() => hovered_index.value, (idx) => {
     const svg = d3.select(svg_ref.value);
-    if (idx >= 0 && idx < out_values.value.length) {
+    if (out_values.value.length > 0 && idx.interpolation_idx >= 0 && idx.interpolation_idx < out_values.value[0].length) {
         // Highlight the hovered point
         svg.selectAll('.hover-point').remove(); // Remove previous hover point
         svg.append('circle')
             .attr('class', 'hover-point')
-            .attr('cx', xScale(idx))
-            .attr('cy', yScale(out_values.value[idx]))
+            .attr('fill', colorForIndex(idx.interpolation_idx, 1))
+            .attr('stroke', colorForIndex(idx.interpolation_idx, -4))
+            .attr('cx', xScale(idx.index_in_interpolation))
+            .attr('cy', yScale(out_values.value[idx.interpolation_idx][idx.index_in_interpolation]))
             .attr('r', 5)
     }
-});
+}, { immediate: true, deep: true });
+function idxFromHover(evt: MouseEvent): HoveredInterpolation {
+    if (!wrapper_ref.value) return { interpolation_idx: -1, index_in_interpolation: -1 };
+    const width = wrapper_ref.value.clientWidth;
+    const hoveredIndex = Math.floor(xScale.invert(d3.pointer(evt)[0]));
+
+    const value_hovered = yScale.invert(d3.pointer(evt)[1]);
+    const values_at_idx = out_values.value.map(int => int[hoveredIndex]);
+    const distances = values_at_idx.map(v => Math.abs(v - value_hovered));
+    let closest_int_idx = 0;
+    for (let i = 1; i < distances.length; i++) {
+        if (distances[i] < distances[closest_int_idx]) {
+            closest_int_idx = i;
+        }
+    }
+    return {
+        interpolation_idx: closest_int_idx,
+        index_in_interpolation: hoveredIndex
+    };
+}
 onMounted(() => {
     const wrapper = d3.select(wrapper_ref.value)
     wrapper.on('mousemove', (evt) => {
-        if (!wrapper_ref.value) return;
-        const width = wrapper_ref.value.clientWidth;
-        const hoveredIndex = Math.floor(d3.pointer(evt)[0] / (width / out_values.value.length));
-        hovered_index.value = hoveredIndex;
-        emit('hover', hoveredIndex);
+        let hoveredIndexData = idxFromHover(evt);
+        hovered_index.value.index_in_interpolation = hoveredIndexData.index_in_interpolation;
+        hovered_index.value.interpolation_idx = hoveredIndexData.interpolation_idx;
+        // emit('hover', hoveredIndexData);
     }).on('click', (evt) => {
-        if (!wrapper_ref.value) return;
-        const width = wrapper_ref.value.clientWidth;
-        const clickedIndex = Math.floor(d3.pointer(evt)[0] / (width / out_values.value.length));
-        hovered_index.value = clickedIndex;
-        emit('select', clickedIndex);
+        let hoveredIndexData = idxFromHover(evt);
+        hovered_index.value.index_in_interpolation = hoveredIndexData.index_in_interpolation;
+        hovered_index.value.interpolation_idx = hoveredIndexData.interpolation_idx;
+
+        emit('select', hoveredIndexData);
     });
 
     updateGraph();
@@ -179,7 +204,6 @@ watch(() => out_values.value, () => {
 
 .output-line {
     fill: none;
-    stroke: rgb(52, 166, 220);
     stroke-width: 1.5;
 }
 

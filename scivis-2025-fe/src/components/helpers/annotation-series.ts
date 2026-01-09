@@ -1,16 +1,18 @@
 
 import * as d3 from "d3";
 import * as fc from "d3fc";
-import { DataRepository } from "../../proc/types";
-import { MappedData } from "../types";
+import { colorForIndex, DataRepository } from "../../proc/types";
+import { HoveredInterpolation, MappedData } from "../types";
 import { InterpolationResult } from "../../api/Api";
 import { reSpider } from "./utils";
 export interface AnnotationData {
     annotations: MappedData[];
     selection: MappedData[];
-    interpolation: InterpolationResult;
-    hovered: MappedData | null;
+    interpolations: InterpolationResult[];
+    hovered: HoveredInterpolation | null;
+    previewed_data: MappedData | null;
     embeddinging_name: string;
+
 }
 interface ProjectedData {
     inputs: number[];
@@ -50,12 +52,12 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
     let yScale = d3.scaleLinear();
     let min_values = data_rep.description?.input_cols.map((col) => data_rep.description?.min_values[col] || 0) || [];
     let max_values = data_rep.description?.input_cols.map((col) => data_rep.description?.max_values[col] || 1) || [];
-    function createSpyderFromProjectedData(sel: d3.Selection<any, any, any, any>, data: ProjectedData[], annotation_cls: string, size = spyder_size) {
+    function createSpyderFromProjectedData(sel: d3.Selection<any, any, any, any>, data: ProjectedData[], annotation_cls: string, size = spyder_size, color: string | null = null) {
         sel.selectAll(`.${annotation_cls}`).remove();
         if (!data || !data.length) {
             return;
         }
-        sel.selectAll(`.${annotation_cls}`)
+        let spyder_sel = sel.selectAll(`.${annotation_cls}`)
             .data(data)
             .join("g")
             .attr("class", annotation_cls)
@@ -82,6 +84,15 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
                 path.closePath();
                 return path.toString();
             })
+        if (color) {
+            // console.log("Setting color for spyder:", color);
+            let light_col = d3.color(color)?.brighter(1)
+            if (light_col) {
+                light_col.opacity = 0.4;
+                spyder_sel.attr("fill", light_col.toString());
+                spyder_sel.attr("stroke", color);
+            }
+        }
     }
     function createSpyderFromPoints(sel: d3.Selection<any, any, any, any>, data: MappedData[], annotation_cls: string, spyder_size: number) {
         sel.selectAll(`.${annotation_cls}`).remove();
@@ -114,42 +125,63 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
             createSpyderFromPoints(sel, annotations, cls, spyder_size);
             createSpyderFromPoints(sel, selectionData, 'selection', spyder_size);
             sel.selectAll('.hovered').remove();
-            if (data.hovered) {
-                createSpyderFromPoints(sel, [data.hovered], 'hovered', spyder_size * 0.8);
-            }
+
             sel.selectAll('.interpolation').remove();
             sel.selectAll('.interpolation_spyder').remove();
-            let interpolated_outputs = [] as [number, number][];
-            if (data.interpolation && data.interpolation.projected_outputs && data.interpolation.projected_outputs[data.embeddinging_name]) {
-                // console.log("Adding interpolation path for embedding:", data.interpolation, data.embeddinging_name);
-                interpolated_outputs = data.interpolation.projected_outputs[data.embeddinging_name] as [number, number][];
+            let interpolated_outputs = [] as [number, number][][];
+            if (data.interpolations) {
+                // console.log("Adding interpolation path for embedding:", data.interpolations, data.embeddinging_name);
+                interpolated_outputs = data.interpolations.map(int => {
+                    return int.projected_outputs[data.embeddinging_name] as [number, number][];
+                })
             }
 
             sel.selectAll('.interpolation')
-                .data([interpolated_outputs])
+                .data(interpolated_outputs)
                 .join("g")
                 .attr("class", "interpolation")
                 .append("path")
+                .attr("stroke", (d, i) => colorForIndex(i, 0))
                 .attr("d", (d) => {
                     return d3.line()
                         .x(d => xScale(d[0]))
                         .y(d => yScale(d[1]))(d as [number, number][]);
                 })
             // subsample the interpolation data
-            let indices = d3.range(0, interpolated_outputs.length,
-                Math.ceil(interpolated_outputs.length / n_interpolation_subsamples));
-            let projected_smalls = indices.map(i => {
-                let d = interpolated_outputs[i];
-                return ({
-                    x: xScale(d[0]),
-                    y: yScale(d[1]),
-                    data: d,
-                    index: i, // no index for interpolation points
-                    inputs: data.interpolation?.knn_inputs[i] || [],
-                } as ProjectedData);
+            data.interpolations?.forEach((int, i) => {
+                let indices = d3.range(0, int.inputs.length,
+                    Math.ceil(int.inputs.length / n_interpolation_subsamples));
+                indices.push(int.inputs.length - 1);
+                let projected_smalls = indices.map(idx => {
+                    let d = interpolated_outputs[i][idx];
+                    return ({
+                        x: xScale(d[0]),
+                        y: yScale(d[1]),
+                        data: d,
+                        index: idx, // no index for interpolation points
+                        inputs: int.knn_inputs[idx] || [],
+                    } as ProjectedData);
+                });
+                createSpyderFromProjectedData(sel, projected_smalls, `interpolation_spyder_${i}`, spyder_size * 0.6, colorForIndex(i));
             });
-            createSpyderFromProjectedData(sel, projected_smalls, 'interpolation_spyder', spyder_size * 0.6,);
-
+            if (data.hovered && data.hovered.index_in_interpolation >= 0 && data.hovered.interpolation_idx >= 0) {
+                let i = data.hovered.interpolation_idx;
+                let idx = data.hovered.index_in_interpolation;
+                let d = interpolated_outputs[i][idx];
+                if (d) {
+                    let projected_spyder = {
+                        x: xScale(d[0]),
+                        y: yScale(d[1]),
+                        data: d,
+                        index: idx, // no index for interpolation points
+                        inputs: data.interpolations[i]?.knn_inputs[idx] || [],
+                    } as ProjectedData
+                    createSpyderFromProjectedData(sel, [projected_spyder], 'interpolation_spyder_hover', spyder_size * 0.8, colorForIndex(i));
+                }
+            }
+            if (data.previewed_data !== null) {
+                createSpyderFromPoints(sel, [data.previewed_data], 'hovered', spyder_size * 1.2);
+            }
         })
     };
     series.xScale = (...args: [d3.ScaleLinear<number, number>] | []) => {
