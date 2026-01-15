@@ -1,15 +1,11 @@
 default:
-  image: docker:28-cli
-  # services:
-  #   - name: docker:28-dind
-  #     variables:
-  #       HEALTHCHECK_TCP_PORT: "2375"
+  image: docker:29-cli
   before_script:
     # - sleep 30
     - docker info
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
   tags:
-    - shell
+    - docker
 
 stages:
   - build
@@ -18,9 +14,9 @@ stages:
   - deploy
 
 variables:
-  # DOCKER_API_VERSION: "1.44"
-  # DOCKER_DRIVER: overlay2
-  DOCKER_HOST: "unix:///var/run/docker.sock"
+  DOCKER_API_VERSION: "1.44"
+  DOCKER_DRIVER: overlay2
+  DOCKER_HOST: "tcp://docker:2375"
   CONTAINER_FRONTEND_IMAGE: $CI_REGISTRY_IMAGE:frontend_$CI_COMMIT_REF_SLUG
   CONTAINER_BACKEND_IMAGE: $CI_REGISTRY_IMAGE:backend_$CI_COMMIT_REF_SLUG
 
