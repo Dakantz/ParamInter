@@ -1,9 +1,9 @@
 default:
   image: docker:28-cli
-  services:
-    - name: docker:28-dind
-      variables:
-        HEALTHCHECK_TCP_PORT: "2375"
+  # services:
+  #   - name: docker:28-dind
+  #     variables:
+  #       HEALTHCHECK_TCP_PORT: "2375"
   before_script:
     # - sleep 30
     - docker info
