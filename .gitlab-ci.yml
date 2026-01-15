@@ -1,7 +1,7 @@
 default:
-  image: docker:25-cli
+  image: docker:28-cli
   services:
-    - name: docker:25-dind
+    - name: docker:28-dind
       variables:
         HEALTHCHECK_TCP_PORT: "2375"
   before_script:
@@ -16,6 +16,7 @@ stages:
   - deploy
 
 variables:
+  DOCKER_API_VERSION: "1.44"
   CONTAINER_FRONTEND_IMAGE: $CI_REGISTRY_IMAGE:frontend_$CI_COMMIT_REF_SLUG
   CONTAINER_BACKEND_IMAGE: $CI_REGISTRY_IMAGE:backend_$CI_COMMIT_REF_SLUG
 
