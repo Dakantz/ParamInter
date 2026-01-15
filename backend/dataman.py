@@ -53,6 +53,7 @@ class DataMan:
         self.inputs_constrained = inputs_constrained
 
     def load(self):
+        self.data_file = str(self.base_dir / Path(self.data_file))
         print(f"Loading dataset from {self.data_file}...")
 
         if self.dataset_path.exists() is False:
@@ -175,7 +176,7 @@ scivis_man = DataMan(
 privbayes_man = DataMan(
     base_dir=os.getenv("DATA_DIR", "./data"),
     mode=os.getenv("EMBEDDING", "tsne"),
-    data_file="./privbayes_encoded.csv",
+    data_file="/privbayes_encoded.csv",
     data_name="PrivBayes Data",
     short_data_name="privbayes",
     input_cols=18,
@@ -187,7 +188,7 @@ privbayes_man = DataMan(
 mast_man = DataMan(
     base_dir=os.getenv("DATA_DIR", "./data"),
     mode=os.getenv("EMBEDDING", "tsne"),
-    data_file="./data/mast/processed_mast_data.csv",
+    data_file="/mast/processed_mast_data.csv",
     data_name="MAST Data",
     short_data_name="mast",
     input_cols=8,
@@ -198,7 +199,7 @@ mast_man = DataMan(
 eaf_man = DataMan(
     base_dir=os.getenv("DATA_DIR", "./data"),
     mode=os.getenv("EMBEDDING", "tsne"),
-    data_file="./data/eaf/eaf_cleaned.csv",
+    data_file="/eaf/eaf_cleaned.csv",
     data_name="EAF Data",
     short_data_name="eaf",
     input_cols=6,
