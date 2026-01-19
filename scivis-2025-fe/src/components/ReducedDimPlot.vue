@@ -21,6 +21,7 @@ import { MappedData, PlotSelection, PlotSelectionResults } from './types';
 import { AnnotationData, seriesSvgAnnotation } from './helpers/annotation-series';
 import { webglColor } from './helpers/utils';
 import { InterpolationResult } from '../api/Api';
+import { colormaps_d3 } from './helpers/colormaps';
 const { embedded_data, full_data, data_rep, results, embedding_name, interpolations } = defineProps({
     embedded_data: {
         type: Embeddings || null,
@@ -228,7 +229,7 @@ watch(() => selection.value, (newSelection) => {
 const similiarityColorScale = d3
     .scaleSequential()
     .domain([0, 1])
-    .interpolator(d3.interpolateRdYlGn);
+    .interpolator(colormaps_d3['Lajolla']);
 
 watch(() => results.similarities, (sim) => {
     // console.log("Updating similarity colors with data:", sim);

@@ -2,6 +2,7 @@ import * as d3 from "d3";
 import { Api, DataDescription, DataPoint, DataPoints } from "../api/Api";
 import { API_BASE_URL } from "../config";
 import { toRaw } from "vue";
+import { colormaps_d3 } from "../components/helpers/colormaps";
 
 export class Embeddings {
     constructor(
@@ -108,7 +109,8 @@ export class DataRepository {
 
 }
 export function colorForIndex(idx: number, lightness: number = 0): string {
-    let col = d3.color(d3.schemeObservable10[idx % 10]);
+    let offset = idx/4
+    let col = d3.color(colormaps_d3['Lapaz'](offset));
     return col?.brighter(lightness).toString() || d3.schemeObservable10[idx % 10];
 
 }

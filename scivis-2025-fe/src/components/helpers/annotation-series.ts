@@ -176,7 +176,7 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
                         index: idx, // no index for interpolation points
                         inputs: data.interpolations[i]?.knn_inputs[idx] || [],
                     } as ProjectedData
-                    createSpyderFromProjectedData(sel, [projected_spyder], 'interpolation_spyder_hover', spyder_size * 0.8, colorForIndex(i));
+                    createSpyderFromProjectedData(sel, [projected_spyder], 'interpolation_spyder_hover', spyder_size * 0.8, colorForIndex(i, 1));
                 }
             }
             if (data.previewed_data !== null) {
