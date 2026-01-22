@@ -1,9 +1,9 @@
 default:
-  image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
+  image: docker:29-cli
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+  tags:
+    - docker
 
 stages:
   - build
@@ -12,10 +12,9 @@ stages:
   - deploy
 
 variables:
-  # Use TLS https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#tls-enabled
-  DOCKER_HOST: tcp://docker:2375
+  DOCKER_API_VERSION: "1.44"
   DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: ""
+  DOCKER_HOST: "unix:///var/run/docker.sock"
   CONTAINER_FRONTEND_IMAGE: $CI_REGISTRY_IMAGE:frontend_$CI_COMMIT_REF_SLUG
   CONTAINER_BACKEND_IMAGE: $CI_REGISTRY_IMAGE:backend_$CI_COMMIT_REF_SLUG
 

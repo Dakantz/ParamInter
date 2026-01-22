@@ -19,6 +19,7 @@ def get_data_description():
         mean_values=data_man.cleaned.mean().to_dict(),
         std_values=data_man.cleaned.std().to_dict(),
         all_columns=data_man.cleaned.columns.tolist(),
+        inputs_constrained=data_man.inputs_constrained,
     )
 
 

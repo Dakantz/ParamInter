@@ -17,6 +17,7 @@ class DataDescription(BaseModel):
     max_values: dict[str, float]
     mean_values: dict[str, float]
     std_values: dict[str, float]
+    inputs_constrained: bool = True
 
 
 class DataPoints(BaseModel):
@@ -72,6 +73,25 @@ class DataPointSensitivity(BaseModel):
 class DataPointSimilarity(BaseModel):
     values: list[float]
     k: int
+
+
+class LinearTarget(BaseModel):
+    name: str
+    weight: float
+    val: float
+
+
+class DataPointMinimzer(BaseModel):
+    targets: list[LinearTarget] = []
+
+
+class DataPointMinimzerInterpolation(BaseModel):
+    min: DataPointMinimzer
+    start_idx: int
+    samples: int = 256
+    div_penalty: float = 0.25
+    cost_penalty: float = 0.25
+    k_options: int = 3
 
 
 class DataPointSuggestions(BaseModel):

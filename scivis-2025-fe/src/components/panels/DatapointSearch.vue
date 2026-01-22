@@ -5,7 +5,7 @@
         <div class="search-results">
             <div v-for="(result, idx) in state.search_results" :key="idx" class="search-result-item"
                 @mouseenter="emit('preview', result.index || -1)" @click.capture="emit('select', result.index || -1)">
-                <SpyderChart :rep="data_rep" v-model="result.inputs" :editable="false" />
+                <SpyderChart :rep="data_rep" v-model="result.inputs" :editable="false" :height="'6vw'" :show_labels="false" />
             </div>
         </div>
     </div>
@@ -15,7 +15,7 @@
 import { ref, reactive, watch, onMounted, useTemplateRef } from 'vue';
 import * as d3 from 'd3';
 import { DataRepository } from '../../proc/types';
-import SpyderChart from './SpyderChart.vue';
+import SpyderChart from '../spyder/SpyderChart.vue';
 import { DataPoint } from '../../api/Api';
 
 const start_idx = defineModel({
@@ -44,15 +44,21 @@ watch(() => data_rep.description, (desc) => {
     if (!desc) return;
 
     state.dimensions = data_rep.description?.input_cols || [];
-    let max_sum = Object.keys(data_rep.description?.max_values || {}).filter((k) => state.dimensions.includes(k)).reduce((sum, k) => sum + (data_rep.description?.max_values[k] || 0), 0);
-    state.dim_data = state.dimensions.map(type => (data_rep.description?.max_values?.[type] || 0) / state.dimensions.length);
+
+    if (data_rep && data_rep.description && data_rep.description.inputs_constrained) {
+        let max_sum = Object.keys(data_rep.description?.max_values || {}).filter((k) => state.dimensions.includes(k)).reduce((sum, k) => sum + (data_rep.description?.max_values[k] || 0), 0);
+        state.dim_data = state.dimensions.map(type => (data_rep.description?.max_values?.[type] || 0) / state.dimensions.length);
+    } else {
+        state.dim_data = state.dimensions.map((type) => data_rep.description?.mean_values?.[type] || 0);
+    }
+    console.log("Initialized dim_data:", state.dim_data);
 }, { immediate: true });
 
 watch(() => state.dim_data, (dim_data) => {
     if (dim_data.length > 0) {
         data_rep.client.dataPoint.getSimilarDataPointsDataPointSimilarPost({
             values: dim_data.map((v) => v),
-            k: 4
+            k: 20
         }).then((similarity) => {
             // console.log("Similarity results:", similarity);
             state.search_results = similarity.data;
@@ -79,16 +85,20 @@ watch(() => state.dim_data, (dim_data) => {
 
 .search-results {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
     align-items: center;
-    width: 80%;
+    width: 100%;
+    max-width: 24vw;
 }
 
 .search-result-item {
-    width: 100%;
+    width: 7vw;
+    height: 7vw;
     display: flex;
     justify-content: center;
-    margin: 5px 0;
+    margin: 5px;
     padding: 5px;
     border: 1px solid #ccc;
     background-color: #f9f9f9;

@@ -39,6 +39,7 @@ class DataMan:
         input_cols=6,
         output_cols=64,
         time_col: int | None = None,
+        inputs_constrained: bool = True,
     ):
         self.base_dir = Path(base_dir)
         self.mode = mode
@@ -49,15 +50,17 @@ class DataMan:
         self.output_cols = output_cols
         self.dataset_path = Path(base_dir) / Path("datasets") / Path(short_data_name)
         self.time_col = time_col
+        self.inputs_constrained = inputs_constrained
 
     def load(self):
+        self.data_file = str(self.base_dir / Path(self.data_file))
         print(f"Loading dataset from {self.data_file}...")
 
         if self.dataset_path.exists() is False:
             os.makedirs(self.dataset_path)
 
         if self.data_file.endswith(".csv"):
-            data = pd.read_csv(self.data_file)
+            data = pd.read_csv("./data" + self.data_file)
         else:
             data = pd.read_table(self.data_file)
         time_col_offset = 1 if self.time_col is not None else 0
@@ -169,32 +172,41 @@ class DataMan:
 scivis_man = DataMan(
     base_dir=os.getenv("DATA_DIR", "./data"), mode=os.getenv("EMBEDDING", "tsne")
 )
-# scivis_man.load()
 
 privbayes_man = DataMan(
     base_dir=os.getenv("DATA_DIR", "./data"),
     mode=os.getenv("EMBEDDING", "tsne"),
-    data_file="./privbayes_encoded.csv",
+    data_file="/privbayes_encoded.csv",
     data_name="PrivBayes Data",
     short_data_name="privbayes",
     input_cols=18,
     output_cols=27,
     time_col=0,
 )
-# privbayes_man.load()
 
 
 mast_man = DataMan(
     base_dir=os.getenv("DATA_DIR", "./data"),
     mode=os.getenv("EMBEDDING", "tsne"),
-    data_file="./data/mast/processed_mast_data.csv",
+    data_file="/mast/processed_mast_data.csv",
     data_name="MAST Data",
     short_data_name="mast",
     input_cols=8,
     output_cols=10,
     time_col=0,
 )
-# mast_man.load()
 
-data_man = privbayes_man
+eaf_man = DataMan(
+    base_dir=os.getenv("DATA_DIR", "./data"),
+    mode=os.getenv("EMBEDDING", "tsne"),
+    data_file="/eaf/eaf_cleaned.csv",
+    data_name="EAF Data",
+    short_data_name="eaf",
+    input_cols=6,
+    output_cols=5,
+    time_col=0,
+    inputs_constrained=False,
+)
+
+data_man = eaf_man
 data_man.load()

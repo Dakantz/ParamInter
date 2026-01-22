@@ -1,12 +1,17 @@
 from fastapi import APIRouter, Body, Depends
 import numpy as np
+import pandas as pd
 from pydantic import BaseModel
 from sklearn.neighbors import NearestNeighbors
+from torch import argmin
+from torch.onnx.symbolic_opset9 import to
 from tqdm import tqdm
 
 from backend.models import (
     DataDescription,
     DataPoint,
+    DataPointMinimzer,
+    DataPointMinimzerInterpolation,
     DataPointSensitivity,
     DataPointSimilarity,
     DataPointSuggestions,
@@ -16,9 +21,11 @@ from backend.models import (
 )
 
 from backend.dataman import data_man
-
+from backend.routers.minimizer import minimizer_router
 
 dp_router = APIRouter(prefix="/data-point")
+
+dp_router.include_router(minimizer_router)
 
 
 @dp_router.get("/similarity-scores/{index}")

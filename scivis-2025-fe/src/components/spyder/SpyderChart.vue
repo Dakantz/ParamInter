@@ -14,7 +14,7 @@ import { DataRepository } from '../../proc/types';
 const dim_data = defineModel<Array<number>>({
     default: () => []
 });
-const { editable, factor, sensitivities, rep } = defineProps({
+const { editable, factor, sensitivities, rep, height, color, show_labels } = defineProps({
     rep: {
         type: Object as () => DataRepository,
         default: () => (null)
@@ -30,6 +30,18 @@ const { editable, factor, sensitivities, rep } = defineProps({
     sensitivities: {
         type: Array as () => Array<number>,
         default: () => []
+    },
+    height: {
+        type: String,
+        default: '20vh'
+    },
+    color: {
+        type: String,
+        default: 'rgba(58, 128, 0, 0.72)'
+    },
+    show_labels: {
+        type: Boolean,
+        default: true
     }
 });
 const plot = useTemplateRef('plot');
@@ -77,7 +89,8 @@ function updateChart() {
         const svg = d3.select(plot.value)
             .attr('width', width)
             .attr('height', height);
-        const radius = Math.min(width, height) / 2 - 20; // Padding
+        const padding = show_labels ? 20 : 4;
+        const radius = Math.min(width, height) / 2 - padding; // Padding
         const center = { x: width / 2, y: height / 2 };
 
         const angleScale = d3.scaleLinear()
@@ -101,38 +114,40 @@ function updateChart() {
             .attr('y2', d => radius * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length)))
             .attr('stroke', 'darkgray')
             .attr('stroke-width', 1);
-        const text = g.append('g')
-            .attr('class', 'spider-text')
-            .selectAll('g.spider-text-item')
-            .data(dim_mapped)
-            .join('g')
-            .attr('transform', d => {
-                let x = (radius + 5) * Math.cos(d.idx * (2 * Math.PI / dim_mapped.length))
-                let y = (radius + 5) * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length))
-                let angle = d.idx * (360 / dim_mapped.length) + 90;
-                if (angle > 180) {
-                    angle -= 360; // Normalize angle to [-180, 180]
-                }
-                if (angle < -90) {
-                    angle += 180; // Adjust for left side text
-                }
-                if (angle > 90) {
-                    angle -= 180; // Adjust for right side text
-                }
-                d.angle = angle; // Store angle for reference
-                return `translate(${x}, ${y}), rotate(${angle})`;
-            })
-            .append('text')
-            .attr('x', 0)
-            .attr('y', 0)
-            .attr('text-anchor', d => {
-                return 'middle'; // 'start' or 'end' based on position
-                //rotate the text based on the angle
-            })
-            .text(d => d.name)
-            .attr('font-size', '10px')
-            .attr('fill', 'black')
-            .attr('class', 'spider-text-item')
+        if (show_labels) {
+            const text = g.append('g')
+                .attr('class', 'spider-text')
+                .selectAll('g.spider-text-item')
+                .data(dim_mapped)
+                .join('g')
+                .attr('transform', d => {
+                    let x = (radius + 5) * Math.cos(d.idx * (2 * Math.PI / dim_mapped.length))
+                    let y = (radius + 5) * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length))
+                    let angle = d.idx * (360 / dim_mapped.length) + 90;
+                    if (angle > 180) {
+                        angle -= 360; // Normalize angle to [-180, 180]
+                    }
+                    if (angle < -90) {
+                        angle += 180; // Adjust for left side text
+                    }
+                    if (angle > 90) {
+                        angle -= 180; // Adjust for right side text
+                    }
+                    d.angle = angle; // Store angle for reference
+                    return `translate(${x}, ${y}), rotate(${angle})`;
+                })
+                .append('text')
+                .attr('x', 0)
+                .attr('y', 0)
+                .attr('text-anchor', d => {
+                    return 'middle'; // 'start' or 'end' based on position
+                    //rotate the text based on the angle
+                })
+                .text(d => d.name)
+                .attr('font-size', '10px')
+                .attr('fill', 'black')
+                .attr('class', 'spider-text-item')
+        }
         const spider = g
             .selectAll('path.spider-path')
             .data([dim_mapped])
@@ -158,7 +173,7 @@ function updateChart() {
             })
             // .attr('class', 'spider-path')
             .attr('class', () => {
-                return editable ? 'spider-path' : 'fixed-spider';
+                return 'spider-path';
             })
         const filtered_sensitivities = sensitivities.map((s, i) => {
             return { sense: s, idx: i, val: dim_mapped[i].rescale_val, name: dim_mapped[i].name, effective_length: radius * (s / (factor)) };
@@ -232,9 +247,26 @@ function updateChart() {
                     let newValue = Math.max(0, Math.min(1, radius_mouse));
                     newValue = inverseSpider(newValue, closest_dim.min, closest_dim.max);
                     dim_data.value[idx] = newValue;
+
                     //normalize the other values
-                    const sum = dim_data.value.reduce((a, b) => a + b, 0);
-                    dim_data.value = dim_data.value.map(v => v / sum);
+                    if (rep && rep.description && rep.description.inputs_constrained) {
+                        let min_values = rep.description.min_values;
+                        let max_values = rep.description.max_values;
+                        let normed_values = dim_data.value.map((v, i) => {
+                            let dim_name = dimensions.value[i];
+                            return (v - min_values[dim_name]) / (max_values[dim_name] - min_values[dim_name]);
+                        });
+                        const current_sum = normed_values.reduce((a, b) => a + b, 0);
+                        const rescaled_values = normed_values.map((v, i) => {
+                            return v / current_sum;
+                        });
+                        dim_data.value = rescaled_values.map((v, i) => {
+                            let dim_name = dimensions.value[i];
+                            return v * (max_values[dim_name] - min_values[dim_name]) + min_values[dim_name];
+                        });
+                    } else {
+                        dim_data.value = [...dim_data.value];
+                    }
                     updateChart();
                 }
             })
@@ -319,14 +351,37 @@ watch(() => sensitivities, (sense) => {
         updateChart();
     }
 }, { immediate: true });
+
+const light_color = computed(() => {
+    if (editable) {
+        return "rgba(173, 216, 230, 0.541)"
+    }
+    if (!editable) {
+        let col = d3.color(color);
+        if (!col) return color;
+        col.opacity = 0.6;
+        return col.brighter(2).toString();
+    }
+});
+const dark_color = computed(() => {
+    if (editable) {
+        return "darkblue"
+    }
+    if (!editable) {
+        let col = d3.color(color);
+        if (!col) return color;
+        col.opacity = 0.6;
+        return col.toString();
+    }
+});
+
 </script>
 
 <style>
 .spider-container {
     width: 100%;
-    height: 100%;
-    min-width: 200px;
-    min-height: 20vw;
+    min-width: 100px;
+    height: v-bind(height);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -334,8 +389,8 @@ watch(() => sensitivities, (sense) => {
 }
 
 .spider-path {
-    fill: rgba(173, 216, 230, 0.541);
-    stroke: darkblue;
+    fill: v-bind(light_color);
+    stroke: v-bind(dark_color);
     stroke-width: 1px;
 }
 
@@ -346,12 +401,6 @@ watch(() => sensitivities, (sense) => {
 .plot-svg {
     width: 100%;
     /* height: 100%; */
-}
-
-.fixed-spider {
-    fill: rgba(128, 255, 0, 0.5);
-    stroke: rgba(58, 128, 0, 0.72);
-    stroke-width: 1px;
 }
 
 .sensitivity {
