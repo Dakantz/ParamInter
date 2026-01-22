@@ -14,7 +14,7 @@ import { DataRepository } from '../../proc/types';
 const dim_data = defineModel<Array<number>>({
     default: () => []
 });
-const { editable, factor, sensitivities, rep, height, color } = defineProps({
+const { editable, factor, sensitivities, rep, height, color, show_labels } = defineProps({
     rep: {
         type: Object as () => DataRepository,
         default: () => (null)
@@ -38,6 +38,10 @@ const { editable, factor, sensitivities, rep, height, color } = defineProps({
     color: {
         type: String,
         default: 'rgba(58, 128, 0, 0.72)'
+    },
+    show_labels: {
+        type: Boolean,
+        default: true
     }
 });
 const plot = useTemplateRef('plot');
@@ -85,7 +89,8 @@ function updateChart() {
         const svg = d3.select(plot.value)
             .attr('width', width)
             .attr('height', height);
-        const radius = Math.min(width, height) / 2 - 20; // Padding
+        const padding = show_labels ? 20 : 4;
+        const radius = Math.min(width, height) / 2 - padding; // Padding
         const center = { x: width / 2, y: height / 2 };
 
         const angleScale = d3.scaleLinear()
@@ -109,38 +114,40 @@ function updateChart() {
             .attr('y2', d => radius * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length)))
             .attr('stroke', 'darkgray')
             .attr('stroke-width', 1);
-        const text = g.append('g')
-            .attr('class', 'spider-text')
-            .selectAll('g.spider-text-item')
-            .data(dim_mapped)
-            .join('g')
-            .attr('transform', d => {
-                let x = (radius + 5) * Math.cos(d.idx * (2 * Math.PI / dim_mapped.length))
-                let y = (radius + 5) * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length))
-                let angle = d.idx * (360 / dim_mapped.length) + 90;
-                if (angle > 180) {
-                    angle -= 360; // Normalize angle to [-180, 180]
-                }
-                if (angle < -90) {
-                    angle += 180; // Adjust for left side text
-                }
-                if (angle > 90) {
-                    angle -= 180; // Adjust for right side text
-                }
-                d.angle = angle; // Store angle for reference
-                return `translate(${x}, ${y}), rotate(${angle})`;
-            })
-            .append('text')
-            .attr('x', 0)
-            .attr('y', 0)
-            .attr('text-anchor', d => {
-                return 'middle'; // 'start' or 'end' based on position
-                //rotate the text based on the angle
-            })
-            .text(d => d.name)
-            .attr('font-size', '10px')
-            .attr('fill', 'black')
-            .attr('class', 'spider-text-item')
+        if (show_labels) {
+            const text = g.append('g')
+                .attr('class', 'spider-text')
+                .selectAll('g.spider-text-item')
+                .data(dim_mapped)
+                .join('g')
+                .attr('transform', d => {
+                    let x = (radius + 5) * Math.cos(d.idx * (2 * Math.PI / dim_mapped.length))
+                    let y = (radius + 5) * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length))
+                    let angle = d.idx * (360 / dim_mapped.length) + 90;
+                    if (angle > 180) {
+                        angle -= 360; // Normalize angle to [-180, 180]
+                    }
+                    if (angle < -90) {
+                        angle += 180; // Adjust for left side text
+                    }
+                    if (angle > 90) {
+                        angle -= 180; // Adjust for right side text
+                    }
+                    d.angle = angle; // Store angle for reference
+                    return `translate(${x}, ${y}), rotate(${angle})`;
+                })
+                .append('text')
+                .attr('x', 0)
+                .attr('y', 0)
+                .attr('text-anchor', d => {
+                    return 'middle'; // 'start' or 'end' based on position
+                    //rotate the text based on the angle
+                })
+                .text(d => d.name)
+                .attr('font-size', '10px')
+                .attr('fill', 'black')
+                .attr('class', 'spider-text-item')
+        }
         const spider = g
             .selectAll('path.spider-path')
             .data([dim_mapped])
@@ -373,7 +380,7 @@ const dark_color = computed(() => {
 <style>
 .spider-container {
     width: 100%;
-    min-width: 140px;
+    min-width: 100px;
     height: v-bind(height);
     display: flex;
     justify-content: center;

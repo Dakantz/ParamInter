@@ -1,27 +1,27 @@
 <template>
-    <div class="datapoint-guide">
+    <div class="datapoint-guide" :class="{ 'non_active': !interpolations }">
         <h2>Explore Interpolation</h2>
         <h3>Ends</h3>
 
-        <div class="interpolation-ends">
+        <div class="interpolation-ends" v-if="interpolations">
             <div v-for="end, i in interpolation_ends" :key="i" class="interpolation-end"
                 :class="highlightClass(state.hovered_interpolation.interpolation_idx, i)">
-                <SpyderChart :rep="data_rep" v-model="interpolation_ends[i]" :editable="false" :height="'13vh'"
-                    :color="colorForIndex(i)" />
+                <SpyderChart :rep="data_rep" v-model="interpolation_ends[i]" :editable="false" :height="'10vh'"
+                    :color="colorForIndex(i)"  :show_labels="false" />
             </div>
         </div>
 
 
         <h3>Interpolated Output Values</h3>
-        <div class="editable-outs">
-            <div v-for="(types, cat_name) of state.visible_types" :key="cat_name">
+        <div class="interpolation-outputs" v-if="interpolations">
+            <div v-for="(types, cat_name) of state.visible_types" :key="cat_name" class="interpolation-category">
                 <IntOverview :int_result="(state.interpolation_copy as InterpolationResult[])" :types="types"
                     :data_rep="data_rep" :cat_name="cat_name" @hover="state.hovered_value = $event"
                     v-model="state.hovered_interpolation" @select="selectDp($event)" />
             </div>
         </div>
         <h3>Interpolated Input Values</h3>
-        <div class="interpolation-hover" v-if="state.hovered_dp">
+        <div class="interpolation-hover" v-if="interpolations && state.hovered_dp">
             <SpyderChart :rep="data_rep" v-model="state.hovered_dp.inputs" :editable="false"
                 :sensitivities="state.sensitivities_for_hover" :height="'20vh'"
                 :color="colorForIndex(state.hovered_interpolation.interpolation_idx)" />
@@ -38,11 +38,10 @@
 import { ref, reactive, watch, onMounted, useTemplateRef, computed } from 'vue';
 import * as d3 from 'd3';
 import { colorForIndex, DataRepository, LoadedDataPoints } from '../../proc/types';
-import SpyderChart from './SpyderChart.vue';
+import SpyderChart from '../spyder/SpyderChart.vue';
 import { DataPoint, InterpolationResult } from '../../api/Api';
-import Overview from './interpolation/IntOverview.vue';
 import { HoveredInterpolation, PlotSelection } from '../types';
-import IntOverview from './interpolation/IntOverview.vue';
+import IntOverview from '../interpolation/IntOverview.vue';
 onMounted(() => {
     console.log("Interpolation component mounted");
 });
@@ -140,7 +139,11 @@ function showSensitivity(out_col: string, hovered_index: number) {
             resolution: 16
         }).then((result) => {
             // console.log("Sensitivity Analysis Result:", result);
-            state.sensitivities_for_hover = result.data[0].sensitivity_scores;
+            if (result.data.length > 0){
+                state.sensitivities_for_hover = result.data[0].sensitivity_scores;
+            }else{
+                state.sensitivities_for_hover = [];
+            }
         }).catch((error) => {
             console.error("Error fetching sensitivity analysis:", error);
         });
@@ -163,27 +166,33 @@ function showSensitivity(out_col: string, hovered_index: number) {
     background-color: #e0e0e0;
 }
 
-.editable-outs {
+.interpolation-outputs {
     display: flex;
     flex-direction: row;
     align-items: start;
     justify-content: start;
     margin: 4px;
+    max-width: 100%;
+    flex-wrap: wrap;
 }
-
+.interpolation-category {
+    flex: 1;
+    padding: 0 10px;
+    width: 132px;
+}
 
 .interpolation-ends {
     display: flex;
     flex-direction: row;
     margin: 10px 0;
-    /* max-height: 15vh; */
+    /* max-height: 10vh; */
 }
 
 .interpolation_end {
     flex: 1;
     margin: 0 10px;
-    width: 50%;
-    height: 15vh;
+    width: 132px;
+    height: 10vh;
     display: flex;
     align-items: center;
 }

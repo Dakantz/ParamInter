@@ -1,7 +1,7 @@
 <template>
-    <div class="outputs-overview">
+    <div class="int-outputs-overview">
         <h2>{{ cat_name }}</h2>
-        <div class="output-item" v-for="(t) in type_indices" :key="t.idx">
+        <div class="int-output-item" v-for="(t) in type_indices" :key="t.idx">
             <IntSingleOut :out_name="t.name" :int_results="int_results" v-model="hovered_index" :data_rep="data_rep"
                 :out_idx="t.idx" @hover="emit('hover', t.name)" @select="emit('select', $event)" />
         </div>
@@ -9,10 +9,10 @@
 </template>
 <script lang="ts" setup>
 import { watch } from 'vue';
-import { DataPoint, InterpolationResult } from '../../../api/Api';
-import { DataRepository } from '../../../proc/types';
+import { DataPoint, InterpolationResult } from '../../api/Api';
+import { DataRepository } from '../../proc/types';
 import IntSingleOut from './IntSingleOut.vue';
-import { HoveredInterpolation } from '../../types';
+import { HoveredInterpolation } from '../types';
 
 const emit = defineEmits<{
     (e: 'hover', name: string): void;
@@ -49,7 +49,7 @@ watch(() => int_results, (int) => {
 }, { immediate: true });
 </script>
 <style scoped>
-.outputs-overview {
+.int-outputs-overview {
     display: flex;
     flex-direction: column;
     font-size: 8px;
@@ -62,7 +62,7 @@ h2 {
     margin-left: 10px;
 }
 
-.output-item {
+.int-output-item {
     margin: 2px 0;
 }
 </style>

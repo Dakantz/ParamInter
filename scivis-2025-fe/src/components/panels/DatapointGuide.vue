@@ -1,10 +1,10 @@
 <template>
-    <div class="datapoint-guide">
-        <h2>Adapt Mixture</h2>
+    <div class="datapoint-guide" :class="{ 'non_active': !state.dp }">
+        <h2>Optimize Mixture</h2>
         <h3>Selection</h3>
         <SpyderChart v-if="state.dp" :rep="data_rep" v-model="state.dp.inputs" :editable="false"
             :sensitivities="state.sensitivities_for_hover" />
-        <h3>Target Output Values</h3>
+        <h3>Choose Dimensions</h3>
         <div class="editable-outs" v-if="state.dp">
             <!-- <div class="">
 
@@ -18,7 +18,7 @@
         <h3>Linear Objective</h3>
         <div class="linear-objectives">
             <div v-for="(target, idx) in state.linear_combination" :key="idx"
-                @mouseenter="showSensitivity(target.name)">
+                @mouseenter="showSensitivity(target.name)" class="linear-objective">
                 <SingleAdj v-model="target.val" :out_name="target.name" :data_rep="data_rep"
                     @hover="showSensitivity(target.name)" @remove="removeTarget(target.name)" />
             </div>
@@ -47,11 +47,11 @@
 import { ref, reactive, watch, onMounted, useTemplateRef } from 'vue';
 import * as d3 from 'd3';
 import { DataRepository, LoadedDataPoints } from '../../proc/types';
-import SpyderChart from './SpyderChart.vue';
+import SpyderChart from '../spyder/SpyderChart.vue';
 import { DataPoint, LinearTarget } from '../../api/Api';
-import Overview from './adjuster/Overview.vue';
+import Overview from '../adjuster/Overview.vue';
 import { PlotSelection } from '../types';
-import SingleAdj from './adjuster/SingleAdj.vue';
+import SingleAdj from '../adjuster/SingleAdj.vue';
 
 const selection = defineModel<PlotSelection>();
 const emit = defineEmits<{
@@ -165,7 +165,7 @@ watch(() => state.linear_combination, (newComb) => {
 
 <style scoped>
 .datapoint-guide {
-    width: 100%;
+    min-width: 100%;
     display: flex;
     flex-direction: column;
     justify-items: center;
@@ -187,6 +187,7 @@ watch(() => state.linear_combination, (newComb) => {
     align-items: start;
     justify-content: start;
     margin: 4px;
+    max-width: 24vw;
 }
 
 
@@ -216,6 +217,11 @@ watch(() => state.linear_combination, (newComb) => {
     display: flex;
     flex-direction: column;
     align-items: center;
+    padding: 5px 10px;
+    width: 100%;
+}
+.linear-objective {
     margin: 5px 0;
+    width: 100%;
 }
 </style>

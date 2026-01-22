@@ -14,11 +14,11 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, useTemplateRef, watch, onUpdated, reactive } from 'vue';
-import { colorForIndex, DataRepository } from '../../../proc/types';
+import { colorForIndex, DataRepository } from '../../proc/types';
 import * as d3 from 'd3';
-import { InterpolationResult } from '../../../api/Api';
-import { outValues } from '../../helpers/utils';
-import { HoveredInterpolation } from '../../types';
+import { InterpolationResult } from '../../api/Api';
+import { outValues } from '../helpers/utils';
+import { HoveredInterpolation } from '../types';
 
 const emit = defineEmits<{
     (e: 'hover', index: number): void;
@@ -175,6 +175,9 @@ watch(() => out_values.value, () => {
     display: flex;
     flex-direction: column;
     align-items: center;
+    width: 8vw;
+    max-width: 128px;
+    padding: 5px;
 }
 
 .single-outview:hover {
@@ -184,18 +187,23 @@ watch(() => out_values.value, () => {
 .out-name {
     font-weight: bold;
     margin-bottom: 2px;
+    max-width: 100%;
+    width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    text-align: start;
 }
 
 .out-value {
     display: flex;
     flex-direction: row;
     align-items: center;
+
+    max-width: 100%;
+    width: 100%;
 }
 
-.out-value .value {
-    margin: 0 10px;
-    font-size: 1.2em;
-}
 
 .svg-outchart {
     min-width: 64px;

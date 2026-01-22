@@ -1,6 +1,6 @@
 <template>
     <div class="reduced-dim-plot">
-        <div :id="`plot-${embedding_name}`" class="plot-container" ref="plot" style="width: 420px; height: 420px; ">
+        <div :id="`plot-${embedding_name}`" class="plot-container" ref="plot" style="width: 22vw; height: 22vw; ">
         </div>
         <!-- <svg width="360" height="360" xmlns="http://www.w3.org/2000/svg" ref="plot" :id="`plot-${embedding_name}`">
             <g transform="scale(360,360)">
@@ -229,6 +229,7 @@ watch(() => selection.value, (newSelection) => {
 const similiarityColorScale = d3
     .scaleSequential()
     .domain([0, 1])
+    .range([0, 0.5])
     .interpolator(colormaps_d3['Lajolla']);
 
 watch(() => results.similarities, (sim) => {
@@ -259,10 +260,10 @@ onMounted(() => {
 
 <style>
 .reduced-dim-plot {
-    min-width: 420px;
-    min-height: 420px;
-    max-width: 420px;
-    max-height: 420px;
+    min-width: 22vw;
+    min-height: 22vw;
+    max-width: 22vw;
+    max-height: 22vw;
     margin: 7px;
     display: flex;
 }

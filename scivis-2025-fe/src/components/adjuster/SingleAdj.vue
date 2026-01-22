@@ -1,8 +1,9 @@
 <template>
-    <div class="single-outview">
-        <span class="out-name">{{ out_name }}={{ selected_value.toFixed(2) }} <span>({{ min_value.toFixed(2) }}, {{
-            max_value.toFixed(2) }})</span> <button @click="$emit('remove')">X</button></span>
-        <div class="out-value" ref="wrapper_ref" @compositionend="updateGraph">
+    <div class="adj-outview">
+        <div class="adj-top"> <span class="adjuster-name"> {{ out_name }}={{ selected_value.toFixed(2) }}({{
+            min_value.toFixed(2) }}, {{
+                    max_value.toFixed(2) }})</span> <button @click="$emit('remove')">X</button></div>
+        <div class="dp-value" ref="wrapper_ref" @compositionend="updateGraph">
             <svg ref="svg_ref" class="svg-outchart" width="0px" height="0px">
                 <g>
                     <path d="" />
@@ -14,10 +15,8 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, useTemplateRef, watch, onUpdated, reactive } from 'vue';
-import { DataRepository } from '../../../proc/types';
+import { DataRepository } from '../../proc/types';
 import * as d3 from 'd3';
-import { InterpolationResult } from '../../../api/Api';
-import { outValues } from '../../helpers/utils';
 defineEmits<{
     (e: 'hover'): void;
     (e: 'remove'): void;
@@ -122,32 +121,48 @@ watch(() => selected_value.value, () => {
 }, { immediate: true });
 </script>
 <style>
-.single-outview {
+.adj-outview {
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-width: 80%;
+    width: 100%;
+    padding: 5px;
 }
 
-.single-outview:hover {
+.adj-outview:hover {
     background-color: #f0f0f0;
 }
 
-.out-name {
+.adjuster-name {
     font-weight: bold;
     margin-bottom: 2px;
+    max-width: 90%;
+    width:  90%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    text-align: start;
+}
+.adj-top {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 5px 5px;
+    box-sizing: border-box;
 }
 
-.out-value {
+.dp-value {
     display: flex;
     flex-direction: row;
     align-items: center;
     width: 100%;
 }
 
-.out-value .value {
+.dp-value .value {
     margin: 0 10px;
-    font-size: 1.2em;
+    font-size: 1.1em;
 }
 
 .svg-outchart {

@@ -109,8 +109,8 @@ export class DataRepository {
 
 }
 export function colorForIndex(idx: number, lightness: number = 0): string {
-    let offset = idx/4
-    let col = d3.color(colormaps_d3['Lapaz'](offset));
+    let offset = idx / 8
+    let col = d3.color(colormaps_d3['Roma'](1 - offset));
     return col?.brighter(lightness).toString() || d3.schemeObservable10[idx % 10];
 
 }

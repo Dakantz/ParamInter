@@ -1,0 +1,5 @@
+.non_active {
+    opacity: 0.6;
+    color: gray;
+    width: 25vw;
+}

@@ -60,7 +60,7 @@ class DataMan:
             os.makedirs(self.dataset_path)
 
         if self.data_file.endswith(".csv"):
-            data = pd.read_csv(self.data_file)
+            data = pd.read_csv("./data" + self.data_file)
         else:
             data = pd.read_table(self.data_file)
         time_col_offset = 1 if self.time_col is not None else 0
@@ -208,5 +208,5 @@ eaf_man = DataMan(
     inputs_constrained=False,
 )
 
-data_man = scivis_man
+data_man = eaf_man
 data_man.load()

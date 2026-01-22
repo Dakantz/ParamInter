@@ -10,9 +10,8 @@
     </div>
 </template>
 <script lang="ts" setup>
-import { DataPoint } from '../../../api/Api';
-import { DataRepository } from '../../../proc/types';
-import SingleOut from './SingleOut.vue';
+import { DataPoint } from '../../api/Api';
+import { DataRepository } from '../../proc/types';
 
 
 const emit = defineEmits<{
@@ -68,5 +67,12 @@ h2 {
 
 .output-item {
     margin: 1px 0;
+    width: 128px;
+}
+
+.output-item button {
+    width: 100%;
+    padding: 4px;
+    /* height: 2.1rem */
 }
 </style>

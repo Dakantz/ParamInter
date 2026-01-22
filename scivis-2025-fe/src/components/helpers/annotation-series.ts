@@ -127,7 +127,10 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
             sel.selectAll('.hovered').remove();
 
             sel.selectAll('.interpolation').remove();
-            sel.selectAll('.interpolation_spyder').remove();
+            data.interpolations?.forEach((int, i) => {
+                sel.selectAll(`.interpolation_path_${i}`).remove();
+                sel.selectAll(`.interpolation_spyder_${i}`).remove();
+            });
             let interpolated_outputs = [] as [number, number][][];
             if (data.interpolations) {
                 // console.log("Adding interpolation path for embedding:", data.interpolations, data.embeddinging_name);
@@ -148,12 +151,14 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
                         .y(d => yScale(d[1]))(d as [number, number][]);
                 })
             // subsample the interpolation data
-            data.interpolations?.forEach((int, i) => {
+            let interpolation_idx = data.interpolations?.map((int, idx) => {
+                return { int, idx };
+            }).filter(({ int, idx }) => idx == data.hovered?.interpolation_idx).forEach(({ int, idx }) => {
                 let indices = d3.range(0, int.inputs.length,
                     Math.ceil(int.inputs.length / n_interpolation_subsamples));
                 indices.push(int.inputs.length - 1);
-                let projected_smalls = indices.map(idx => {
-                    let d = interpolated_outputs[i][idx];
+                let projected_smalls = indices.map(small_idx => {
+                    let d = interpolated_outputs[idx][small_idx];
                     return ({
                         x: xScale(d[0]),
                         y: yScale(d[1]),
@@ -162,7 +167,7 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
                         inputs: int.knn_inputs[idx] || [],
                     } as ProjectedData);
                 });
-                createSpyderFromProjectedData(sel, projected_smalls, `interpolation_spyder_${i}`, spyder_size * 0.6, colorForIndex(i));
+                createSpyderFromProjectedData(sel, projected_smalls, `interpolation_spyder_${idx}`, spyder_size * 0.6, colorForIndex(idx));
             });
             if (data.hovered && data.hovered.index_in_interpolation >= 0 && data.hovered.interpolation_idx >= 0) {
                 let i = data.hovered.interpolation_idx;
