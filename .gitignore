@@ -12,3 +12,6 @@ wheels/
 alloy_data.txt
 data
 *.csv
+*.err
+*.out
+results/*.csv

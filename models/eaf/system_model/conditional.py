@@ -14,22 +14,22 @@
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, pt.expRESS OR
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, np.expRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-import torch as pt
+import numpy as np
 from dataclasses import dataclass, field, asdict
 
 
-def ensure_tensor(x: pt.Tensor | float):
-    if isinstance(x, pt.Tensor):
+def ensure_ndarray(x: np.ndarray | float):
+    if isinstance(x, np.ndarray):
         return x
     else:
-        return pt.tensor(x).float()
+        return np.array(x).astype(float)
 
 
 @dataclass
@@ -218,9 +218,7 @@ class EAFParameters:
     # Densities (kg/m3)
     rho_sSc: float = 900  # Kurz and Fisher 2005
     rho_lSc: float = 7000
-    rho_lSl: float = (
-        3500  # Self-compacting concrete: materials properties and applications Siddique (2020) Table 10.1
-    )
+    rho_lSl: float = 3500  # Self-compacting concrete: materials properties and applications Siddique (2020) Table 10.1
     rho: float = 7000
 
     h_sSc2: float = 0
@@ -447,8 +445,8 @@ class EAFParameters:
             + self.m_Cr2O3_lSl
             + self.m_FeO_lSl
         )
-        self.A_bath = pt.pi * self.r_eafin**2
-        self.A_eaf = pt.pi * self.r_eafout**2
+        self.A_bath = np.pi * self.r_eafin**2
+        self.A_eaf = np.pi * self.r_eafout**2
 
         # height of liquid metal
         self.h_lSc = (self.m_lSc / self.rho_lSc) / self.A_bath
@@ -473,9 +471,9 @@ class EAFParameters:
 
         self.V_sSc = self.m_sSc / self.rho_sSc
         self.h_cone = self.V_sSc / (
-            pt.pi * self.r_eafout**2
+            np.pi * self.r_eafout**2
             - (1 / 3)
-            * pt.pi
+            * np.pi
             * (self.r_eafin**2 + self.r_eafin * self.r_eafout + self.r_eafout**2)
         )
         self.h_sSc1 = self.h_cone
@@ -489,17 +487,17 @@ class EAFParameters:
         )
 
         # Areas of roof and wall
-        self.A1 = (pt.pi * self.r_eafout**2) - (pt.pi * self.r_hole**2)  # roof
-        self.A2 = 2 * pt.pi * self.r_eafout * self.h_wall  # wall
-        self.A4 = pt.pi * self.r_eafin**2
+        self.A1 = (np.pi * self.r_eafout**2) - (np.pi * self.r_hole**2)  # roof
+        self.A2 = 2 * np.pi * self.r_eafout * self.h_wall  # wall
+        self.A4 = np.pi * self.r_eafin**2
 
         # ----------------- Others ---------------------
 
         # Exposure constant
         self.K_sSclSc = (
             0.5
-            * pt.tanh(
-                ensure_tensor(
+            * np.tanh(
+                ensure_ndarray(
                     5 * (self.h_lSc - self.h_sSc1 - self.h_sSc2 + self.h_cone)
                 )
             )
@@ -513,20 +511,20 @@ class EAFParameters:
             y_name = self.y_name
         for x_name in x_names:
             x_var = getattr(self, x_name)
-            if isinstance(x_var, pt.Tensor):
+            if isinstance(x_var, np.ndarray):
                 x_var = x_var.float()
             else:
                 x_var = float(x_var)
             # print(x_name, x_var)
-            x_var = pt.tensor(x_var, requires_grad=True)
+            x_var = np.ndarray(x_var, requires_grad=True)
             setattr(self, x_name, x_var)
         y_var = getattr(self, x_name)
-        y_var = pt.tensor(y_var)
+        y_var = np.ndarray(y_var)
         setattr(self, y_name, y_var)
 
     def getfloat(self, key: str):
         param = getattr(self, key)
-        if isinstance(param, pt.Tensor):
+        if isinstance(param, np.ndarray):
             return param.detach().numpy()[()]
         else:
             return param
@@ -539,11 +537,18 @@ class EAFParameters:
         self.MX_P_lSc = self.m_P_lSc / self.m_lSc
         self.MX_Si_lSc = self.m_Si_lSc / self.m_lSc
 
+    def __dict__(self):
+        return asdict(self)
+
 
 class TakeoutInput:
     def __init__(self, params: EAFParameters, x_name: str) -> None:
-        x_var: pt.Tensor = getattr(params, x_name)
-        assert isinstance(x_var, pt.Tensor), ("variable must be tensor!", x_name, x_var)
+        x_var: np.ndarray = getattr(params, x_name)
+        assert isinstance(x_var, np.ndarray), (
+            "variable must be ndarray!",
+            x_name,
+            x_var,
+        )
 
         self.value: float = x_var.detach().numpy()[()]
         self.name = x_name
@@ -553,9 +558,9 @@ class TakeoutInput:
 
 class TakeoutAnalysis:
     def __init__(self, params: EAFParameters, time: float) -> None:
-        y_var: pt.Tensor = getattr(params, params.y_name)
-        assert isinstance(y_var, pt.Tensor), (
-            "variable must be tensor!",
+        y_var: np.ndarray = getattr(params, params.y_name)
+        assert isinstance(y_var, np.ndarray), (
+            "variable must be ndarray!",
             params.y_name,
             y_var,
         )
@@ -572,7 +577,7 @@ class TakeoutAnalysis:
         self.time = time
 
         for k, v in params.__dict__.items():
-            if isinstance(v, pt.Tensor):
+            if isinstance(v, np.ndarray):
                 v.grad = None
 
     def to_dict(self) -> dict[str, float]:
@@ -589,64 +594,64 @@ class EAFModel:
     def __init__(self, _parameters: EAFParameters) -> None:
         self.p = _parameters
         self.out_states: list[TakeoutAnalysis] = []
-        self.gas_temp: pt.Tensor = pt.zeros(self.p.secs)
-        self.sSc_temp: pt.Tensor = pt.zeros(self.p.secs)
-        self.sSl_temp: pt.Tensor = pt.zeros(self.p.secs)
-        self.lSc_temp: pt.Tensor = pt.zeros(self.p.secs)
-        self.lSl_temp: pt.Tensor = pt.zeros(self.p.secs)
-        self.steel_Fe: pt.Tensor = pt.zeros(self.p.secs)
-        self.m_solid: pt.Tensor = pt.zeros(self.p.secs)
-        self.m_liquid: pt.Tensor = pt.zeros(self.p.secs)
-        self.m_solid_slag: pt.Tensor = pt.zeros(self.p.secs)
-        self.m_liquid_slag: pt.Tensor = pt.zeros(self.p.secs)
-        self.rel_pres: pt.Tensor = pt.zeros(self.p.secs)
-        self.t: pt.Tensor = pt.arange(0, self.p.secs)
+        self.gas_temp: np.ndarray = np.zeros(self.p.secs)
+        self.sSc_temp: np.ndarray = np.zeros(self.p.secs)
+        self.sSl_temp: np.ndarray = np.zeros(self.p.secs)
+        self.lSc_temp: np.ndarray = np.zeros(self.p.secs)
+        self.lSl_temp: np.ndarray = np.zeros(self.p.secs)
+        self.steel_Fe: np.ndarray = np.zeros(self.p.secs)
+        self.m_solid: np.ndarray = np.zeros(self.p.secs)
+        self.m_liquid: np.ndarray = np.zeros(self.p.secs)
+        self.m_solid_slag: np.ndarray = np.zeros(self.p.secs)
+        self.m_liquid_slag: np.ndarray = np.zeros(self.p.secs)
+        self.rel_pres: np.ndarray = np.zeros(self.p.secs)
+        self.t: np.ndarray = np.arange(0, self.p.secs)
         self.step: int = 0
         self.reset()
 
     def reset(self):
         # ------------------------- Arrays for graph ------------------------
-        self.gas_temp = pt.zeros(self.p.secs)
-        self.sSc_temp = pt.zeros(self.p.secs)
-        self.sSl_temp = pt.zeros(self.p.secs)
-        self.lSc_temp = pt.zeros(self.p.secs)
-        self.lSl_temp = pt.zeros(self.p.secs)
-        self.steel_Fe = pt.zeros(self.p.secs)
-        self.m_solid = pt.zeros(self.p.secs)
-        self.m_liquid = pt.zeros(self.p.secs)
-        self.m_solid_slag = pt.zeros(self.p.secs)
-        self.m_liquid_slag = pt.zeros(self.p.secs)
-        self.rel_pres = pt.zeros(self.p.secs)
-        self.t = pt.arange(0, self.p.secs)
+        self.gas_temp = np.zeros(self.p.secs)
+        self.sSc_temp = np.zeros(self.p.secs)
+        self.sSl_temp = np.zeros(self.p.secs)
+        self.lSc_temp = np.zeros(self.p.secs)
+        self.lSl_temp = np.zeros(self.p.secs)
+        self.steel_Fe = np.zeros(self.p.secs)
+        self.m_solid = np.zeros(self.p.secs)
+        self.m_liquid = np.zeros(self.p.secs)
+        self.m_solid_slag = np.zeros(self.p.secs)
+        self.m_liquid_slag = np.zeros(self.p.secs)
+        self.rel_pres = np.zeros(self.p.secs)
+        self.t = np.arange(0, self.p.secs)
         self.step = 0
         self.out_states = []
 
 
 def step_eaf(s: EAFModel):
-    s.p.m_Cr_sSc = pt.relu(ensure_tensor(s.p.m_Cr_sSc))
-    s.p.m_Cr_lSc = pt.relu(ensure_tensor(s.p.m_Cr_lSc))
-    s.p.m_Fe_sSc = pt.relu(ensure_tensor(s.p.m_Fe_sSc))
-    s.p.m_Fe_lSc = pt.relu(ensure_tensor(s.p.m_Fe_lSc))
-    s.p.m_Mn_sSc = pt.relu(ensure_tensor(s.p.m_Mn_sSc))
-    s.p.m_Mn_lSc = pt.relu(ensure_tensor(s.p.m_Mn_lSc))
-    s.p.m_P_sSc = pt.relu(ensure_tensor(s.p.m_P_sSc))
-    s.p.m_P_lSc = pt.relu(ensure_tensor(s.p.m_P_lSc))
-    s.p.m_Si_sSc = pt.relu(ensure_tensor(s.p.m_Si_sSc))
-    s.p.m_Si_lSc = pt.relu(ensure_tensor(s.p.m_Si_lSc))
-    s.p.m_C_sSc = pt.relu(ensure_tensor(s.p.m_C_sSc))
-    s.p.m_C_lSc = pt.relu(ensure_tensor(s.p.m_C_lSc))
-    s.p.m_Al2O3_sSc = pt.relu(ensure_tensor(s.p.m_Al2O3_sSc))
-    s.p.m_Al2O3_lSl = pt.relu(ensure_tensor(s.p.m_Al2O3_lSl))
-    s.p.m_CaO_sSc = pt.relu(ensure_tensor(s.p.m_CaO_sSc))
-    s.p.m_CaO_lSl = pt.relu(ensure_tensor(s.p.m_CaO_lSl))
-    s.p.m_SiO2_sSc = pt.relu(ensure_tensor(s.p.m_SiO2_sSc))
-    s.p.m_SiO2_lSl = pt.relu(ensure_tensor(s.p.m_SiO2_lSl))
-    s.p.m_MgO_sSc = pt.relu(ensure_tensor(s.p.m_MgO_sSc))
-    s.p.m_MgO_lSl = pt.relu(ensure_tensor(s.p.m_MgO_lSl))
-    s.p.m_MnO_sSc = pt.relu(ensure_tensor(s.p.m_MnO_sSc))
-    s.p.m_MnO_lSl = pt.relu(ensure_tensor(s.p.m_MnO_lSl))
-    s.p.m_P2O5_sSc = pt.relu(ensure_tensor(s.p.m_P2O5_sSc))
-    s.p.m_P2O5_lSl = pt.relu(ensure_tensor(s.p.m_P2O5_lSl))
+    s.p.m_Cr_sSc = np.relu(ensure_ndarray(s.p.m_Cr_sSc))
+    s.p.m_Cr_lSc = np.relu(ensure_ndarray(s.p.m_Cr_lSc))
+    s.p.m_Fe_sSc = np.relu(ensure_ndarray(s.p.m_Fe_sSc))
+    s.p.m_Fe_lSc = np.relu(ensure_ndarray(s.p.m_Fe_lSc))
+    s.p.m_Mn_sSc = np.relu(ensure_ndarray(s.p.m_Mn_sSc))
+    s.p.m_Mn_lSc = np.relu(ensure_ndarray(s.p.m_Mn_lSc))
+    s.p.m_P_sSc = np.relu(ensure_ndarray(s.p.m_P_sSc))
+    s.p.m_P_lSc = np.relu(ensure_ndarray(s.p.m_P_lSc))
+    s.p.m_Si_sSc = np.relu(ensure_ndarray(s.p.m_Si_sSc))
+    s.p.m_Si_lSc = np.relu(ensure_ndarray(s.p.m_Si_lSc))
+    s.p.m_C_sSc = np.relu(ensure_ndarray(s.p.m_C_sSc))
+    s.p.m_C_lSc = np.relu(ensure_ndarray(s.p.m_C_lSc))
+    s.p.m_Al2O3_sSc = np.relu(ensure_ndarray(s.p.m_Al2O3_sSc))
+    s.p.m_Al2O3_lSl = np.relu(ensure_ndarray(s.p.m_Al2O3_lSl))
+    s.p.m_CaO_sSc = np.relu(ensure_ndarray(s.p.m_CaO_sSc))
+    s.p.m_CaO_lSl = np.relu(ensure_ndarray(s.p.m_CaO_lSl))
+    s.p.m_SiO2_sSc = np.relu(ensure_ndarray(s.p.m_SiO2_sSc))
+    s.p.m_SiO2_lSl = np.relu(ensure_ndarray(s.p.m_SiO2_lSl))
+    s.p.m_MgO_sSc = np.relu(ensure_ndarray(s.p.m_MgO_sSc))
+    s.p.m_MgO_lSl = np.relu(ensure_ndarray(s.p.m_MgO_lSl))
+    s.p.m_MnO_sSc = np.relu(ensure_ndarray(s.p.m_MnO_sSc))
+    s.p.m_MnO_lSl = np.relu(ensure_ndarray(s.p.m_MnO_lSl))
+    s.p.m_P2O5_sSc = np.relu(ensure_ndarray(s.p.m_P2O5_sSc))
+    s.p.m_P2O5_lSl = np.relu(ensure_ndarray(s.p.m_P2O5_lSl))
     # ====================== Mole, Mass Fraction =====================
 
     # ------------ Solid Metal ------------
@@ -862,7 +867,7 @@ def step_eaf(s: EAFModel):
 
     # FeO + C -> Fe + CO
     # Decarburization reaction in mol/s
-    if pt.isnan(ensure_tensor(s.p.MX_FeO_lSl)):
+    if np.isnan(ensure_ndarray(s.p.MX_FeO_lSl)):
         r_FeO_CL = 0
     else:
         r_FeO_CL = (s.p.m_CL * s.p.kd_CL * s.p.MX_FeO_lSl) / s.p.M_C
@@ -889,7 +894,7 @@ def step_eaf(s: EAFModel):
     # Equilibrium carbon mass/ mole fraction
     k_C = p_CO / (K_FC * (gamma_FeO / (s.p.M_FeO * 1.65)))
     k_XC = k_C * ((s.p.M_lSl * s.p.M_Fe) / (s.p.M_FeO * s.p.M_C * 100**2))
-    Xeq_C = ensure_tensor(
+    Xeq_C = ensure_ndarray(
         k_XC
         * (
             (s.p.m_lSl * s.p.M_FeO) / (s.p.m_FeO_lSl * s.p.M_lSl)
@@ -897,8 +902,8 @@ def step_eaf(s: EAFModel):
             + 1
         )
     )  # Bekkar 1999
-    if pt.isnan(Xeq_C):
-        Xeq_C = pt.tensor(0)
+    if np.isnan(Xeq_C):
+        Xeq_C = np.ndarray(0)
 
     # Rate of decarburization of dissolved C
     r_FeO_CD = (s.p.kd_CD * (X_C_lSc - Xeq_C)) / s.p.M_C  # Logar 2012
@@ -929,9 +934,9 @@ def step_eaf(s: EAFModel):
     kX_Mn1 = 6.4 * p_CO * X_MnO_lSl
 
     # Equilibrium mole fraction
-    Xeq_MnO1 = ensure_tensor(X_Mn_lSc / kX_Mn1)  # Logar 2012
+    Xeq_MnO1 = ensure_ndarray(X_Mn_lSc / kX_Mn1)  # Logar 2012
 
-    if pt.isnan(Xeq_MnO1):
+    if np.isnan(Xeq_MnO1):
         Xeq_MnO1 = 0
 
     # Rate of reaction
@@ -945,8 +950,8 @@ def step_eaf(s: EAFModel):
     B3 = (s.p.MX_CaO_lSl * s.p.MX_MgO_lSl) / (s.p.MX_SiO2_lSl * s.p.MX_Al2O3_lSl)
 
     # Activity of SiO2 based on basicity
-    a_SiO2_bas = pt.exp(
-        ensure_tensor((6728 / s.p.T_lSl) - (0.920 * B3 + 6.994))
+    a_SiO2_bas = np.exp(
+        ensure_ndarray((6728 / s.p.T_lSl) - (0.920 * B3 + 6.994))
     )  # Meraikib 1995
 
     # Equilibrium constant
@@ -957,9 +962,9 @@ def step_eaf(s: EAFModel):
 
     # Equilibrium fraction
     MXeq_Si = a_SiO2_bas / (K_Si * O_sol**2)  # Turkogan 1996
-    Xeq_Si = ensure_tensor(MXeq_Si * (s.p.M_Fe / (s.p.M_Si * 100)))
+    Xeq_Si = ensure_ndarray(MXeq_Si * (s.p.M_Fe / (s.p.M_Si * 100)))
 
-    if pt.isnan(Xeq_Si):
+    if np.isnan(Xeq_Si):
         Xeq_Si = 0
 
     # Rate of reaction
@@ -985,11 +990,11 @@ def step_eaf(s: EAFModel):
     )  # Logar 2012
 
     # Equilibrium MnO mole fraction
-    Xeq_MnO2 = pt.sqrt(
-        ensure_tensor((X_Mn_lSc**2 * X_SiO2_lSl) / (X_Si_lSc * kX_Mn2))
+    Xeq_MnO2 = np.sqrt(
+        ensure_ndarray((X_Mn_lSc**2 * X_SiO2_lSl) / (X_Si_lSc * kX_Mn2))
     )  # Logar 2012
 
-    if pt.isnan(ensure_tensor(Xeq_MnO2)):
+    if np.isnan(ensure_ndarray(Xeq_MnO2)):
         Xeq_MnO2 = 0
 
     # Rate of reaction
@@ -1004,9 +1009,9 @@ def step_eaf(s: EAFModel):
     kX_Mn = K_FeMn * (s.p.M_FeO * s.p.M_Mn * 100) / (s.p.M_MnO * s.p.M_Fe)
 
     # Equilibrium fraction
-    Xeq_Mn = ensure_tensor(X_MnO_lSl / (X_FeO_lSl * kX_Mn))
+    Xeq_Mn = ensure_ndarray(X_MnO_lSl / (X_FeO_lSl * kX_Mn))
 
-    if pt.isnan(Xeq_Mn):
+    if np.isnan(Xeq_Mn):
         Xeq_Mn = 0
 
     # Rate of reaction
@@ -1021,9 +1026,9 @@ def step_eaf(s: EAFModel):
     kX_Cr = K_FeCr * (s.p.M_Cr * s.p.M_FeO * 100) / (s.p.M_Cr2O3 * s.p.M_Fe)
 
     # Equilibrium mole fraction
-    Xeq_Cr = ensure_tensor(X_Cr2O3_lSl / (X_FeO_lSl * kX_Cr))
+    Xeq_Cr = ensure_ndarray(X_Cr2O3_lSl / (X_FeO_lSl * kX_Cr))
 
-    if pt.isnan(Xeq_Cr):
+    if np.isnan(Xeq_Cr):
         Xeq_Cr = 0
 
     # Rate of reaction
@@ -1047,9 +1052,9 @@ def step_eaf(s: EAFModel):
         1.97 * X_CaO_lSl + 2.0 * X_FeO_lSl - 2.04 * X_SiO2_lSl + 6713 / s.p.T_lSl - 1.84
     )  # Basu, 2007
     eq_P = (2 * (s.p.m_P2O5_lSl / s.p.M_P2O5) * s.p.M_P) / partition
-    Xeq_P = ensure_tensor(eq_P / XM_lSc)
+    Xeq_P = ensure_ndarray(eq_P / XM_lSc)
 
-    if pt.isnan(Xeq_P):
+    if np.isnan(Xeq_P):
         Xeq_P = 0
 
     r_5FeO_2P = (2 * s.p.kd_P * (X_P_lSc - Xeq_P)) / s.p.M_P
@@ -1685,7 +1690,7 @@ def step_eaf(s: EAFModel):
 
     # Conduction between the solid and liquid metal zones
     Q_lScsSc = (
-        pt.min(ensure_tensor([s.p.m_lSc, s.p.m_sSc]))
+        np.min(ensure_ndarray([s.p.m_lSc, s.p.m_sSc]))
         * s.p.K_therm1
         * s.p.K_area1
         * (s.p.T_lSc - s.p.T_sSc)
@@ -1693,7 +1698,7 @@ def step_eaf(s: EAFModel):
 
     # Conduction between solid metal and solid slag
     Q_sScsSl = (
-        pt.min(ensure_tensor([s.p.m_sSc, s.p.m_sSl]))
+        np.min(ensure_ndarray([s.p.m_sSc, s.p.m_sSl]))
         * s.p.K_therm2
         * s.p.K_area2
         * (s.p.T_sSc - s.p.T_sSl)
@@ -1701,7 +1706,7 @@ def step_eaf(s: EAFModel):
 
     # Conduction between solid metal and liquid slag
     Q_sSclSl = (
-        pt.min(ensure_tensor([s.p.m_sSc, s.p.m_lSl]))
+        np.min(ensure_ndarray([s.p.m_sSc, s.p.m_lSl]))
         * s.p.K_therm3
         * s.p.K_area3
         * (s.p.T_sSc - s.p.T_lSl)
@@ -1720,14 +1725,14 @@ def step_eaf(s: EAFModel):
         s.p.K_water1
         * (s.p.T_sSc - s.p.T_wall)
         * (s.p.T_sSc / s.p.T_melt)
-        * (1 - pt.exp(ensure_tensor(-(s.p.m_sSc / s.p.m_EAF))))
+        * (1 - np.exp(ensure_ndarray(-(s.p.m_sSc / s.p.m_EAF))))
     )
 
     # --------------- Liquid Metal ---------------
 
     # Conduction between liquid metal and solid slag
     Q_lScsSl = (
-        pt.min(ensure_tensor([s.p.m_lSc, s.p.m_sSl]))
+        np.min(ensure_ndarray([s.p.m_lSc, s.p.m_sSl]))
         * s.p.K_therm5
         * s.p.K_area5
         * (s.p.T_lSc - s.p.T_sSl)
@@ -1735,7 +1740,7 @@ def step_eaf(s: EAFModel):
 
     # Conduction between liquid metal and liquid slag
     Q_lSclSl = (
-        pt.min(ensure_tensor([s.p.m_lSc, s.p.m_lSl]))
+        np.min(ensure_ndarray([s.p.m_lSc, s.p.m_lSl]))
         * s.p.K_therm6
         * s.p.K_area6
         * (s.p.T_lSc - s.p.T_lSl)
@@ -1751,7 +1756,7 @@ def step_eaf(s: EAFModel):
         s.p.K_water2
         * (s.p.T_lSc - s.p.T_wall)
         * (s.p.T_lSc / s.p.T_melt)
-        * (1 - pt.exp(ensure_tensor(-(s.p.m_lSc / s.p.m_EAF))))
+        * (1 - np.exp(ensure_ndarray(-(s.p.m_lSc / s.p.m_EAF))))
     )
 
     # --------------- Solid Slag ---------------
@@ -1761,7 +1766,7 @@ def step_eaf(s: EAFModel):
         s.p.K_water3
         * (s.p.T_sSl - s.p.T_wall)
         * (s.p.T_sSl / s.p.T_melt)
-        * (1 - pt.exp(ensure_tensor(-(s.p.m_sSl / s.p.m_EAF))))
+        * (1 - np.exp(ensure_ndarray(-(s.p.m_sSl / s.p.m_EAF))))
     )
 
     # --------------- Liquid Slag ---------------
@@ -1776,7 +1781,7 @@ def step_eaf(s: EAFModel):
         s.p.K_water4
         * (s.p.T_lSl - s.p.T_wall)
         * (s.p.T_lSl / s.p.T_melt)
-        * (1 - pt.exp(ensure_tensor(-(s.p.m_lSl / s.p.m_EAF))))
+        * (1 - np.exp(ensure_ndarray(-(s.p.m_lSl / s.p.m_EAF))))
     )
 
     # ---------------- Gas Zone -----------------
@@ -1793,19 +1798,19 @@ def step_eaf(s: EAFModel):
     # ====================== Reactor Areas ====================
 
     # Areas of roof and wall
-    s.p.A1 = (pt.pi * s.p.r_eafout**2) - (pt.pi * s.p.r_hole**2)  # roof
-    s.p.A2 = 2 * pt.pi * s.p.r_eafout * s.p.h_wall  # wall
-    s.p.A4 = pt.pi * s.p.r_eafin**2
+    s.p.A1 = (np.pi * s.p.r_eafout**2) - (np.pi * s.p.r_hole**2)  # roof
+    s.p.A2 = 2 * np.pi * s.p.r_eafout * s.p.h_wall  # wall
+    s.p.A4 = np.pi * s.p.r_eafin**2
 
     # Surface area of sSc and lSc
     A3 = (
-        (pt.pi * s.p.r_eafout**2)
-        - (pt.pi * (s.p.d_coneout / 2) ** 2)
+        (np.pi * s.p.r_eafout**2)
+        - (np.pi * (s.p.d_coneout / 2) ** 2)
         + (
-            pt.pi
+            np.pi
             * 0.75
             * s.p.d_coneout
-            * pt.sqrt(ensure_tensor(s.p.h_cone + s.p.d_coneout / 4))
+            * np.sqrt(ensure_ndarray(s.p.h_cone + s.p.d_coneout / 4))
         )
     )
 
@@ -1842,8 +1847,8 @@ def step_eaf(s: EAFModel):
     # Slag Factor
     K_slag = (
         0.7
-        * (0.5 * pt.tanh(ensure_tensor(5 * (s.p.h_lSl + dh_slag) - 1.25)) + 0.5)
-        * (0.5 * pt.tanh(ensure_tensor(3.2 * (1 - (s.p.m_sSc / 1000)) - 1.29)) + 0.5)
+        * (0.5 * np.tanh(ensure_ndarray(5 * (s.p.h_lSl + dh_slag) - 1.25)) + 0.5)
+        * (0.5 * np.tanh(ensure_ndarray(3.2 * (1 - (s.p.m_sSc / 1000)) - 1.29)) + 0.5)
     )
 
     # ======================== View Factor =======================
@@ -1867,24 +1872,24 @@ def step_eaf(s: EAFModel):
     b1 = H1**2 - R**2 + 1
     b2 = H2**2 - R**2 + 1
 
-    VF_511 = (b1 / (8 * R * H1)) + (1 / (2 * pt.pi)) * (
-        pt.acos(ensure_tensor(a1 / b1))
+    VF_511 = (b1 / (8 * R * H1)) + (1 / (2 * np.pi)) * (
+        np.acos(ensure_ndarray(a1 / b1))
         - (1 / (2 * H1))
-        * pt.sqrt(ensure_tensor((((a1 + 2) ** 2) / (R**2)) - 4))
-        * pt.acos(ensure_tensor((a1 * R) / b1))
-        - (a1 / (2 * R * H1)) * pt.sin(ensure_tensor(R))
+        * np.sqrt(ensure_ndarray((((a1 + 2) ** 2) / (R**2)) - 4))
+        * np.acos(ensure_ndarray((a1 * R) / b1))
+        - (a1 / (2 * R * H1)) * np.sin(ensure_ndarray(R))
     )
-    VF_512 = (b2 / (8 * R * H2)) + (1 / (2 * pt.pi)) * (
-        pt.acos(ensure_tensor(a2 / b2))
+    VF_512 = (b2 / (8 * R * H2)) + (1 / (2 * np.pi)) * (
+        np.acos(ensure_ndarray(a2 / b2))
         - (1 / (2 * H2))
-        * pt.sqrt(ensure_tensor((((a2 + 2) ** 2) / (R**2)) - 4))
-        * pt.acos(ensure_tensor((a2 * R) / b2))
-        - (a2 / (2 * R * H2)) * pt.sin(ensure_tensor(R))
+        * np.sqrt(ensure_ndarray((((a2 + 2) ** 2) / (R**2)) - 4))
+        * np.acos(ensure_ndarray((a2 * R) / b2))
+        - (a2 / (2 * R * H2)) * np.sin(ensure_ndarray(R))
     )
 
-    A511 = 2 * pt.pi * s.p.r_electrode * (s.p.h_electrode + s.p.h_arc)
-    A512 = 2 * pt.pi * s.p.r_electrode * s.p.h_electrode
-    A513 = 2 * pt.pi * s.p.r_electrode * s.p.h_arc
+    A511 = 2 * np.pi * s.p.r_electrode * (s.p.h_electrode + s.p.h_arc)
+    A512 = 2 * np.pi * s.p.r_electrode * s.p.h_electrode
+    A513 = 2 * np.pi * s.p.r_electrode * s.p.h_arc
 
     VF_51 = (1 - K_slag) * ((VF_511 * A511 - VF_512 * A512) / A513)
 
@@ -1896,44 +1901,44 @@ def step_eaf(s: EAFModel):
 
     aX = X**2 + R**2 - 1
     bX = X**2 - R**2 + 1
-    FX = (bX / (8 * R * X)) + (1 / (2 * pt.pi)) * (
-        pt.acos(ensure_tensor(aX / bX))
+    FX = (bX / (8 * R * X)) + (1 / (2 * np.pi)) * (
+        np.acos(ensure_ndarray(aX / bX))
         - (1 / (2 * X))
-        * pt.sqrt(ensure_tensor((((aX + 2) ** 2) / (R**2)) - 4))
-        * pt.acos(ensure_tensor((aX * R) / bX))
-        - (aX / (2 * R * X)) * pt.sin(ensure_tensor(R))
+        * np.sqrt(ensure_ndarray((((aX + 2) ** 2) / (R**2)) - 4))
+        * np.acos(ensure_ndarray((aX * R) / bX))
+        - (aX / (2 * R * X)) * np.sin(ensure_ndarray(R))
     )
-    if pt.isnan(ensure_tensor(FX)):
+    if np.isnan(ensure_ndarray(FX)):
         FX = 0
 
     aLX = (L - X) ** 2 + R**2 - 1
     bLX = (L - X) ** 2 - R**2 + 1
-    FLX = (bLX / (8 * R * (L - X))) + (1 / (2 * pt.pi)) * (
-        pt.acos(ensure_tensor(aLX / bLX))
+    FLX = (bLX / (8 * R * (L - X))) + (1 / (2 * np.pi)) * (
+        np.acos(ensure_ndarray(aLX / bLX))
         - (1 / (2 * (L - X)))
-        * pt.sqrt(ensure_tensor((((aLX + 2) ** 2) / (R**2)) - 4))
-        * pt.acos(ensure_tensor((aLX * R) / bLX))
-        - (aLX / (2 * R * (L - X))) * pt.sin(ensure_tensor(R))
+        * np.sqrt(ensure_ndarray((((aLX + 2) ** 2) / (R**2)) - 4))
+        * np.acos(ensure_ndarray((aLX * R) / bLX))
+        - (aLX / (2 * R * (L - X))) * np.sin(ensure_ndarray(R))
     )
 
     aYXL = (Y + X - L) ** 2 + R**2 - 1
     bYXL = (Y + X - L) ** 2 - R**2 + 1
-    FYXL = (bYXL / (8 * R * (Y + X - L))) + (1 / (2 * pt.pi)) * (
-        pt.acos(ensure_tensor(aYXL / bYXL))
+    FYXL = (bYXL / (8 * R * (Y + X - L))) + (1 / (2 * np.pi)) * (
+        np.acos(ensure_ndarray(aYXL / bYXL))
         - (1 / (2 * (Y + X - L)))
-        * pt.sqrt(ensure_tensor((((aYXL + 2) ** 2) / (R**2)) - 4))
-        * pt.acos(ensure_tensor((aYXL * R) / bYXL))
-        - (aYXL / (2 * R * (Y + X - L))) * pt.sin(ensure_tensor(R))
+        * np.sqrt(ensure_ndarray((((aYXL + 2) ** 2) / (R**2)) - 4))
+        * np.acos(ensure_ndarray((aYXL * R) / bYXL))
+        - (aYXL / (2 * R * (Y + X - L))) * np.sin(ensure_ndarray(R))
     )
 
     aXY = (X + Y) ** 2 + R**2 - 1
     bXY = (X + Y) ** 2 - R**2 + 1
-    FXY = (bXY / (8 * R * (X + Y))) + (1 / (2 * pt.pi)) * (
-        pt.acos(ensure_tensor(aXY / bXY))
+    FXY = (bXY / (8 * R * (X + Y))) + (1 / (2 * np.pi)) * (
+        np.acos(ensure_ndarray(aXY / bXY))
         - (1 / (2 * (X + Y)))
-        * pt.sqrt(ensure_tensor((((aXY + 2) ** 2) / (R**2)) - 4))
-        * pt.acos(ensure_tensor((aXY * R) / bXY))
-        - (aXY / (2 * R * (X + Y))) * pt.sin(ensure_tensor(R))
+        * np.sqrt(ensure_ndarray((((aXY + 2) ** 2) / (R**2)) - 4))
+        * np.acos(ensure_ndarray((aXY * R) / bXY))
+        - (aXY / (2 * R * (X + Y))) * np.sin(ensure_ndarray(R))
     )
 
     VF_52 = (1 - K_slag) * (
@@ -1958,8 +1963,8 @@ def step_eaf(s: EAFModel):
     VF_41 = (1 / 2) * (
         R3**2
         - R2**2
-        - pt.sqrt(ensure_tensor((1 + R3**2 + H**2) ** 2 - 4 * R3**2))
-        + pt.sqrt(ensure_tensor((1 + R2**2 + H**2) ** 2 - 4 * R2**2))
+        - np.sqrt(ensure_ndarray((1 + R3**2 + H**2) ** 2 - 4 * R3**2))
+        + np.sqrt(ensure_ndarray((1 + R2**2 + H**2) ** 2 - 4 * R2**2))
     )
 
     # VF_14 Roof -> lSc
@@ -1971,16 +1976,16 @@ def step_eaf(s: EAFModel):
     #     R3 = d_coneout/2 / self.parameters.r_hole
     #     R4 = d_conein/2 / self.parameters.r_hole
 
-    #     VF_131 = 1/(2*(R2**2-1)) * (pt.sqrt((R2**2+R3**2+H**2)**2 - (2*R3*R2)**2) - \
-    #         pt.sqrt((R2**2+R4**2+H**2)**2 - (2*R2*R4)**2) + pt.sqrt((1+R4**2+H**2)**2 - (2*R4**2)**2) \
-    #         - pt.sqrt((1+R3**2+H**2)**2 - (2*R3**2)**2))
+    #     VF_131 = 1/(2*(R2**2-1)) * (np.sqrt((R2**2+R3**2+H**2)**2 - (2*R3*R2)**2) - \
+    #         np.sqrt((R2**2+R4**2+H**2)**2 - (2*R2*R4)**2) + np.sqrt((1+R4**2+H**2)**2 - (2*R4**2)**2) \
+    #         - np.sqrt((1+R3**2+H**2)**2 - (2*R3**2)**2))
 
     H = s.p.h_cone / (s.p.d_conein / 2)
     R = (s.p.d_coneout / 2) / (s.p.d_conein / 2)
     X = 1 + R**2 + H**2
 
-    VF_132 = (2 * R**2 - X + pt.sqrt(ensure_tensor(X**2 - 4 * R**2))) / (
-        2 * pt.sqrt(ensure_tensor(X - 2 * R)) * (1 + R)
+    VF_132 = (2 * R**2 - X + np.sqrt(ensure_ndarray(X**2 - 4 * R**2))) / (
+        2 * np.sqrt(ensure_ndarray(X - 2 * R)) * (1 + R)
     )
 
     VF_13 = VF_132 * VF_41
@@ -1995,10 +2000,10 @@ def step_eaf(s: EAFModel):
     VF_321 = (
         VF_132
         * (1 / 2)
-        * (1 - R**2 - H**2 + pt.sqrt(ensure_tensor((1 + R**2 + H**2) ** 2 - 4 * R**2)))
+        * (1 - R**2 - H**2 + np.sqrt(ensure_ndarray((1 + R**2 + H**2) ** 2 - 4 * R**2)))
     )
-    #     VF_322 = (1/2)*(1 + (1/(R**2-1)) * (H*pt.sqrt(4*R**2+H**2) - \
-    #         pt.sqrt((1+R**2+H**2)**2 - 4*R**2)))
+    #     VF_322 = (1/2)*(1 + (1/(R**2-1)) * (H*np.sqrt(4*R**2+H**2) - \
+    #         np.sqrt((1+R**2+H**2)**2 - 4*R**2)))
 
     VF_32 = VF_321
 
@@ -2010,7 +2015,7 @@ def step_eaf(s: EAFModel):
     H = s.p.h_wall / s.p.r_eafin
 
     VF_42 = (1 / 2) * (
-        1 - R**2 - H**2 + pt.sqrt(ensure_tensor((1 + R**2 + H**2) ** 2 - 4 * R**2))
+        1 - R**2 - H**2 + np.sqrt(ensure_ndarray((1 + R**2 + H**2) ** 2 - 4 * R**2))
     )
 
     # VF_24 Wall -> lSc
@@ -2249,9 +2254,9 @@ def step_eaf(s: EAFModel):
 
     s.p.V_sSc = s.p.m_sSc / s.p.rho_sSc
     s.p.h_cone = s.p.V_sSc / (
-        pt.pi * s.p.r_eafout**2
+        np.pi * s.p.r_eafout**2
         - (1 / 3)
-        * pt.pi
+        * np.pi
         * (s.p.r_eafin**2 + s.p.r_eafin * s.p.r_eafout + s.p.r_eafout**2)
     )
     s.p.h_sSc1 = s.p.h_cone
@@ -2262,10 +2267,12 @@ def step_eaf(s: EAFModel):
     # height of wall
     s.p.h_wall = s.p.h_eafup + s.p.h_eaflow - s.p.h_sSc1 - s.p.h_lSc - s.p.h_lSl
 
-    # pt.exposure Coeff.
+    # np.exposure Coeff.
     s.p.K_sSclSc = (
         0.5
-        * pt.tanh(ensure_tensor(5 * (s.p.h_lSc - s.p.h_sSc1 - s.p.h_sSc2 + s.p.h_cone)))
+        * np.tanh(
+            ensure_ndarray(5 * (s.p.h_lSc - s.p.h_sSc1 - s.p.h_sSc2 + s.p.h_cone))
+        )
         + 0.5
     )
 
@@ -2592,4 +2599,4 @@ def step_eaf(s: EAFModel):
         s.rel_pres[sec] = s.p.rp
 
     s.step += 1
-    return [getattr(s.p,n) for n in s.p.x_names+s.p.observer_names+(s.p.y_name,)]
+    return [getattr(s.p, n) for n in s.p.x_names + s.p.observer_names + (s.p.y_name,)]
