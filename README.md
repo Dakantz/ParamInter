@@ -9,7 +9,7 @@ AlloyInter is our entry to the [SciVis Contest 2025](https://sciviscontest2025.g
 ![](demos/interpolation_exploration.png)
 
 ## Installation
-There is a `uv` project already available, but the NVIDIA wheels do not play nice with the correct dependency tree of `uv`. You can install the required dependencies for the backend in a new `venv` using the following commands:
+<!-- There is a `uv` project already available, but the NVIDIA wheels do not play nice with the correct dependency tree of `uv`. You can install the required dependencies for the backend in a new `venv` using the following commands:
 ```
 pip  install torch torchvision lightgbm  jupyter ipywidgets scikit-learn umap-learn fastapi uvicorn pandas
 pip install \
@@ -19,7 +19,14 @@ pip install \
     "cucim-cu12==25.6.*" "pylibraft-cu12==25.6.*" "raft-dask-cu12==25.6.*" \
     "cuvs-cu12==25.6.*" "nx-cugraph-cu12==25.6.*"
 ```
-Then start the server using
+Then start the server using -->
+
+Install the dependencies using `uv`:
+```
+uv sync --index-strategy unsafe-best-match 
+```
+> Needed because CUDA libraries do not play nice with deps...
+
 ```
 python -m uvicorn backend:app --reload 
 ```

@@ -72,21 +72,22 @@ class DataMan:
             + time_col_offset
             + self.output_cols
         ]
-        cleaned = data[input_cols + output_cols].fillna(0)
-
+        cleaned = data[input_cols + output_cols].fillna(0).astype(np.float32)
+        inputs = cleaned[input_cols].values.astype(np.float32)
+        outputs = cleaned[output_cols].values.astype(np.float32)
         if self.time_col is not None:
             time = data.iloc[:, self.time_col]
         else:
             time = None
 
         nn = NearestNeighbors(n_neighbors=1)
-        nn.fit(cleaned[output_cols].values)
+        nn.fit(outputs)
 
         nn_inputs = NearestNeighbors(n_neighbors=1)
-        nn_inputs.fit(cleaned[input_cols].values)
+        nn_inputs.fit(inputs)
 
         scaler_outs = StandardScaler()
-        scaled_outputs = scaler_outs.fit_transform(cleaned[output_cols].values)
+        scaled_outputs = scaler_outs.fit_transform(outputs)
 
         embedding_subsets: dict[str, np.ndarray] = {}
         dim_reducers: dict[str, TransformerMixin] = {}
@@ -119,7 +120,7 @@ class DataMan:
                     )
                 )
                 embedded_tsne: np.ndarray = dim_reducers[col_name].fit_transform(
-                    cleaned[col_list].values
+                    cleaned[col_list].values.astype(np.float32)
                 )
                 scaled_tsne = MinMaxScaler().fit_transform(embedded_tsne)
                 np.save(data_path, scaled_tsne)
@@ -199,11 +200,11 @@ mast_man = DataMan(
 eaf_man = DataMan(
     base_dir=os.getenv("DATA_DIR", "./data"),
     mode=os.getenv("EMBEDDING", "tsne"),
-    data_file="/eaf/eaf_cleaned.csv",
+    data_file="/eaf_simulation_data.csv",
     data_name="EAF Data",
     short_data_name="eaf",
     input_cols=6,
-    output_cols=5,
+    output_cols=51,
     time_col=0,
     inputs_constrained=False,
 )

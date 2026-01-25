@@ -46,21 +46,25 @@ def run_sample(params: dict) -> dict:
     print(f"Running simulation with params: {params}")
     print(f"Y values to record: {y_values}")
     model = EAFModel(eaf_params)
+    results = []
     for s in tqdm(range(int(model.p.secs // model.p.ts))):
+        time = s * model.p.ts
         step_eaf(model)
 
-    result = {
-        **params,
-        **{
-            y: getattr(model.p, y)
-            for y in y_values
-            if y.startswith("T_") or y.startswith("MX_")
-        },
-    }
-    for k, v in result.items():
-        if isinstance(v, pt.Tensor):
-            result[k] = v.item()
-    return result
+        result = {
+            time: time,
+            **params,
+            **{
+                y: getattr(model.p, y)
+                for y in y_values
+                if y.startswith("T_") or y.startswith("MX_")
+            },
+        }
+        for k, v in result.items():
+            if isinstance(v, pt.Tensor):
+                result[k] = v.item()
+        results.append(result)
+    return results
 
 
 parser = argparse.ArgumentParser()
@@ -88,11 +92,11 @@ if __name__ == "__main__":
         u_bounds=[max(v) for v in param_grid.values()],
     )
     samples_df = pd.DataFrame(samples, columns=list(param_grid.keys()))
-    result = run_sample(samples_df.iloc[sample_id].to_dict())
+    results = run_sample(samples_df.iloc[sample_id].to_dict())
 
-    print(f"Sample {sample_id} result: {result}")
+    # print(f"Sample {sample_id} result: {results}")
 
-    result_df = pd.DataFrame([result])
+    result_df = pd.DataFrame(results)
     output_file = f"results/eaf_simulation_result_{sample_id}.csv"
     result_df.to_csv(output_file, index=False)
     print(f"Result saved to {output_file}")
