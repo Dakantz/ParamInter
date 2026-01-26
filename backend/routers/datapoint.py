@@ -20,7 +20,7 @@ from backend.models import (
     SensitivityAnalysisResult,
 )
 
-from backend.dataman import data_man
+from backend.routers.data import sets_manager
 from backend.routers.minimizer import minimizer_router
 
 dp_router = APIRouter(prefix="/data-point")
@@ -29,7 +29,8 @@ dp_router.include_router(minimizer_router)
 
 
 @dp_router.get("/similarity-scores/{index}")
-def get_similar_data_point(index: int) -> list[float]:
+def get_similar_data_point(index: int, set_name: str = None) -> list[float]:
+    data_man = sets_manager.get_manager(set_name)
     if index < 0 or index >= len(data_man.data):
         return {"error": "Index out of bounds"}
 
@@ -42,7 +43,8 @@ def get_similar_data_point(index: int) -> list[float]:
 
 
 @dp_router.get("/idx/{index}")
-def get_data_point(index: int) -> DataPoint:
+def get_data_point(index: int, set_name: str = None) -> DataPoint:
+    data_man = sets_manager.get_manager(set_name)
     if index < 0 or index >= len(data_man.data):
         return None
 
@@ -65,7 +67,9 @@ def get_interpolation(
     n_samples=128,
     embedding_type: str = "all",
     include_explainations: bool = False,
+    set_name: str = None,
 ) -> InterpolationResult:
+    data_man = sets_manager.get_manager(set_name)
     dp_idxs = [from_index, to_index]
 
     inputs = data_man.cleaned[data_man.input_cols].values[dp_idxs]
@@ -130,7 +134,9 @@ def get_interpolation(
 @dp_router.post("/similar")
 def get_similar_data_points(
     q: DataPointSimilarity = Body(DataPointSimilarity),
+    set_name: str = None,
 ) -> list[DataPoint]:
+    data_man = sets_manager.get_manager(set_name)
     if len(q.values) != len(data_man.input_cols):
         return []
 
@@ -159,7 +165,9 @@ def get_similar_data_points(
 def explanations_for_dp(
     idx: int,
     data: DataPointSensitivity = Body(DataPointSensitivity),
+    set_name: str = None,
 ) -> list[SensitivityAnalysisResult]:
+    data_man = sets_manager.get_manager(set_name)
     # vary the inputs of the data point at idx
     if idx < 0 or idx >= data_man.cleaned.shape[0]:
         return []
@@ -206,8 +214,10 @@ def explanations_for_dp(
 
 @dp_router.post("/suggestions")
 def data_point_suggestions(
+    set_name: str = None,
     q: DataPointSuggestions = Body(DataPointSuggestions),
 ) -> list[DataPoint]:
+    data_man = sets_manager.get_manager(set_name)
     if len(q.values) != len(data_man.output_cols):
         return []
     # base_values = DATAMAN.cleaned[output_cols].iloc[q.base_index].values

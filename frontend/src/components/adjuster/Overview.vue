@@ -11,7 +11,7 @@
 </template>
 <script lang="ts" setup>
 import { DataPoint } from '../../api/Api';
-import { DataRepository } from '../../proc/types';
+import { DataRepository } from '../../proc/data-store';
 
 
 const emit = defineEmits<{

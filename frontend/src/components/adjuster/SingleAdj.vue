@@ -15,7 +15,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, useTemplateRef, watch, onUpdated, reactive } from 'vue';
-import { DataRepository } from '../../proc/types';
+import { DataRepository } from '../../proc/data-store';
 import * as d3 from 'd3';
 defineEmits<{
     (e: 'hover'): void;

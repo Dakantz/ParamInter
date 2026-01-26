@@ -3,3 +3,62 @@
     color: gray;
     width: 25vw;
 }
+
+
+.reset-button {
+    margin: 10px 20px;
+}
+
+button {
+    background-color: #ffd79f;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 1.2em;
+    font-family: 'Roboto Mono', monospace;
+}
+
+button:hover {
+    background-color: #fbc170;
+}
+
+button:active {
+    background-color: #fca72f;
+}
+
+body {
+    display: flex;
+    justify-content: start;
+    align-items: center;
+    font-family: 'Roboto Mono', monospace;
+    margin: 0;
+    padding: 0;
+}
+
+
+.header {
+    border-bottom: 2px solid #8fac9f;
+    min-width: 650px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 2px;
+    margin: 5px 20px;
+}
+
+.header h2 {
+    margin: 0.1em;
+    padding: 0.1em;
+}
+
+.link_btn {
+    color: #000000;
+    background-color: #aac977;
+    padding: 5px 10px;
+    margin: 10px;
+    font-size: 1.2em;
+}
+
+.link_btn:hover {
+    background-color: #8fac9f;
+}

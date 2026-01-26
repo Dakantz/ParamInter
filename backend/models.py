@@ -99,3 +99,16 @@ class DataPointSuggestions(BaseModel):
     values: list[float] = []
     k: int = 5
     weigh_changes: float = 1.5
+
+
+class ManagerSettings(BaseModel):
+    data_description: DataDescription
+    mode: str = "tsne"
+    data_name: str = "Aloy Data"
+    short_data_name: str = "scivis"
+    input_cols: int = 6
+    output_cols: int = 64
+    time_col: int | None = None
+    inputs_constrained: bool = True
+    col_defs: dict[str, list[str]] = {}
+    loaded: bool = False

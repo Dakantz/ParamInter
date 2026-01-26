@@ -14,7 +14,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, useTemplateRef, watch, onUpdated, reactive } from 'vue';
-import { colorForIndex, DataRepository } from '../../proc/types';
+import { colorForIndex, DataRepository } from '../../proc/data-store';
 import * as d3 from 'd3';
 import { InterpolationResult } from '../../api/Api';
 import { outValues } from '../helpers/utils';

@@ -1,7 +1,7 @@
 
 import * as d3 from "d3";
 import * as fc from "d3fc";
-import { colorForIndex, DataRepository } from "../../proc/types";
+import { colorForIndex, DataRepository } from "../../proc/data-store";
 import { HoveredInterpolation, MappedData } from "../types";
 import { InterpolationResult } from "../../api/Api";
 import { reSpider } from "./utils";

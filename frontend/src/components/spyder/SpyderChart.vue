@@ -10,7 +10,7 @@ import { ref, reactive, watch, onMounted, useTemplateRef, computed } from 'vue';
 import * as d3 from 'd3';
 import { inverseSpider, reSpider } from '../helpers/utils';
 import { DataDescription } from '../../api/Api';
-import { DataRepository } from '../../proc/types';
+import { DataRepository } from '../../proc/data-store';
 const dim_data = defineModel<Array<number>>({
     default: () => []
 });
@@ -379,7 +379,7 @@ const dark_color = computed(() => {
 
 <style>
 .spider-container {
-    width: 100%;
+    width: 90%;
     min-width: 100px;
     height: v-bind(height);
     display: flex;

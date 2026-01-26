@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends
 
-from backend.dataman import data_man
 from backend.models import DataDescription, DataPoints
+from backend.routers.sets import sets_manager
 
 data_router = APIRouter(prefix="/data")
 
 
 @data_router.get("/description", response_model=DataDescription)
-def get_data_description():
+def get_data_description(set_name: str = None) -> DataDescription:
+    data_man = sets_manager.get_manager(set_name)
     return DataDescription(
         input_cols=data_man.input_cols,
         output_cols=data_man.output_cols,
@@ -24,7 +25,8 @@ def get_data_description():
 
 
 @data_router.get("/")
-def get_data() -> DataPoints:
+def get_data(set_name: str = None) -> DataPoints:
+    data_man = sets_manager.get_manager(set_name)
     data_points = DataPoints(
         inputs=data_man.cleaned[data_man.input_cols].values.tolist(),
         outputs=data_man.cleaned[data_man.output_cols].values.tolist(),
@@ -34,12 +36,14 @@ def get_data() -> DataPoints:
 
 
 @data_router.get("/column_types")
-def get_column_types() -> dict[str, list[str]]:
+def get_column_types(set_name: str = None) -> dict[str, list[str]]:
+    data_man = sets_manager.get_manager(set_name)
     return data_man.column_types
 
 
 @data_router.get("/embedding/{col_type}")
-def get_embedding(col_type: str) -> list[list[float]]:
+def get_embedding(col_type: str, set_name: str = None) -> list[list[float]]:
+    data_man = sets_manager.get_manager(set_name)
     if col_type in data_man.embedding_subsets:
         return data_man.embedding_subsets[col_type].tolist()
     return []

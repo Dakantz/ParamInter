@@ -2907,8 +2907,20 @@ def step_eaf(s: EAFModel):
         s.p.m_P2O5_lSl = s.p.m_P2O5_lSl - lSl_out * s.p.MX_P2O5_lSl
         s.p.m_SiO2_lSl = s.p.m_SiO2_lSl - lSl_out * s.p.MX_SiO2_lSl
 
-        s.out_states.append(TakeoutAnalysis(s.p, sec))
-
+        # s.out_states.append(TakeoutAnalysis(s.p, sec))
+    # print(
+    #     "Step:",
+    #     s.step,
+    #     "Time:",
+    #     s.step * s.p.ts,
+    #     "s",
+    #     dT_gas,
+    #     dT_sSc,
+    #     dT_lSc,
+    #     s.p.T_gas,
+    #     s.p.T_sSc,
+    #     s.p.T_lSc,
+    # )
     s.p.recalc_MX_lSc()
     # ===================== For Graph =======================
     if s.step % (1 / s.p.ts) == 0 and s.step > 0:
@@ -2926,5 +2938,5 @@ def step_eaf(s: EAFModel):
         s.m_liquid_slag[sec] = s.p.m_lSl
         s.rel_pres[sec] = s.p.rp
 
-    # s.step += 1
+    s.step += 1
     return s.p.MX_C_lSc

@@ -10,7 +10,7 @@
 <script lang="ts" setup>
 import { watch } from 'vue';
 import { DataPoint, InterpolationResult } from '../../api/Api';
-import { DataRepository } from '../../proc/types';
+import { DataRepository } from '../../proc/data-store';
 import IntSingleOut from './IntSingleOut.vue';
 import { HoveredInterpolation } from '../types';
 

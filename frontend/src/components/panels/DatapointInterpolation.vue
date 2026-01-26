@@ -27,7 +27,6 @@
                 :color="colorForIndex(state.hovered_interpolation.interpolation_idx)" />
         </div>
         <div v-if="state.loading">
-            <v-progress-linear color="primary" indeterminate></v-progress-linear>
             <span>Loading...</span>
         </div>
 
@@ -37,7 +36,7 @@
 <script lang="ts" setup>
 import { ref, reactive, watch, onMounted, useTemplateRef, computed } from 'vue';
 import * as d3 from 'd3';
-import { colorForIndex, DataRepository, LoadedDataPoints } from '../../proc/types';
+import { colorForIndex, DataRepository, LoadedDataPoints } from '../../proc/data-store';
 import SpyderChart from '../spyder/SpyderChart.vue';
 import { DataPoint, InterpolationResult } from '../../api/Api';
 import { HoveredInterpolation, PlotSelection } from '../types';
@@ -133,8 +132,8 @@ watch(() => data_rep.description, (desc) => {
 
 function showSensitivity(out_col: string, hovered_index: number) {
     if (state.hovered_dp) {
-        data_rep.client.dataPoint.explanationsForDpDataPointExplanationsIdxPost(
-            hovered_index || -1, {
+        data_rep.client.datasets.explanationsForDpDatasetsSetNameDataPointExplanationsIdxPost(
+            hovered_index || -1, data_rep.set_name, {
             for_outputs: [out_col],
             resolution: 16
         }).then((result) => {
@@ -153,11 +152,13 @@ function showSensitivity(out_col: string, hovered_index: number) {
 
 <style scoped>
 .datapoint-guide {
+
     display: flex;
     flex-direction: column;
     justify-items: center;
     align-items: center;
-    padding: 5px;
+    padding: 0px;
+    width: 100%;
 }
 
 
@@ -171,13 +172,13 @@ function showSensitivity(out_col: string, hovered_index: number) {
     flex-direction: row;
     align-items: start;
     justify-content: start;
-    margin: 4px;
+    margin: 2px;
     max-width: 100%;
     flex-wrap: wrap;
 }
 .interpolation-category {
     flex: 1;
-    padding: 0 10px;
+    padding: 0 5px;
     width: 132px;
 }
 

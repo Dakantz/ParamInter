@@ -9,8 +9,7 @@ from backend.models import (
     DataPointMinimzerInterpolation,
     InterpolationResult,
 )
-
-from backend.dataman import data_man
+from backend.routers.sets import sets_manager
 
 
 minimizer_router = APIRouter(prefix="/minimize")
@@ -19,7 +18,9 @@ minimizer_router = APIRouter(prefix="/minimize")
 @minimizer_router.post("/cost")
 def get_objective_costs(
     q: DataPointMinimzer = Body(DataPointMinimzer),
+    set_name: str = None,
 ) -> list[float]:
+    data_man = sets_manager.get_manager(set_name)
     costs: dict[str, np.ndarray] = {}
     for target in q.targets:
         costs_target = data_man.cleaned[target.name].to_numpy() - target.val
@@ -55,7 +56,9 @@ def get_costs(targets: list[DataPointMinimzer], data: pd.DataFrame) -> np.ndarra
 @minimizer_router.post("/interpolation")
 def get_minimization_interpolation(
     q: DataPointMinimzerInterpolation = Body(DataPointMinimzerInterpolation),
+    set_name: str = None,
 ) -> list[InterpolationResult]:
+    data_man = sets_manager.get_manager(set_name)
     costs_sum = get_costs(q.min.targets, data_man.cleaned)
     nn_stacked_X = np.concatenate(
         [

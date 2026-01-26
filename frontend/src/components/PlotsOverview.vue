@@ -10,7 +10,7 @@
 </template>
 <script lang="ts" setup>
 import { reactive, watch, ref, onMounted, ModelRef } from 'vue';
-import { AllEmbeddings, DataRepository, Embeddings } from '../proc/types';
+import { AllEmbeddings, DataRepository, Embeddings } from '../proc/data-store';
 import { PlotSelection, PlotSelectionResults } from './types';
 import ReducedDimPlot from './ReducedDimPlot.vue';
 import { InterpolationResult } from '../api/Api';

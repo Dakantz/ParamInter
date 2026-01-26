@@ -17,8 +17,8 @@
         </div>
         <h3>Linear Objective</h3>
         <div class="linear-objectives">
-            <div v-for="(target, idx) in state.linear_combination" :key="idx"
-                @mouseenter="showSensitivity(target.name)" class="linear-objective">
+            <div v-for="(target, idx) in state.linear_combination" :key="idx" @mouseenter="showSensitivity(target.name)"
+                class="linear-objective">
                 <SingleAdj v-model="target.val" :out_name="target.name" :data_rep="data_rep"
                     @hover="showSensitivity(target.name)" @remove="removeTarget(target.name)" />
             </div>
@@ -36,8 +36,7 @@
             </div>
         </div> -->
         <div v-if="state.loading">
-            <v-progress-linear color="primary" indeterminate></v-progress-linear>
-            <span>Loading...</span>
+            \ <span>Loading...</span>
         </div>
 
     </div>
@@ -46,7 +45,7 @@
 <script lang="ts" setup>
 import { ref, reactive, watch, onMounted, useTemplateRef } from 'vue';
 import * as d3 from 'd3';
-import { DataRepository, LoadedDataPoints } from '../../proc/types';
+import { DataRepository, LoadedDataPoints } from '../../proc/data-store';
 import SpyderChart from '../spyder/SpyderChart.vue';
 import { DataPoint, LinearTarget } from '../../api/Api';
 import Overview from '../adjuster/Overview.vue';
@@ -99,7 +98,7 @@ watch(() => state.dp, (dp) => {
     if (dp) {
         state.search_results = [];
         state.loading = true;
-        data_rep.client.dataPoint.dataPointSuggestionsDataPointSuggestionsPost({
+        data_rep.client.datasets.dataPointSuggestionsDatasetsSetNameDataPointSuggestionsPost(data_rep.set_name, {
             values: dp.outputs,
             base_index: dp.index || -1,
             k: 4
@@ -116,16 +115,16 @@ watch(() => state.dp, (dp) => {
 
 function showSensitivity(out_col: string) {
     if (state.dp) {
-        data_rep.client.dataPoint.explanationsForDpDataPointExplanationsIdxPost(
-            state.dp.index || -1, {
-            for_outputs: [out_col],
-            resolution: 16
-        }).then((result) => {
-            // console.log("Sensitivity Analysis Result:", result);
-            state.sensitivities_for_hover = result.data[0].sensitivity_scores;
-        }).catch((error) => {
-            console.error("Error fetching sensitivity analysis:", error);
-        });
+        data_rep.client.datasets.explanationsForDpDatasetsSetNameDataPointExplanationsIdxPost(state.dp.index || -1, data_rep.set_name,
+            {
+                for_outputs: [out_col],
+                resolution: 16
+            }).then((result) => {
+                // console.log("Sensitivity Analysis Result:", result);
+                state.sensitivities_for_hover = result.data[0].sensitivity_scores;
+            }).catch((error) => {
+                console.error("Error fetching sensitivity analysis:", error);
+            });
     }
 }
 
@@ -165,12 +164,11 @@ watch(() => state.linear_combination, (newComb) => {
 
 <style scoped>
 .datapoint-guide {
-    min-width: 100%;
+    width: 95%;
     display: flex;
     flex-direction: column;
     justify-items: center;
     align-items: center;
-    padding: 7px;
 }
 
 
@@ -202,7 +200,7 @@ watch(() => state.linear_combination, (newComb) => {
     width: 100%;
     display: flex;
     justify-content: center;
-    margin: 5px 0;
+    padding: 5px 0;
     padding: 5px;
     border: 1px solid #ccc;
     background-color: #f9f9f9;
@@ -218,10 +216,11 @@ watch(() => state.linear_combination, (newComb) => {
     flex-direction: column;
     align-items: center;
     padding: 5px 10px;
-    width: 100%;
+    width: 80%;
 }
+
 .linear-objective {
-    margin: 5px 0;
-    width: 100%;
+    padding: 5px 0;
+    width: 95%;
 }
 </style>

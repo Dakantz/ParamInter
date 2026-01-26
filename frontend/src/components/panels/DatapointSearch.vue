@@ -14,7 +14,7 @@
 <script lang="ts" setup>
 import { ref, reactive, watch, onMounted, useTemplateRef } from 'vue';
 import * as d3 from 'd3';
-import { DataRepository } from '../../proc/types';
+import { DataRepository } from '../../proc/data-store';
 import SpyderChart from '../spyder/SpyderChart.vue';
 import { DataPoint } from '../../api/Api';
 
@@ -56,7 +56,7 @@ watch(() => data_rep.description, (desc) => {
 
 watch(() => state.dim_data, (dim_data) => {
     if (dim_data.length > 0) {
-        data_rep.client.dataPoint.getSimilarDataPointsDataPointSimilarPost({
+        data_rep.client.datasets.getSimilarDataPointsDatasetsSetNameDataPointSimilarPost(data_rep.set_name, {
             values: dim_data.map((v) => v),
             k: 20
         }).then((similarity) => {
@@ -80,7 +80,6 @@ watch(() => state.dim_data, (dim_data) => {
     flex-direction: column;
     justify-items: center;
     align-items: center;
-    padding: 7px;
 }
 
 .search-results {

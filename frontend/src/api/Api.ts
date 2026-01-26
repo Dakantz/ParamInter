@@ -88,7 +88,7 @@ export interface DataPointMinimzerInterpolation {
   cost_penalty?: number;
   /**
    * K Options
-   * @default 4
+   * @default 3
    */
   k_options?: number;
 }
@@ -184,6 +184,54 @@ export interface LinearTarget {
   weight: number;
   /** Val */
   val: number;
+}
+
+/** ManagerSettings */
+export interface ManagerSettings {
+  /** DataDescription model to describe the data structure. */
+  data_description: DataDescription;
+  /**
+   * Mode
+   * @default "tsne"
+   */
+  mode?: string;
+  /**
+   * Data Name
+   * @default "Aloy Data"
+   */
+  data_name?: string;
+  /**
+   * Short Data Name
+   * @default "scivis"
+   */
+  short_data_name?: string;
+  /**
+   * Input Cols
+   * @default 6
+   */
+  input_cols?: number;
+  /**
+   * Output Cols
+   * @default 64
+   */
+  output_cols?: number;
+  /** Time Col */
+  time_col?: number | null;
+  /**
+   * Inputs Constrained
+   * @default true
+   */
+  inputs_constrained?: boolean;
+  /**
+   * Col Defs
+   * @default {}
+   */
+  col_defs?: Record<string, string[]>;
+  /**
+   * Loaded
+   * @default false
+   */
+  loaded?: boolean;
 }
 
 /**
@@ -391,17 +439,79 @@ export class HttpClient<SecurityDataType = unknown> {
 export class Api<
   SecurityDataType extends unknown,
 > extends HttpClient<SecurityDataType> {
-  data = {
+  datasets = {
     /**
      * No description
      *
-     * @name GetDataDescriptionDataDescriptionGet
+     * @name GetDatasetsDatasetsGet
+     * @summary Get Datasets
+     * @request GET:/datasets/
+     */
+    getDatasetsDatasetsGet: (params: RequestParams = {}) =>
+      this.request<Record<string, ManagerSettings>, any>({
+        path: `/datasets/`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name LoadDatasetDatasetsLoadSetNamePost
+     * @summary Load Dataset
+     * @request POST:/datasets/load/{set_name}
+     */
+    loadDatasetDatasetsLoadSetNamePost: (
+      setName: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<ManagerSettings, HTTPValidationError>({
+        path: `/datasets/load/${setName}`,
+        method: "POST",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name GetSetDatasetsSetNameGet
+     * @summary Get Set
+     * @request GET:/datasets/{set_name}
+     */
+    getSetDatasetsSetNameGet: (
+      setName: string,
+      query?: {
+        /**
+         * Load
+         * @default false
+         */
+        load?: boolean;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ManagerSettings, HTTPValidationError>({
+        path: `/datasets/${setName}`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name GetDataDescriptionDatasetsSetNameDataDescriptionGet
      * @summary Get Data Description
-     * @request GET:/data/description
+     * @request GET:/datasets/{set_name}/data/description
      */
-    getDataDescriptionDataDescriptionGet: (params: RequestParams = {}) =>
-      this.request<DataDescription, any>({
-        path: `/data/description`,
+    getDataDescriptionDatasetsSetNameDataDescriptionGet: (
+      setName: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<DataDescription, HTTPValidationError>({
+        path: `/datasets/${setName}/data/description`,
         method: "GET",
         format: "json",
         ...params,
@@ -410,13 +520,16 @@ export class Api<
     /**
      * No description
      *
-     * @name GetDataDataGet
+     * @name GetDataDatasetsSetNameDataGet
      * @summary Get Data
-     * @request GET:/data/
+     * @request GET:/datasets/{set_name}/data/
      */
-    getDataDataGet: (params: RequestParams = {}) =>
-      this.request<DataPoints, any>({
-        path: `/data/`,
+    getDataDatasetsSetNameDataGet: (
+      setName: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<DataPoints, HTTPValidationError>({
+        path: `/datasets/${setName}/data/`,
         method: "GET",
         format: "json",
         ...params,
@@ -425,13 +538,16 @@ export class Api<
     /**
      * No description
      *
-     * @name GetColumnTypesDataColumnTypesGet
+     * @name GetColumnTypesDatasetsSetNameDataColumnTypesGet
      * @summary Get Column Types
-     * @request GET:/data/column_types
+     * @request GET:/datasets/{set_name}/data/column_types
      */
-    getColumnTypesDataColumnTypesGet: (params: RequestParams = {}) =>
-      this.request<Record<string, string[]>, any>({
-        path: `/data/column_types`,
+    getColumnTypesDatasetsSetNameDataColumnTypesGet: (
+      setName: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<Record<string, string[]>, HTTPValidationError>({
+        path: `/datasets/${setName}/data/column_types`,
         method: "GET",
         format: "json",
         ...params,
@@ -440,35 +556,36 @@ export class Api<
     /**
      * No description
      *
-     * @name GetEmbeddingDataEmbeddingColTypeGet
+     * @name GetEmbeddingDatasetsSetNameDataEmbeddingColTypeGet
      * @summary Get Embedding
-     * @request GET:/data/embedding/{col_type}
+     * @request GET:/datasets/{set_name}/data/embedding/{col_type}
      */
-    getEmbeddingDataEmbeddingColTypeGet: (
+    getEmbeddingDatasetsSetNameDataEmbeddingColTypeGet: (
       colType: string,
+      setName: string,
       params: RequestParams = {},
     ) =>
       this.request<number[][], HTTPValidationError>({
-        path: `/data/embedding/${colType}`,
+        path: `/datasets/${setName}/data/embedding/${colType}`,
         method: "GET",
         format: "json",
         ...params,
       }),
-  };
-  dataPoint = {
+
     /**
      * No description
      *
-     * @name GetObjectiveCostsDataPointMinimizeCostPost
+     * @name GetObjectiveCostsDatasetsSetNameDataPointMinimizeCostPost
      * @summary Get Objective Costs
-     * @request POST:/data-point/minimize/cost
+     * @request POST:/datasets/{set_name}/data-point/minimize/cost
      */
-    getObjectiveCostsDataPointMinimizeCostPost: (
+    getObjectiveCostsDatasetsSetNameDataPointMinimizeCostPost: (
+      setName: string,
       data: DataPointMinimzer,
       params: RequestParams = {},
     ) =>
       this.request<number[], HTTPValidationError>({
-        path: `/data-point/minimize/cost`,
+        path: `/datasets/${setName}/data-point/minimize/cost`,
         method: "POST",
         body: data,
         type: ContentType.Json,
@@ -479,36 +596,39 @@ export class Api<
     /**
      * No description
      *
-     * @name GetMinimizationInterpolationDataPointMinimizeInterpolationPost
+     * @name GetMinimizationInterpolationDatasetsSetNameDataPointMinimizeInterpolationPost
      * @summary Get Minimization Interpolation
-     * @request POST:/data-point/minimize/interpolation
+     * @request POST:/datasets/{set_name}/data-point/minimize/interpolation
      */
-    getMinimizationInterpolationDataPointMinimizeInterpolationPost: (
-      data: DataPointMinimzerInterpolation,
-      params: RequestParams = {},
-    ) =>
-      this.request<InterpolationResult[], HTTPValidationError>({
-        path: `/data-point/minimize/interpolation`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
+    getMinimizationInterpolationDatasetsSetNameDataPointMinimizeInterpolationPost:
+      (
+        setName: string,
+        data: DataPointMinimzerInterpolation,
+        params: RequestParams = {},
+      ) =>
+        this.request<InterpolationResult[], HTTPValidationError>({
+          path: `/datasets/${setName}/data-point/minimize/interpolation`,
+          method: "POST",
+          body: data,
+          type: ContentType.Json,
+          format: "json",
+          ...params,
+        }),
 
     /**
      * No description
      *
-     * @name GetSimilarDataPointDataPointSimilarityScoresIndexGet
+     * @name GetSimilarDataPointDatasetsSetNameDataPointSimilarityScoresIndexGet
      * @summary Get Similar Data Point
-     * @request GET:/data-point/similarity-scores/{index}
+     * @request GET:/datasets/{set_name}/data-point/similarity-scores/{index}
      */
-    getSimilarDataPointDataPointSimilarityScoresIndexGet: (
+    getSimilarDataPointDatasetsSetNameDataPointSimilarityScoresIndexGet: (
       index: number,
+      setName: string,
       params: RequestParams = {},
     ) =>
       this.request<number[], HTTPValidationError>({
-        path: `/data-point/similarity-scores/${index}`,
+        path: `/datasets/${setName}/data-point/similarity-scores/${index}`,
         method: "GET",
         format: "json",
         ...params,
@@ -517,16 +637,17 @@ export class Api<
     /**
      * No description
      *
-     * @name GetDataPointDataPointIdxIndexGet
+     * @name GetDataPointDatasetsSetNameDataPointIdxIndexGet
      * @summary Get Data Point
-     * @request GET:/data-point/idx/{index}
+     * @request GET:/datasets/{set_name}/data-point/idx/{index}
      */
-    getDataPointDataPointIdxIndexGet: (
+    getDataPointDatasetsSetNameDataPointIdxIndexGet: (
       index: number,
+      setName: string,
       params: RequestParams = {},
     ) =>
       this.request<DataPoint, HTTPValidationError>({
-        path: `/data-point/idx/${index}`,
+        path: `/datasets/${setName}/data-point/idx/${index}`,
         method: "GET",
         format: "json",
         ...params,
@@ -535,11 +656,12 @@ export class Api<
     /**
      * No description
      *
-     * @name GetInterpolationDataPointInterpolationGet
+     * @name GetInterpolationDatasetsSetNameDataPointInterpolationGet
      * @summary Get Interpolation
-     * @request GET:/data-point/interpolation
+     * @request GET:/datasets/{set_name}/data-point/interpolation
      */
-    getInterpolationDataPointInterpolationGet: (
+    getInterpolationDatasetsSetNameDataPointInterpolationGet: (
+      setName: string,
       query: {
         /** From Index */
         from_index: number;
@@ -564,7 +686,7 @@ export class Api<
       params: RequestParams = {},
     ) =>
       this.request<InterpolationResult, HTTPValidationError>({
-        path: `/data-point/interpolation`,
+        path: `/datasets/${setName}/data-point/interpolation`,
         method: "GET",
         query: query,
         format: "json",
@@ -574,16 +696,17 @@ export class Api<
     /**
      * No description
      *
-     * @name GetSimilarDataPointsDataPointSimilarPost
+     * @name GetSimilarDataPointsDatasetsSetNameDataPointSimilarPost
      * @summary Get Similar Data Points
-     * @request POST:/data-point/similar
+     * @request POST:/datasets/{set_name}/data-point/similar
      */
-    getSimilarDataPointsDataPointSimilarPost: (
+    getSimilarDataPointsDatasetsSetNameDataPointSimilarPost: (
+      setName: string,
       data: DataPointSimilarity,
       params: RequestParams = {},
     ) =>
       this.request<DataPoint[], HTTPValidationError>({
-        path: `/data-point/similar`,
+        path: `/datasets/${setName}/data-point/similar`,
         method: "POST",
         body: data,
         type: ContentType.Json,
@@ -594,17 +717,18 @@ export class Api<
     /**
      * No description
      *
-     * @name ExplanationsForDpDataPointExplanationsIdxPost
+     * @name ExplanationsForDpDatasetsSetNameDataPointExplanationsIdxPost
      * @summary Explanations For Dp
-     * @request POST:/data-point/explanations/{idx}
+     * @request POST:/datasets/{set_name}/data-point/explanations/{idx}
      */
-    explanationsForDpDataPointExplanationsIdxPost: (
+    explanationsForDpDatasetsSetNameDataPointExplanationsIdxPost: (
       idx: number,
+      setName: string,
       data: DataPointSensitivity,
       params: RequestParams = {},
     ) =>
       this.request<SensitivityAnalysisResult[], HTTPValidationError>({
-        path: `/data-point/explanations/${idx}`,
+        path: `/datasets/${setName}/data-point/explanations/${idx}`,
         method: "POST",
         body: data,
         type: ContentType.Json,
@@ -615,16 +739,17 @@ export class Api<
     /**
      * No description
      *
-     * @name DataPointSuggestionsDataPointSuggestionsPost
+     * @name DataPointSuggestionsDatasetsSetNameDataPointSuggestionsPost
      * @summary Data Point Suggestions
-     * @request POST:/data-point/suggestions
+     * @request POST:/datasets/{set_name}/data-point/suggestions
      */
-    dataPointSuggestionsDataPointSuggestionsPost: (
+    dataPointSuggestionsDatasetsSetNameDataPointSuggestionsPost: (
+      setName: string,
       data: DataPointSuggestions,
       params: RequestParams = {},
     ) =>
       this.request<DataPoint[], HTTPValidationError>({
-        path: `/data-point/suggestions`,
+        path: `/datasets/${setName}/data-point/suggestions`,
         method: "POST",
         body: data,
         type: ContentType.Json,

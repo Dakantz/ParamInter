@@ -1,9 +1,9 @@
 #!/usr/bin/bash
 #SBATCH --job-name=eaf_sim
-#SBATCH -a 0-100
+#SBATCH -a 100-10000
 # #SBATCH --gres=gpu:2
 #SBATCH -c 1
-#SBATCH --mem=4G
+#SBATCH --mem=2G
 #SBATCH --output=logs/eaf_%A_%a.out
 #SBATCH --error=logs/eaf_%A_%a.err
 # #SBATCH --partition=ivc

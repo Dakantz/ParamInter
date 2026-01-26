@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { Api, DataDescription, DataPoint, DataPoints } from "../api/Api";
+import { Api, DataDescription, DataPoint, DataPoints, ManagerSettings } from "../api/Api";
 import { API_BASE_URL } from "../config";
 import { toRaw } from "vue";
 import { colormaps_d3 } from "../components/helpers/colormaps";
@@ -45,7 +45,7 @@ export class DPCache {
         if (idx in this.in_flight_requests) {
             return this.in_flight_requests[idx];
         }
-        this.in_flight_requests[idx] = this.rep.client.dataPoint.getDataPointDataPointIdxIndexGet(idx).then((res) => {
+        this.in_flight_requests[idx] = this.rep.client.datasets.getDataPointDatasetsSetNameDataPointIdxIndexGet(idx, this.rep.set_name).then((res) => {
             this.data_points[idx] = res.data;
             delete this.in_flight_requests[idx];
             return res.data;
@@ -59,8 +59,9 @@ export class DataRepository {
     dps: DPCache;
     all_types: Record<string, string[]> = {};
     description: DataDescription | null = null;
+    manager_settings: ManagerSettings | null = null;
 
-    constructor() {
+    constructor(public set_name: string) {
         this.data_points = new LoadedDataPoints();
         this.client = new Api(
             { baseURL: API_BASE_URL }
@@ -68,13 +69,18 @@ export class DataRepository {
         this.dps = new DPCache(this);
     }
     async loadEmbeddingType(type: string, all_embeddings: AllEmbeddings, load_cb: (progress: number, loaded_keys: string[]) => void = () => { }) {
-        const embeddings = (await this.client.data.getEmbeddingDataEmbeddingColTypeGet(type)).data;
+        const embeddings = (await this.client.datasets.getEmbeddingDatasetsSetNameDataEmbeddingColTypeGet(type, this.set_name)).data;
         all_embeddings.all_embeddings[type] = toRaw(new Embeddings(embeddings));
         load_cb(1, Object.keys(all_embeddings.all_embeddings));
     }
+    async loadSetting(): Promise<ManagerSettings> {
+        this.manager_settings = (await this.client.datasets.getSetDatasetsSetNameGet(this.set_name, { load: true })).data;
+        return this.manager_settings;
+    }
     async loadAll(load_cb: (progress: number, loaded_keys: string[]) => void = () => { }, all_embeddings: AllEmbeddings) {
-        this.all_types = (await this.client.data.getColumnTypesDataColumnTypesGet()).data;
-        this.description = (await this.client.data.getDataDescriptionDataDescriptionGet()).data;
+        this.all_types = (await this.client.datasets.getColumnTypesDatasetsSetNameDataColumnTypesGet(this.set_name)).data;
+        this.manager_settings = (await this.client.datasets.getSetDatasetsSetNameGet(this.set_name, { load: true })).data;
+        this.description = this.manager_settings.data_description;
         let promises: Promise<void>[] = [];
         for (const type in this.all_types) {
             promises.push(this.loadEmbeddingType(type, all_embeddings, load_cb));

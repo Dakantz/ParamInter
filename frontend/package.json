@@ -19,11 +19,12 @@
     "roboto-fontface": "*",
     "three": "^0.178.0",
     "vue": "^3.4.21",
+    "vue-router": "^4.6.4",
     "vuetify": "^3.5.8"
   },
   "devDependencies": {
     "@babel/types": "^7.24.0",
-    "@types/node": "^20.11.25",
+    "@types/node": "^20.19.30",
     "@vitejs/plugin-vue": "^5.0.4",
     "sass": "^1.71.1",
     "swagger-typescript-api": "^13.2.7",
