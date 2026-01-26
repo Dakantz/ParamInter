@@ -21,7 +21,7 @@ variables:
 build-frontend:
   stage: build
   script:
-    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from $CONTAINER_FRONTEND_IMAGE --pull -t $CONTAINER_FRONTEND_IMAGE ./scivis-2025-fe
+    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from $CONTAINER_FRONTEND_IMAGE --pull -t $CONTAINER_FRONTEND_IMAGE ./frontend
     - docker push $CONTAINER_FRONTEND_IMAGE
 
 build-backend:
