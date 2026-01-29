@@ -313,16 +313,16 @@ class SetsManager:
 
     def load_defaults(self):
         blast_furnace_sets = {}
-        for split in [0, 1]:
-            for bas in range(2, 5):
-                for normalize in {True, False}:
-                    for out_group in ["slag_alk", "alkper"]:
+        for normalize in {False, True}:
+            for out_group in ["slag_alk", "alkper"]:
+                for bas in range(2, 5):
+                    for split in [0, 1]:
                         # example name: blast_furnace_alkper_BAS2_split_0_normalize_False
                         key = f"blast_furnace_{out_group}_BAS{bas}_split_{split}_normalize_{normalize}"
                         blast_furnace_sets[key] = DataConfig(
                             mode=os.getenv("EMBEDDING", "tsne"),
                             data_file=f"blast_furnace/parts/{key}.csv",
-                            data_name=f"Blast Furnace Data Set, Normalized: {normalize}, BAS{bas}, Split: {split}, Output Group: {out_group}",
+                            data_name=f"Blast Furnace Data Set, BAS{bas}, Split: {split}, Output Group: {out_group}, Normalized: {normalize}",
                             short_data_name=f"blast_furnace_split{split}_bas{bas}_{'norm' if normalize else 'nonorm'}_{out_group}",
                             input_cols=5,
                             output_cols=2,

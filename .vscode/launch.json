@@ -17,7 +17,7 @@
                 "8090"
             ],
             "env": {
-                "SETS_CONFIG_JSON": "${workspaceFolder}/data/datasets/config_no_voest.json"
+                // "SETS_CONFIG_JSON": "${workspaceFolder}/data/datasets/config_no_voest.json"
             },
             "jinja": true
         }

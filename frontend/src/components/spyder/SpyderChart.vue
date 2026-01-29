@@ -386,6 +386,7 @@ const dark_color = computed(() => {
     justify-content: center;
     align-items: center;
     cursor: v-bind(cursor_style);
+    user-select: none;
 }
 
 .spider-path {
