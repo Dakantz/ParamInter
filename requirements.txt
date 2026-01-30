@@ -8,3 +8,5 @@ umap-learn
 fastapi
 uvicorn
 pandas
+openpyxl
+seaborn

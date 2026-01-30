@@ -14,10 +14,10 @@
                 "backend:app",
                 "--reload",
                 "--port",
-                "8090"
+                "8091"
             ],
             "env": {
-                "SETS_CONFIG_JSON": "${workspaceFolder}/data/datasets/config_no_voest.json"
+                "SETS_CONFIG_JSON": "${workspaceFolder}/data/datasets/config_only_scivis.json"
             },
             "jinja": true
         }
