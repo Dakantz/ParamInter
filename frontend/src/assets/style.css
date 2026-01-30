@@ -2,6 +2,7 @@
     opacity: 0.6;
     color: gray;
     width: 25vw;
+    visibility: hidden;
 }
 
 
@@ -46,9 +47,19 @@ body {
     margin: 5px 20px;
 }
 
-.header h2 {
+h2.header {
     margin: 0.1em;
     padding: 0.1em;
+}
+
+h3.info {
+    color: rgb(137, 137, 137);
+    font-size: 0.6rem;
+}
+
+h4.info {
+    color: rgb(137, 137, 137);
+    font-size: 0.6rem;
 }
 
 .link_btn {

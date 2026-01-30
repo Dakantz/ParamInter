@@ -1,11 +1,15 @@
 <template>
     <div class="search-container">
-        <h2>Similar Points</h2>
+        <h2>Search for Start Point</h2>
+        <h3 class="info">Drag the spider chart to adjust!</h3>
         <SpyderChart :rep="data_rep" v-model="state.dim_data" :editable="true" />
+        <h3>Similar points</h3>
+        <h4 class="info">Click to start next step!</h4>
         <div class="search-results">
             <div v-for="(result, idx) in state.search_results" :key="idx" class="search-result-item"
                 @mouseenter="emit('preview', result.index || -1)" @click.capture="emit('select', result.index || -1)">
-                <SpyderChart :rep="data_rep" v-model="result.inputs" :editable="false" :height="'6vw'" :show_labels="false" />
+                <SpyderChart :rep="data_rep" v-model="result.inputs" :editable="false" :height="'6vw'"
+                    :show_labels="false" />
             </div>
         </div>
     </div>
