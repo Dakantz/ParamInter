@@ -17,7 +17,7 @@ class ColumnBasedNoiser(Noiser):
     def add_noise(self, data: t.Tensor) -> tuple[t.Tensor, t.Tensor]:
         base_data = data.clone()
         # uniform noise per column
-        noise_per_column = t.abs(t.rand(data.shape[1], generator=self.rng))
+        noise_per_column = t.abs(t.randn(data.shape[1], generator=self.rng))
         noise_per_column = self.noise_level * noise_per_column / noise_per_column.max()
         noise_levels = noise_per_column.unsqueeze(0).expand_as(data)
         noise_total = t.randn_like(data, generator=self.rng) * noise_levels
@@ -36,7 +36,7 @@ class SingleModeColumnNoiser(Noiser):
         base_data = data.clone()
         n_rows, n_cols = data.shape
         # again once per column
-        noise_per_column = t.abs(t.rand(data.shape[1], generator=self.rng))
+        noise_per_column = t.abs(t.randn(data.shape[1], generator=self.rng))
         noise_per_column = self.noise_level * noise_per_column / noise_per_column.max()
 
         noise_total = t.zeros_like(data)
@@ -70,11 +70,11 @@ class MultiModeColumnNoiser(Noiser):
         self.mode_width = mode_width
         self.n_modes = n_modes
 
-    def add_noise(self, data: t.Tensor) -> t.Tensor:
+    def add_noise(self, data: t.Tensor) -> tuple[t.Tensor, t.Tensor]:
         base_data = data.clone()
         n_rows, n_cols = data.shape
         # again once per column
-        noise_per_column = t.abs(t.rand(data.shape[1], generator=self.rng))
+        noise_per_column = t.abs(t.randn(data.shape[1], generator=self.rng))
         noise_per_column = self.noise_level * noise_per_column / noise_per_column.max()
         noise_total = t.zeros_like(data)
         noise_levels = t.zeros_like(data)
@@ -109,7 +109,7 @@ class SingleModeGlobalNoiser(Noiser):
         self.rng = t.Generator().manual_seed(seed)
         self.mode_width = mode_width
 
-    def add_noise(self, data: t.Tensor) -> t.Tensor:
+    def add_noise(self, data: t.Tensor) -> tuple[t.Tensor, t.Tensor]:
         base_data = data.clone()
         n_rows, n_cols = data.shape
 
@@ -118,15 +118,13 @@ class SingleModeGlobalNoiser(Noiser):
         mode_value = data[mode_idx, :]
 
         # compute noise levels based on distance from mode
-        distances = t.norm(data - mode_value, dim=1)
+        distances = data - mode_value
         noise_levels = t.exp(-0.5 * (distances / (self.mode_width)) ** 2)
         noise_levels = noise_levels / noise_levels.max()
 
         # generate noise with scaled levels
         noise_total = (
-            t.randn_like(data, generator=self.rng)
-            * noise_levels.unsqueeze(1)
-            * self.noise_level
+            t.randn_like(data, generator=self.rng) * noise_levels * self.noise_level
         )
 
         base_data += noise_total
@@ -140,7 +138,7 @@ class MultiModeGlobalNoiser(Noiser):
         self.mode_width = mode_width
         self.n_modes = n_modes
 
-    def add_noise(self, data: t.Tensor) -> t.Tensor:
+    def add_noise(self, data: t.Tensor) -> tuple[t.Tensor, t.Tensor]:
         base_data = data.clone()
         n_rows, n_cols = data.shape
 
@@ -149,17 +147,15 @@ class MultiModeGlobalNoiser(Noiser):
         mode_values = data[mode_indices, :]
 
         # compute noise levels based on distance from nearest mode
-        noise_levels = t.zeros(n_rows)
+        noise_levels = t.zeros_like(data)
         for mode_value in mode_values:
-            distances = t.norm(data - mode_value, dim=1)
+            distances = data - mode_value
             noise_levels += t.exp(-0.5 * (distances / (self.mode_width)) ** 2)
         noise_levels = noise_levels / noise_levels.max()
 
         # generate noise with scaled levels
         noise_total = (
-            t.randn_like(data, generator=self.rng)
-            * noise_levels.unsqueeze(1)
-            * self.noise_level
+            t.randn_like(data, generator=self.rng) * noise_levels * self.noise_level
         )
 
         base_data += noise_total
