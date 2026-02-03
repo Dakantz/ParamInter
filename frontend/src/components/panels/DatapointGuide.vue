@@ -1,21 +1,11 @@
 <template>
     <div class="datapoint-guide" :class="{ 'non_active': !state.dp }">
-        <h2>Optimize Mixture</h2>
-        <h3>Selection</h3>
+        <h2>Build Minimizer</h2>
+        <h3>Start Point</h3>
         <SpyderChart v-if="state.dp" :rep="data_rep" v-model="state.dp.inputs" :editable="false"
             :sensitivities="state.sensitivities_for_hover" />
-        <h3>Choose Dimensions</h3>
-        <div class="editable-outs" v-if="state.dp">
-            <!-- <div class="">
-
-                <input type="text"  class/>
-            </div> -->
-            <div v-for="(types, idx) of state.visible_types" :key="idx">
-                <Overview v-model="state.dp" :types="types" :data_rep="data_rep" :cat_name="idx"
-                    @hover="showSensitivity($event)" @add="addLinearTarget($event)" />
-            </div>
-        </div>
         <h3>Linear Objective</h3>
+        <h4 class="info">Drag to adjust</h4>
         <div class="linear-objectives">
             <div v-for="(target, idx) in state.linear_combination" :key="idx" @mouseenter="showSensitivity(target.name)"
                 class="linear-objective">
@@ -28,6 +18,19 @@
                     v-if="idx < state.linear_combination.length - 1"> + <br /> </span>
             </span>
         </div>
+        <h3>Choose Variables</h3>
+        <h4 class="info">Click to add, hover variables to see sensitivity!</h4>
+        <div class="editable-outs" v-if="state.dp">
+            <!-- <div class="">
+
+                <input type="text"  class/>
+            </div> -->
+            <div v-for="(types, idx) of state.visible_types" :key="idx">
+                <Overview v-model="state.dp" :types="types" :data_rep="data_rep" :cat_name="idx"
+                    @hover="showSensitivity($event)" @add="addLinearTarget($event)" />
+            </div>
+        </div>
+
         <!-- <h3>Possible Input Targets</h3>
         <div class="search-results" v-if="state.search_results.length > 0">
             <div v-for="(result, idx) in state.search_results" :key="idx" class="search-result-item"

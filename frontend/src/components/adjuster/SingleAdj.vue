@@ -1,8 +1,7 @@
 <template>
     <div class="adj-outview">
-        <div class="adj-top"> <span class="adjuster-name"> {{ out_name }}={{ selected_value.toFixed(2) }}({{
-            min_value.toFixed(2) }}, {{
-                    max_value.toFixed(2) }})</span> <button @click="$emit('remove')">X</button></div>
+        <div class="adj-top"> <span class="adjuster-name"> {{ out_name }}={{ selected_value.toFixed(2) }}</span> <button
+                @click="$emit('remove')">X</button></div>
         <div class="dp-value" ref="wrapper_ref" @compositionend="updateGraph">
             <svg ref="svg_ref" class="svg-outchart" width="0px" height="0px">
                 <g>
@@ -62,18 +61,18 @@ let yScale = d3.scaleLinear()
 let xScale = d3.scaleLinear()
     .domain([0, 1])
     .range([0, 64]);
-function updateGraph() {
-    if (!svg_ref.value || !wrapper_ref.value) return;
 
+function initScales() {
+    if (!svg_ref.value || !wrapper_ref.value) return;
     const width = wrapper_ref.value.clientWidth - 5;
     const height = wrapper_ref.value.clientHeight - 5;
+
     // console.log("Updating graph with width:", width, "height:", height);
     const svg = d3.select(svg_ref.value)
         .attr('width', width)
         .attr('height', height);
 
-    svg.selectAll('path').remove(); // Clear previous content
-
+    svg.selectAll('*').remove();
 
     yScale = d3.scaleLinear()
         .domain([0, 1])
@@ -81,39 +80,80 @@ function updateGraph() {
     xScale = d3.scaleLinear()
         .domain([min_value.value, max_value.value])
         .range([0, width]);
+    const fixed_group = svg.append('g').attr('class', 'fixed-elements');
 
-    // draw one path end to end and one circle at the selected value
+    fixed_group.append('text')
+        .attr('x', 7)
+        .attr('y', yScale(0.2))
+        .text(min_value.value.toFixed(2))
+        .attr('font-size', '10px')
+        .attr('fill', 'black');
+
+    fixed_group.append('text')
+        .attr('x', width - 7)
+        .attr('y', yScale(0.2))
+        .text(max_value.value.toFixed(2))
+        .attr('font-size', '10px')
+        .attr('text-anchor', 'end')
+        .attr('fill', 'black');
+}
+function updateGraph() {
+    if (!svg_ref.value || !wrapper_ref.value) return;
+
+    const svg = d3.select(svg_ref.value)
+    svg.selectAll('g.selection-elements').remove();
+    const selection_group = svg.append('g').attr('class', 'selection-elements');
     const line = d3.line<number>()
         .x((d, i) => xScale(d))
-        .y((d) => yScale(0.5));
-    svg.append('path')
+        .y((d) => yScale(0.8));
+    selection_group.append('path')
         .datum([min_value.value, selected_value.value])
         .attr('class', 'select-line')
         .attr('d', line);
-    svg.append('path')
+    selection_group.append('path')
         .datum([min_value.value, max_value.value])
         .attr('class', 'full-line')
         .attr('d', line);
-    svg.selectAll('.hover-point').remove(); // Remove previous hover point
-    svg.append('circle')
+    selection_group.append('circle')
         .attr('class', 'hover-point')
         .attr('cx', xScale(selected_value.value))
-        .attr('cy', yScale(0.5))
+        .attr('cy', yScale(0.8))
         .attr('r', 5)
+
 }
 watch(() => selected_value, (idx) => {
 
 });
 onMounted(() => {
     const wrapper = d3.select(wrapper_ref.value)
+    let clicked_element: any = null;
+    function updateSelectionPos(evt: MouseEvent) {
+        if (!wrapper_ref.value) return;
+        if (clicked_element === null) return;
+        if (clicked_element == "hover_point") {
+            const val = xScale.invert(d3.pointer(evt)[0])
+            selected_value.value = val;
+        }
+    }
     wrapper.on('mousemove', (evt) => {
+        updateSelectionPos(evt);
+    }).on('mousedown', (evt) => {
         if (!wrapper_ref.value) return;
-    }).on('click', (evt) => {
-        if (!wrapper_ref.value) return;
-        const val = xScale.invert(d3.pointer(evt)[0])
-        selected_value.value = val;
-    });
+        const mouse_pos = d3.pointer(evt);
+        const hover_x = xScale(selected_value.value);
+        const hover_y = yScale(0.8);
+        const dist_to_hover = Math.sqrt((mouse_pos[0] - hover_x) ** 2 + (mouse_pos[1] - hover_y) ** 2);
 
+        // if (dist_to_hover < 7) {
+        clicked_element = "hover_point";
+        evt.preventDefault();
+        // }
+    }).on('mouseup', (evt) => {
+        updateSelectionPos(evt);
+        clicked_element = null;
+        
+    });
+    initScales();
     updateGraph();
 });
 watch(() => selected_value.value, () => {
@@ -137,12 +177,13 @@ watch(() => selected_value.value, () => {
     font-weight: bold;
     margin-bottom: 2px;
     max-width: 90%;
-    width:  90%;
+    width: 90%;
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
     text-align: start;
 }
+
 .adj-top {
     display: flex;
     flex-direction: row;
