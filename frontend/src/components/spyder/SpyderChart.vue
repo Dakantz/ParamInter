@@ -1,6 +1,8 @@
 <template>
-    <div ref="spider-container" class="spider-container">
-        <svg ref="plot" width="10px" height="10px" class="plot-svg">>
+    <div ref="spider-div-container" class="spider-container">
+        <svg ref="plot" width="10px" height="10px" class="plot-svg">
+            <SpyderChart_Base :rep="rep" v-model="dim_data" :editable="editable" :height="spyder_size.height"
+                :width="spyder_size.width" :color="color" :show_labels="show_labels" :sensitivities="sensitivities" />
         </svg>
     </div>
 </template>
@@ -8,9 +10,10 @@
 <script lang="ts" setup>
 import { ref, reactive, watch, onMounted, useTemplateRef, computed } from 'vue';
 import * as d3 from 'd3';
-import { inverseSpider, reSpider } from '../helpers/utils';
+import { inverseSpider, reSpider, setupMarkers } from '../helpers/utils';
 import { DataDescription } from '../../api/Api';
 import { DataRepository } from '../../proc/data-store';
+import SpyderChart_Base from './SpyderChart_Base.vue';
 const dim_data = defineModel<Array<number>>({
     default: () => []
 });
@@ -45,7 +48,7 @@ const { editable, factor, sensitivities, rep, height, color, show_labels } = def
     }
 });
 const plot = useTemplateRef('plot');
-const spiderContainer = useTemplateRef('spider-container');
+const spiderDivContainer = useTemplateRef('spider-div-container');
 
 const dimensions = ref<string[]>([]);
 watch(() => rep, (newRep) => {
@@ -53,7 +56,6 @@ watch(() => rep, (newRep) => {
         if (dimensions.value.length === 0) {
             // initialize dim_data
             dimensions.value = [...newRep.description.input_cols];
-            updateChart();
         }
 
     }
@@ -64,276 +66,27 @@ const state = reactive({
     editing_spider: false,
     edit_start_mouse: { x: 0, y: 0 },
 });
-function updateChart() {
-    // d3.select(plot.value)
-    //     .selectAll('*')
-    //     .remove();
-    const dim_mapped = dimensions.value.map((dim, i) => {
-
-        let min = rep && rep.description ? rep.description.min_values[dim] : 0;
-        let max = rep && rep.description ? rep.description.max_values[dim] : 1;
-        return {
-            name: dim,
-            value: dim_data.value[i],
-            rescale_val: reSpider(dim_data.value[i], min, max),
-            idx: i,
-            angle: -1,
-            min,
-            max,
-        };
-    });
-    // console.log("Dimensions:", dimensions, "Data:", dim_data, "Mapped:", dim_mapped);
-    if (spiderContainer.value && plot.value) {
-        const width = spiderContainer.value.clientWidth;
-        const height = spiderContainer.value.clientHeight;
-        const svg = d3.select(plot.value)
-            .attr('width', width)
-            .attr('height', height);
-        const padding = show_labels ? 20 : 4;
-        const radius = Math.min(width, height) / 2 - padding; // Padding
-        const center = { x: width / 2, y: height / 2 };
-
-        const angleScale = d3.scaleLinear()
-            .domain([0, dim_mapped.length])
-            .range([0, 2 * Math.PI]);
-        svg.select('g')
-            .remove();
-
-        const g = svg.append('g')
-            .attr('transform', `translate(${center.x}, ${center.y})`)
-            .attr('class', 'spider-group')
-
-        g.append('g')
-            .attr('class', 'spider-lines')
-            .selectAll('line')
-            .data(dim_mapped)
-            .join('line')
-            .attr('x1', 0)
-            .attr('y1', 0)
-            .attr('x2', d => radius * Math.cos(d.idx * (2 * Math.PI / dim_mapped.length)))
-            .attr('y2', d => radius * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length)))
-            .attr('stroke', 'darkgray')
-            .attr('stroke-width', 1);
-        if (show_labels) {
-            const text = g.append('g')
-                .attr('class', 'spider-text')
-                .selectAll('g.spider-text-item')
-                .data(dim_mapped)
-                .join('g')
-                .attr('transform', d => {
-                    let x = (radius + 5) * Math.cos(d.idx * (2 * Math.PI / dim_mapped.length))
-                    let y = (radius + 5) * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length))
-                    let angle = d.idx * (360 / dim_mapped.length) + 90;
-                    if (angle > 180) {
-                        angle -= 360; // Normalize angle to [-180, 180]
-                    }
-                    if (angle < -90) {
-                        angle += 180; // Adjust for left side text
-                    }
-                    if (angle > 90) {
-                        angle -= 180; // Adjust for right side text
-                    }
-                    d.angle = angle; // Store angle for reference
-                    return `translate(${x}, ${y}), rotate(${angle})`;
-                })
-                .append('text')
-                .attr('x', 0)
-                .attr('y', 0)
-                .attr('text-anchor', d => {
-                    return 'middle'; // 'start' or 'end' based on position
-                    //rotate the text based on the angle
-                })
-                .text(d => d.name)
-                .attr('font-size', '10px')
-                .attr('fill', 'black')
-                .attr('class', 'spider-text-item')
-        }
-        const spider = g
-            .selectAll('path.spider-path')
-            .data([dim_mapped])
-            .join('path')
-            .attr('class', 'spider-path')
-            .attr('d', d => {
-                let pieces = d.map((v, i) => {
-                    let angle = (i / d.length) * 2 * Math.PI;
-                    let x = Math.cos(angle) * radius * (v.rescale_val / factor);
-                    let y = Math.sin(angle) * radius * (v.rescale_val / factor);
-                    return { x, y };
-                });
-                let path = d3.path();
-                pieces.forEach((piece, i) => {
-                    if (i === 0) {
-                        path.moveTo(piece.x, piece.y);
-                    } else {
-                        path.lineTo(piece.x, piece.y);
-                    }
-                });
-                path.closePath();
-                return path.toString();
-            })
-            // .attr('class', 'spider-path')
-            .attr('class', () => {
-                return 'spider-path';
-            })
-        const filtered_sensitivities = sensitivities.map((s, i) => {
-            return { sense: s, idx: i, val: dim_mapped[i].rescale_val, name: dim_mapped[i].name, effective_length: radius * (s / (factor)) };
-        }).filter(d => Math.abs(d.sense) > 0.2)
-        // console.log("Filtered sensitivities:", filtered_sensitivities);
-        const sensitivity = g
-            .selectAll('path.sensitivity')
-            .data(filtered_sensitivities) // filter out very small sensitivities
-            // .filter(d => d.effective_length > 0.01) // filter out very small sensitivities
-            .join('path')
-            .attr('d', d => {
-                // draw an arrow depending on the sensitivity value
-                let angle = (d.idx / dim_mapped.length) * 2 * Math.PI;
-                let base_x = Math.cos(angle) * radius * (d.val / factor);
-                let base_y = Math.sin(angle) * radius * (d.val / factor);
-
-                let to_x = base_x + Math.cos(angle) * d.effective_length;
-                let to_y = base_y + Math.sin(angle) * d.effective_length;
-
-                let path = d3.path();
-                path.moveTo(base_x, base_y);
-                path.lineTo(to_x, to_y);
-                return path.toString();
-            })
-            .attr('marker-end', d => {
-                return d.sense > 0 ? 'url(#arrow-pos)' : 'url(#arrow-neg)';
-            })
-            .attr('class', d => {
-                return d.sense > 0 ? 'sensitivity_pos sensitivity' : 'sensitivity_neg sensitivity';
-            })
-
-        svg
-            .on('mousedown', (event: MouseEvent, d) => {
-                if (!editable) return;
-                state.editing_spider = true;
-                state.edit_start_mouse = { x: event.clientX, y: event.clientY };
-                console.log("Editing spider started at:", state.edit_start_mouse);
-            })
-            .on('mousemove', (event: MouseEvent) => {
-                if (state.editing_spider) {
-                    // coordinate relative to the center of the spider
-                    const rect = plot.value?.getBoundingClientRect();
-                    if (!rect) return;
-                    const centerX = rect.left + rect.width / 2;
-                    const centerY = rect.top + rect.height / 2;
-                    const relX = event.clientX - centerX;
-                    const relY = event.clientY - centerY;
-
-
-                    let angle = Math.atan2(relY, relX);
-                    if (angle < 0) {
-                        angle += 2 * Math.PI; // Normalize angle to [0, 2π]
-                    }
-                    const radius_mouse = Math.sqrt(relX * relX + relY * relY) / radius;
-
-                    let closest_dim = dim_mapped.find((d) => {
-                        const dim_angle = (d.idx / dim_mapped.length) * 2 * Math.PI;
-                        const angle_diff = Math.abs(angle - dim_angle);
-                        return angle_diff < Math.PI / dim_mapped.length;
-                    });
-                    if (!closest_dim) {
-                        console.warn("No closest dimension found for angle:", angle);
-                        return;
-                    }
-                    const idx = closest_dim.idx;
-
-                    // console.log("Mouse moved to:", relX, relY, "Angle:", angle,
-                    // "Radius:", radius_mouse, "Closest dimension:", closest_dim.name);
-                    // clamp the radius to [0, 1]
-
-                    let newValue = Math.max(0, Math.min(1, radius_mouse));
-                    newValue = inverseSpider(newValue, closest_dim.min, closest_dim.max);
-                    dim_data.value[idx] = newValue;
-
-                    //normalize the other values
-                    if (rep && rep.description && rep.description.inputs_constrained) {
-                        let min_values = rep.description.min_values;
-                        let max_values = rep.description.max_values;
-                        let normed_values = dim_data.value.map((v, i) => {
-                            let dim_name = dimensions.value[i];
-                            return (v - min_values[dim_name]) / (max_values[dim_name] - min_values[dim_name]);
-                        });
-                        const current_sum = normed_values.reduce((a, b) => a + b, 0);
-                        const rescaled_values = normed_values.map((v, i) => {
-                            return v / current_sum;
-                        });
-                        dim_data.value = rescaled_values.map((v, i) => {
-                            let dim_name = dimensions.value[i];
-                            return v * (max_values[dim_name] - min_values[dim_name]) + min_values[dim_name];
-                        });
-                    } else {
-                        dim_data.value = [...dim_data.value];
-                    }
-                    updateChart();
-                }
-            })
-            .on('mouseup', () => {
-                state.editing_spider = false;
-            });
-        ;
-        // console.log("Dims:", dim_mapped);
-        // svg.data(dim_mapped)
-        //     .join('g')
-        //     .attr('transform', `translate(${center.x}, ${center.y})`)
-        //     .append('line')
-        //     .attr('x1', 0)
-        //     .attr('y1', 0)
-        //     .attr('x2', d => radius * Math.cos(angleScale(d.idx)))
-        //     .attr('y2', d => radius * Math.sin(angleScale(d.idx)))
-        //     .attr('stroke', 'black');
+const spyder_size = computed(() => {
+    if (!spiderDivContainer.value) return { width: 100, height: 100 };
+    return {
+        width: spiderDivContainer.value.clientWidth,
+        height: spiderDivContainer.value.clientHeight
+    };
+});
+onMounted(() => {
+    const svg = d3.select(plot.value);
+    let bbox = spiderDivContainer.value?.getBoundingClientRect();
+    if (!svg.empty() && bbox) {
+        svg.attr('width', bbox.width);
+        svg.attr('height', bbox.height);
     }
 
-}
-onMounted(() => {
-
-    const markerBoxWidth = 5;
-    const markerBoxHeight = 5;
-    const refX = markerBoxWidth / 2;
-    const refY = markerBoxHeight / 2;
-    const arrowPoints = [
-        [0, 0],
-        [markerBoxWidth, markerBoxHeight / 2],
-        [0, markerBoxHeight],
-        [markerBoxWidth / 2, markerBoxHeight / 2]
-    ];
-    d3.select(plot.value)
-        .append('defs')
-        .append('marker')
-        .attr('id', 'arrow-pos')
-        .attr('viewBox', [0, 0, markerBoxWidth, markerBoxHeight])
-        .attr('refX', refX)
-        .attr('refY', refY)
-        .attr('markerWidth', markerBoxWidth)
-        .attr('markerHeight', markerBoxHeight)
-        .attr('orient', 'auto-start-reverse')
-        .append('path')
-        .attr('d', d3.line()(arrowPoints as [number, number][]))
-        .attr('class', 'sensitivity_pos');
-    d3.select(plot.value)
-        .append('defs')
-        .append('marker')
-        .attr('id', 'arrow-neg')
-        .attr('viewBox', [0, 0, markerBoxWidth, markerBoxHeight])
-        .attr('refX', refX)
-        .attr('refY', refY)
-        .attr('markerWidth', markerBoxWidth)
-        .attr('markerHeight', markerBoxHeight)
-        .attr('orient', 'auto-start-reverse')
-        .append('path')
-        .attr('d', d3.line()(arrowPoints as [number, number][]))
-        .attr('class', 'sensitivity_neg');
-
-    updateChart();
+    setupMarkers(d3.select(plot.value));
 });
 watch(() => dimensions, () => {
-    updateChart();
 }, { immediate: true });
 watch(() => dim_data, () => {
     // console.log("Dimension data changed:", dim_data.value);
-    updateChart();
 }, { deep: true, immediate: true });
 const cursor_style = ref('default');
 watch(() => editable, (editing) => {
@@ -348,32 +101,9 @@ watch(() => editable, (editing) => {
 watch(() => sensitivities, (sense) => {
     if (sense.length > 0) {
         // console.log("Updating sensitivities:", sense);
-        updateChart();
     }
 }, { immediate: true });
 
-const light_color = computed(() => {
-    if (editable) {
-        return "rgba(173, 216, 230, 0.541)"
-    }
-    if (!editable) {
-        let col = d3.color(color);
-        if (!col) return color;
-        col.opacity = 0.6;
-        return col.brighter(2).toString();
-    }
-});
-const dark_color = computed(() => {
-    if (editable) {
-        return "darkblue"
-    }
-    if (!editable) {
-        let col = d3.color(color);
-        if (!col) return color;
-        col.opacity = 0.6;
-        return col.toString();
-    }
-});
 
 </script>
 
@@ -381,7 +111,7 @@ const dark_color = computed(() => {
 .spider-container {
     width: 90%;
     min-width: 100px;
-    height: v-bind(height);
+    min-height: v-bind(height);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -389,32 +119,9 @@ const dark_color = computed(() => {
     user-select: none;
 }
 
-.spider-path {
-    fill: v-bind(light_color);
-    stroke: v-bind(dark_color);
-    stroke-width: 1px;
-}
-
-.spider-text-item {
-    pointer-events: none;
-}
 
 .plot-svg {
     width: 100%;
     /* height: 100%; */
-}
-
-.sensitivity {
-    stroke-width: 3px;
-}
-
-.sensitivity_pos {
-    fill: rgba(7, 107, 32, 0.642);
-    stroke: rgba(7, 107, 32, 0.642);
-}
-
-.sensitivity_neg {
-    fill: rgba(40, 6, 151, 0.608);
-    stroke: rgba(71, 6, 151, 0.608);
 }
 </style>

@@ -37,6 +37,10 @@ from umap.layouts import tqdm
 import models.base
 from models.vae import VAE
 
+from linear_operator.settings import _linalg_dtype_cholesky
+
+_linalg_dtype_cholesky._set_value(t.float32)
+
 
 class MultitaskGP(ApproximateGP):
     def __init__(
@@ -47,7 +51,7 @@ class MultitaskGP(ApproximateGP):
         gp_latent_size=176,
         n_inducing=512,
     ):
-        inducing_points = t.randn(gp_latent_size, n_inducing, input_size)
+        inducing_points = t.randn(gp_latent_size, n_inducing, input_size).to(t.float32)
         variational_distribution = CholeskyVariationalDistribution(
             num_inducing_points=n_inducing, batch_shape=t.Size([gp_latent_size])
         )
@@ -88,9 +92,9 @@ class MultitaskGP(ApproximateGP):
 
     def forward(self, x):
         # mean_x = self.linear(x.T).T
-        mean_x = self.mean_module(x)
+        mean_x = self.mean_module(x).to(t.float32)
         # mean_x = self.norm(mean_x.T).T
-        covar_x = self.covar_module(x)
+        covar_x = self.covar_module(x).to(t.float32)
         return MultivariateNormal(mean_x, covar_x)
 
 
@@ -119,8 +123,8 @@ class GP_VAE(models.base.BaseUCQModel):
         pass
 
     def forward(self, X):
-        z, mu, logvar = self.vae_model.encode(X)
-        dist = self.likelihood(self.gp(mu))
+        z, mu, logvar = self.vae_model.encode(X).to(t.float32)
+        dist = self.likelihood(self.gp(mu)).to(t.float32)
         return dist
 
     def _get_batch_idx(self, batch_size):
@@ -166,16 +170,20 @@ class GP_VAE(models.base.BaseUCQModel):
         self.inducing_inputs = latents
         self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.input_size).to(dev)
 
-        self.gp = MultitaskGP(
-            likelihood=self.likelihood,
-            input_size=self.latent_size,
-            gp_latent_size=int(self.latent_size / 2),
-            num_tasks=self.input_size,
-            n_inducing=self.n_inducing,
-        ).to(dev)
+        self.gp = (
+            MultitaskGP(
+                likelihood=self.likelihood,
+                input_size=self.latent_size,
+                gp_latent_size=int(self.latent_size / 2),
+                num_tasks=self.input_size,
+                n_inducing=self.n_inducing,
+            )
+            .to(t.float32)
+            .to(dev)
+        )
 
         mll = VariationalELBO(self.likelihood, self.gp, num_data=Y.shape[0])
-
+        mll = mll.to(t.float32).to(dev)
         # second: optimize bGPLVM with VAE latent samples
         # Likelihood
 
@@ -196,8 +204,8 @@ class GP_VAE(models.base.BaseUCQModel):
                     sample_batch = latent[0].detach()
                 else:
                     sample_batch = latent.rsample()
-                optimizer.zero_grad()
-                output_batch = self.gp(sample_batch.to(dev))
+                    optimizer.zero_grad()
+                output_batch = self.gp(sample_batch.to(t.float32).to(dev))
                 loss = -mll(output_batch, Y).sum()
                 loss_list.append(loss.item())
                 if log:

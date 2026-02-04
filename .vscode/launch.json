@@ -9,6 +9,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
+            "justMyCode": false,
             "cwd": "${workspaceFolder}",
             "args": [
                 "backend:app",
@@ -20,6 +21,6 @@
                 "SETS_CONFIG_JSON": "${workspaceFolder}/data/datasets/config_only_scivis.json"
             },
             "jinja": true
-        }
+        },
     ]
 }
