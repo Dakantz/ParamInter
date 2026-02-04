@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
-from backend.dataman import ManagerSettings, SetsManager, sets_manager
+from backend.datamans import sets_manager
+from backend.models import ManagerSettings
 
 sets_router = APIRouter(prefix="/datasets")
 

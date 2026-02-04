@@ -258,3 +258,8 @@ def data_point_suggestions(
     ]
 
     return suggestions
+
+
+@dp_router.get("/posterior/{index}")
+def posterior_of_data_point(index: int, set_name: str = None):
+    pass
