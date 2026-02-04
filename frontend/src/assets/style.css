@@ -73,3 +73,15 @@ h4.info {
 .link_btn:hover {
     background-color: #8fac9f;
 }
+
+.full-line-input {
+    fill: none;
+    stroke: rgb(200, 200, 200);
+    stroke-width: 1.0;
+}
+
+.hover-point-input {
+    fill: rgb(132, 208, 82);
+    stroke: rgb(58, 173, 100);
+    stroke-width: 1.5;
+}

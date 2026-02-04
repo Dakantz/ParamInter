@@ -217,15 +217,4 @@ watch(() => selected_value.value, () => {
     stroke-width: 1.5;
 }
 
-.full-line {
-    fill: none;
-    stroke: rgb(200, 200, 200);
-    stroke-width: 1.0;
-}
-
-.hover-point {
-    fill: rgb(132, 208, 82);
-    stroke: rgb(58, 173, 100);
-    stroke-width: 1.5;
-}
 </style>

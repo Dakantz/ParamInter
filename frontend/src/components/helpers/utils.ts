@@ -39,3 +39,44 @@ export function outValues(int_results: InterpolationResult, idx: number) {
 }
 
 export const randomNormal = d3.randomNormal()
+
+
+export function setupMarkers(svg: d3.Selection<SVGSVGElement | null, unknown, null, undefined>, markerSize = 5) {
+
+    const markerBoxWidth = markerSize;
+    const markerBoxHeight = markerSize;
+    const refX = markerBoxWidth / 2;
+    const refY = markerBoxHeight / 2;
+    const arrowPoints = [
+        [0, 0],
+        [markerBoxWidth, markerBoxHeight / 2],
+        [0, markerBoxHeight],
+        [markerBoxWidth / 2, markerBoxHeight / 2]
+    ];
+    svg
+        .append('defs')
+        .append('marker')
+        .attr('id', 'arrow-pos')
+        .attr('viewBox', [0, 0, markerBoxWidth, markerBoxHeight])
+        .attr('refX', refX)
+        .attr('refY', refY)
+        .attr('markerWidth', markerBoxWidth)
+        .attr('markerHeight', markerBoxHeight)
+        .attr('orient', 'auto-start-reverse')
+        .append('path')
+        .attr('d', d3.line()(arrowPoints as [number, number][]))
+        .attr('class', 'sensitivity_pos');
+    svg
+        .append('defs')
+        .append('marker')
+        .attr('id', 'arrow-neg')
+        .attr('viewBox', [0, 0, markerBoxWidth, markerBoxHeight])
+        .attr('refX', refX)
+        .attr('refY', refY)
+        .attr('markerWidth', markerBoxWidth)
+        .attr('markerHeight', markerBoxHeight)
+        .attr('orient', 'auto-start-reverse')
+        .append('path')
+        .attr('d', d3.line()(arrowPoints as [number, number][]))
+        .attr('class', 'sensitivity_neg');
+}

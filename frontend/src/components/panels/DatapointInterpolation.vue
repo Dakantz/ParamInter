@@ -1,30 +1,16 @@
 <template>
     <div class="datapoint-guide" :class="{ 'non_active': !interpolations }">
         <h2>Explore Interpolation</h2>
-        <h3>Ends</h3>
-
-        <div class="interpolation-ends" v-if="interpolations">
-            <div v-for="end, i in interpolation_ends" :key="i" class="interpolation-end"
-                :class="highlightClass(state.hovered_interpolation.interpolation_idx, i)">
-                <SpyderChart :rep="data_rep" v-model="interpolation_ends[i]" :editable="false" :height="'10vh'"
-                    :color="colorForIndex(i)"  :show_labels="false" />
-            </div>
-        </div>
-
-
+        <h3>Input Interpolation</h3>
+        <InterpolationSlider v-if="interpolations" :data_rep="data_rep" :interpolations="interpolations"
+            v-model="selection" :spyder_size="60" :padding="20" :hovered_output="state.hovered_value" />
         <h3>Interpolated Output Values</h3>
         <div class="interpolation-outputs" v-if="interpolations">
             <div v-for="(types, cat_name) of state.visible_types" :key="cat_name" class="interpolation-category">
                 <IntOverview :int_result="(state.interpolation_copy as InterpolationResult[])" :types="types"
-                    :data_rep="data_rep" :cat_name="cat_name" @hover="state.hovered_value = $event"
+                    :data_rep="data_rep" :cat_name="cat_name" @hover="hoveredValue($event)"
                     v-model="state.hovered_interpolation" @select="selectDp($event)" />
             </div>
-        </div>
-        <h3>Interpolated Input Values</h3>
-        <div class="interpolation-hover" v-if="interpolations && state.hovered_dp">
-            <SpyderChart :rep="data_rep" v-model="state.hovered_dp.inputs" :editable="false"
-                :sensitivities="state.sensitivities_for_hover" :height="'20vh'"
-                :color="colorForIndex(state.hovered_interpolation.interpolation_idx)" />
         </div>
         <div v-if="state.loading">
             <span>Loading...</span>
@@ -41,6 +27,7 @@ import SpyderChart from '../spyder/SpyderChart.vue';
 import { DataPoint, InterpolationResult } from '../../api/Api';
 import { HoveredInterpolation, PlotSelection } from '../types';
 import IntOverview from '../interpolation/IntOverview.vue';
+import InterpolationSlider from '../interpolation/InterpolationSlider.vue';
 onMounted(() => {
     console.log("Interpolation component mounted");
 });
@@ -52,6 +39,7 @@ const selection = defineModel<PlotSelection>(
 const emit = defineEmits<{
     (e: 'preview', idx: number): void;
     (e: 'select', idx: number): void;
+    (e: 'hover', out_name: string): void;
 }>();
 const { data_rep, interpolations } = defineProps({
     data_rep: {
@@ -87,6 +75,10 @@ function selectDp(idx: HoveredInterpolation) {
         }
     }
 }
+function hoveredValue(out_name: string) {
+    state.hovered_value = out_name;
+    emit('hover', out_name);
+}
 watch(() => state.hovered_interpolation, (hovered_interpolation) => {
     // console.log("Hovered index:", idx);
     if (hovered_interpolation.index_in_interpolation >= 0 && state.interpolation_copy) {
@@ -94,6 +86,7 @@ watch(() => state.hovered_interpolation, (hovered_interpolation) => {
         if (state.hovered_value) {
             showSensitivity(state.hovered_value, state.hovered_index);
         }
+
         data_rep.dps.getDP(state.hovered_index).then((dp) => {
             state.hovered_dp = dp;
             showSensitivity(state.hovered_value, state.hovered_index);
@@ -129,7 +122,11 @@ watch(() => data_rep.description, (desc) => {
     state.visible_types = data_rep.getVisisbleTypes();
 
 }, { immediate: true, deep: true });
-
+watch(() => state.hovered_value, (out_name) => {
+    if (out_name && state.hovered_index >= 0) {
+        showSensitivity(out_name, state.hovered_index);
+    }
+}, { immediate: true });
 function showSensitivity(out_col: string, hovered_index: number) {
     if (state.hovered_dp) {
         data_rep.client.datasets.explanationsForDpDatasetsSetNameDataPointExplanationsIdxPost(
@@ -138,9 +135,9 @@ function showSensitivity(out_col: string, hovered_index: number) {
             resolution: 16
         }).then((result) => {
             // console.log("Sensitivity Analysis Result:", result);
-            if (result.data.length > 0){
+            if (result.data.length > 0) {
                 state.sensitivities_for_hover = result.data[0].sensitivity_scores;
-            }else{
+            } else {
                 state.sensitivities_for_hover = [];
             }
         }).catch((error) => {
@@ -176,6 +173,7 @@ function showSensitivity(out_col: string, hovered_index: number) {
     max-width: 100%;
     flex-wrap: wrap;
 }
+
 .interpolation-category {
     flex: 1;
     padding: 0 5px;

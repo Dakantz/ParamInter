@@ -10,3 +10,5 @@ uvicorn
 pandas
 openpyxl
 seaborn
+torchmetrics
+gpytorch
