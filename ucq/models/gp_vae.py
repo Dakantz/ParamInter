@@ -123,8 +123,12 @@ class GP_VAE(models.base.BaseUCQModel):
         pass
 
     def forward(self, X):
-        z, mu, logvar = self.vae_model.encode(X).to(t.float32)
-        dist = self.likelihood(self.gp(mu)).to(t.float32)
+        z, mu, logvar = self.vae_model.encode(X)
+        mu = mu.to(t.float32)
+
+        dist = self.likelihood(self.gp(mu))
+        dist = dist.to(t.float32)
+
         return dist
 
     def _get_batch_idx(self, batch_size):
