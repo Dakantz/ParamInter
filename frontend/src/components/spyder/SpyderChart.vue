@@ -2,7 +2,8 @@
     <div ref="spider-div-container" class="spider-container">
         <svg ref="plot" width="10px" height="10px" class="plot-svg">
             <SpyderChart_Base :rep="rep" v-model="dim_data" :editable="editable" :height="spyder_size.height"
-                :width="spyder_size.width" :color="color" :show_labels="show_labels" :sensitivities="sensitivities" />
+                :width="spyder_size.width" :color="color" :show_labels="show_labels" :sensitivities="sensitivities"
+                :uncertainties="uncertainties" />
         </svg>
     </div>
 </template>
@@ -31,6 +32,10 @@ const { editable, factor, sensitivities, rep, height, color, show_labels } = def
         default: 1
     },
     sensitivities: {
+        type: Array as () => Array<number>,
+        default: () => []
+    },
+    uncertainties: {
         type: Array as () => Array<number>,
         default: () => []
     },

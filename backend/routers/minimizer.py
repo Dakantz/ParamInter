@@ -106,6 +106,9 @@ def get_minimization_interpolation(
         indices = indices.flatten()
         indices[0] = q.start_idx
         indices[-1] = argmin_index
+
+        uncertainties_interpolated = data_man.uncertainty.loc[indices, :]
+
         embeddings_nn: dict[str, list] = {}
 
         for col_name, embedded in data_man.embedding_subsets.items():
@@ -122,6 +125,7 @@ def get_minimization_interpolation(
                 .tolist(),
                 projected_outputs=embeddings_nn,
                 indices=indices.tolist(),
+                uncertainties=uncertainties_interpolated.values.tolist(),
             )
         )
     return int_results

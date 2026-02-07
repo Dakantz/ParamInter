@@ -167,7 +167,7 @@ def explanations_for_dp(
     data: DataPointSensitivity = Body(DataPointSensitivity),
     set_name: str = None,
 ) -> list[SensitivityAnalysisResult]:
-    data_man = sets_manager.get_manager(set_name)
+    data_man = sets_manager.get_manager(set_name, True)
     # vary the inputs of the data point at idx
     if idx < 0 or idx >= data_man.cleaned.shape[0]:
         return []
@@ -197,14 +197,7 @@ def explanations_for_dp(
             sensitivities = sensitivities / np.linalg.norm(sensitivities)
 
         output_sensitivities = SensitivityAnalysisResult(
-            dp=DataPoint(
-                inputs=data_man.cleaned[data_man.input_cols].iloc[idx].values.tolist(),
-                outputs=data_man.cleaned[data_man.output_cols]
-                .iloc[idx]
-                .values.tolist(),
-                projected_outputs=data_man.embedded_tsne[idx].tolist(),
-                index=idx,
-            ),
+            dp=data_man.get_dp(idx),
             sensitivity_scores=sensitivities.tolist(),
             out_col=out_col,
         )

@@ -12,7 +12,7 @@ import { DataRepository } from '../../proc/data-store';
 const dim_data = defineModel<Array<number>>({
     default: () => []
 });
-const { editable, factor, sensitivities, rep, width, height, color, show_labels, sensitivity_scale } = defineProps({
+const { editable, factor, sensitivities, uncertainties, rep, width, height, color, show_labels, sensitivity_scale } = defineProps({
     rep: {
         type: Object as () => DataRepository,
         default: () => (null)
@@ -26,6 +26,10 @@ const { editable, factor, sensitivities, rep, width, height, color, show_labels,
         default: 1
     },
     sensitivities: {
+        type: Array as () => Array<number>,
+        default: () => []
+    },
+    uncertainties: {
         type: Array as () => Array<number>,
         default: () => []
     },

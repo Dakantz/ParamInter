@@ -53,6 +53,8 @@ export interface DataPoint {
   outputs: number[];
   /** Projected Outputs */
   projected_outputs?: number[];
+  /** Uncertainties */
+  uncertainties?: number[];
   /** Index */
   index?: number;
 }
@@ -174,6 +176,8 @@ export interface InterpolationResult {
   indices: number[];
   /** Explainations */
   explainations?: number[][];
+  /** Uncertainties */
+  uncertainties?: number[][];
 }
 
 /** LinearTarget */
@@ -753,6 +757,25 @@ export class Api<
         method: "POST",
         body: data,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name PosteriorOfDataPointDatasetsSetNameDataPointPosteriorIndexGet
+     * @summary Posterior Of Data Point
+     * @request GET:/datasets/{set_name}/data-point/posterior/{index}
+     */
+    posteriorOfDataPointDatasetsSetNameDataPointPosteriorIndexGet: (
+      index: number,
+      setName: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<any, HTTPValidationError>({
+        path: `/datasets/${setName}/data-point/posterior/${index}`,
+        method: "GET",
         format: "json",
         ...params,
       }),

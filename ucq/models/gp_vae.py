@@ -34,8 +34,9 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from umap.layouts import tqdm
 
-import models.base
-from models.vae import VAE
+from ucq.models.base import BaseUCQModel
+from ucq.models.vae import VAE
+from ucq.utils import autodevice
 
 from linear_operator.settings import _linalg_dtype_cholesky
 
@@ -100,7 +101,7 @@ class MultitaskGP(ApproximateGP):
 
 # https://docs.gpytorch.ai/en/stable/examples/045_GPLVM/Gaussian_Process_Latent_Variable_Models_with_Stochastic_Variational_Inference.html
 # gGPLVM model
-class GP_VAE(models.base.BaseUCQModel):
+class GP_VAE(BaseUCQModel):
     def __init__(
         self,
         input_size: int,
@@ -131,6 +132,10 @@ class GP_VAE(models.base.BaseUCQModel):
 
         return dist
 
+    def reconstruct(self, x: t.Tensor) -> tuple[t.Tensor, ...]:
+        dist = self(x)
+        return dist.mean
+
     def _get_batch_idx(self, batch_size):
         valid_indices = t.arange(self.N)
         batch_indices = t.randperm(self.N)[:batch_size]
@@ -149,8 +154,13 @@ class GP_VAE(models.base.BaseUCQModel):
         N = Y.shape[0]
         self.N = N
         self.reinit()
-
-        dev = next(self.vae_model.parameters()).device
+        if self.vae_model is None:
+            self.vae_model = VAE(
+                Y.shape[-1], layers=[64, 32], latent_size=self.latent_size
+            ).to()
+            dev = autodevice()
+        else:
+            dev = next(self.vae_model.parameters()).device
 
         # 2 steps!
         # first: optimize VAE

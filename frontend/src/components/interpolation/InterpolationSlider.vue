@@ -3,15 +3,16 @@
         <svg ref="svg_ref" width="100px" height="100px">
             <g class="spyder_ends" v-for="(end, i) in end_points" :key="i"
                 :transform="`translate(${endsPosition(i).x}, ${endsPosition(i).y})`">
-                <SpyderChart_Base :rep="data_rep" v-model="end_points[i]" :editable="false" :height="spyder_size"
-                    :show_labels="false" :width="spyder_size" :color="colorForIndex(display_intersection_index)" />
+                <SpyderChart_Base :rep="data_rep" v-model="end_points[i].inputs" :editable="false" :height="spyder_size"
+                    :show_labels="false" :width="spyder_size" :color="colorForIndex(display_intersection_index)"
+                    :uncertainties="end_points[i].uncertainties" />
             </g>
             <g class="interpolation_slider">
                 <!-- <text>Hello</text> -->
             </g>
             <g class="spyder_interpolation"
                 :transform="`translate(${interpolationPosition.x}, ${interpolationPosition.y})`">
-                <SpyderChart_Base v-if="hovered_input" :rep="data_rep" v-model="hovered_input"
+                <SpyderChart_Base v-if="hovered_dp" :rep="data_rep" v-model="hovered_dp.inputs"
                     :sensitivities="state.displayed_sensitivities" :editable="false" :show_labels="false"
                     :height="spyder_size * hover_scale" :width="spyder_size * hover_scale"
                     :color="colorForIndex(display_intersection_index)" :sensitivity_scale="0.5" />
@@ -24,7 +25,7 @@
 <script lang="ts" setup>
 import { ref, reactive, watch, onMounted, useTemplateRef, computed } from 'vue';
 import * as d3 from 'd3';
-import { colorForIndex, DataRepository, LoadedDataPoints } from '../../proc/data-store';
+import { colorForIndex, DataRepository, get_dp_from_interpolation, LoadedDataPoints } from '../../proc/data-store';
 import SpyderChart from '../spyder/SpyderChart.vue';
 import { DataPoint, InterpolationResult } from '../../api/Api';
 import { HoveredInterpolation, PlotSelection } from '../types';
@@ -159,8 +160,8 @@ const displayed_interpolation = computed(() => {
     }
     return null;
 });
-const hovered_input = computed(() => {
-    return displayed_interpolation.value ? displayed_interpolation.value.knn_inputs[selection.value.hovered_int?.index_in_interpolation || 0] : 0;
+const hovered_dp = computed(() => {
+    return get_dp_from_interpolation(selection.value.hovered_int?.index_in_interpolation || 0, displayed_interpolation.value!)
 });
 watch(() => selection.value.hovered_int, (int) => {
     if (displayed_interpolation.value && int?.index_in_interpolation || 0 >= 0) {
@@ -175,6 +176,9 @@ watch(() => selection.value.hovered_int, (int) => {
                 resolution: 16
             }).then((result) => {
                 // console.log("Sensitivity Analysis Result:", result);
+                if (result.data.length == 0) {
+                    return
+                }
                 state.displayed_sensitivities = result.data[0].sensitivity_scores;
             }).catch((error) => {
                 console.error("Error fetching sensitivity analysis:", error);
@@ -186,9 +190,13 @@ watch(() => selection.value.hovered_int, (int) => {
 
 const end_points = computed(() => {
     if (displayed_interpolation.value) {
-        const first = displayed_interpolation.value.inputs[0];
-        const last = displayed_interpolation.value.inputs[displayed_interpolation.value.inputs.length - 1];
-        return [first, last];
+        let indices = [
+            0, displayed_interpolation.value.inputs.length - 1
+        ]
+        let dps = indices.map(i => {
+            return get_dp_from_interpolation(i, displayed_interpolation.value!)
+        })
+        return dps
     }
     return [];
 });

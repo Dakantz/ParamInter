@@ -3,11 +3,11 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchmetrics.functional import r2_score
 from umap.layouts import tqdm
-import models.base
+from ucq.models.base import BaseUCQModel
 
 
 # VAE model
-class VAE(models.base.BaseUCQModel):
+class VAE(BaseUCQModel):
     def __init__(
         self,
         input_size,
@@ -126,12 +126,12 @@ class VAE(models.base.BaseUCQModel):
                     loss_metrics_epoch.append(
                         {"loss": val_loss.item(), "r2_score": r2_score_val.item()}
                     )
-            avg_val_loss = {
-                key: t.mean(t.tensor([m[key] for m in loss_metrics_epoch]))
-                .mean()
-                .item()
-                for key in loss_metrics_epoch[0]
-            }
+                avg_val_loss = {
+                    key: t.mean(t.tensor([m[key] for m in loss_metrics_epoch]))
+                    .mean()
+                    .item()
+                    for key in loss_metrics_epoch[0]
+                }
             if log:
                 print(
                     f"Epoch {epoch + 1}/{epochs}, Train Loss: {loss.item():.4f}",

@@ -2,8 +2,9 @@ from sklearn.base import TransformerMixin
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import lightgbm as lgb
 
-from backend.models import DataDescription, ManagerSettings
+from ucq.models import BaseUCQModel
 
+from backend.models import DataDescription, ManagerSettings, DataPoint
 
 from sklearn.neighbors import NearestNeighbors
 
@@ -24,7 +25,13 @@ from .config import DataConfig
 import tqdm
 from pathlib import Path
 import os
+import pickle
 
+from ucq.utils import (
+    train_vae_noiseless,
+    minmaxnormed_tensor_of,
+    autodevice,
+)
 # https://stackoverflow.com/questions/6760685/what-is-the-best-way-of-implementing-a-singleton-in-python
 
 
@@ -33,6 +40,7 @@ class ModelManager:
         self,
         config: DataConfig = DataConfig(),
     ):
+        self.cfg = config
         self.base_dir = Path(config.base_dir)
         self.mode = config.mode
         self.data_file = config.data_file
@@ -52,6 +60,10 @@ class ModelManager:
         self.sanity_check()
         self.data = None
         self.load_data_file()
+
+        self.vae_model: BaseUCQModel = None
+        self.dev = autodevice()
+        self.embedded_tsne: np.ndarray = None
 
     def dataset_path(self) -> str:
         return str(self.dataset_path_base / Path(self.data_file))
@@ -89,7 +101,7 @@ class ModelManager:
         self.output_cols = output_cols
 
         cleaned = data[self.input_cols + self.output_cols].fillna(0).astype(np.float32)
-        self.cleaned = cleaned
+        self.cleaned: pd.DataFrame = cleaned
 
         self.column_types_loaded = column_types
         if "scivis" not in self.short_data_name:
@@ -151,16 +163,17 @@ class ModelManager:
                 embedding_subsets[col_name] = scaled_tsne
 
         model_ensemble: dict[str, lgb.LGBMRegressor] = {}
-        models_path = self.models_path / Path("lgbms")
-        if not models_path.exists():
-            os.makedirs(models_path)
+
+        lgbms_paths = self.models_path / Path("lgbms")
+        if not lgbms_paths.exists():
+            os.makedirs(lgbms_paths)
         for output_col in tqdm.tqdm(self.output_cols, desc="Loading models"):
             col_name = output_col.encode("ascii", "ignore").decode("ascii")
             col_name = col_name.replace(" ", "_")
             col_name = col_name.replace(".", "_")
             col_name = col_name.replace("/", "_")
 
-            model_path = models_path / Path(f"{col_name}_model.txt")
+            model_path = lgbms_paths / Path(f"{col_name}_model.txt")
             if not model_path.exists():
                 print(f"Model file {model_path} does not exist. Skipping.")
                 # train model here if needed
@@ -177,6 +190,27 @@ class ModelManager:
             model_ensemble[output_col] = model
 
         print("Model ensemble loaded with models for outputs:", model_ensemble.keys())
+        self.vae_model_path = (
+            self.models_path / f"vae_model_{self.cfg.vae_mode.name}.pckle"
+        )
+        if self.vae_model_path.exists():
+            print("Loading VAE model from", self.vae_model_path)
+            with open(self.vae_model_path, "rb") as f:
+                self.vae_model = pickle.load(f)
+        else:
+            print("Training VAE model, no model @", self.vae_model_path)
+            self.vae_model = train_vae_noiseless(
+                self.cleaned,
+                self.cfg.vae_mode.toClass(),
+                epochs=3,
+                log=True,
+                model_kwargs={"latent_size": int(np.sqrt(self.cleaned.shape[1]))},
+            )
+
+            with open(self.vae_model_path, "wb") as f:
+                pickle.dump(self.vae_model.cpu(), f)
+        self.vae_model = self.vae_model.to(self.dev)
+        self.eval_uncertainties()
         self.model_ensemble = model_ensemble
         self.scaler_outs = scaler_outs
         self.scaled_outputs = scaled_outputs
@@ -189,6 +223,12 @@ class ModelManager:
 
         self.column_types = self.column_types_loaded
         self.loaded = True
+
+    def eval_uncertainties(self):
+        cleaned_minmax = minmaxnormed_tensor_of(self.cleaned).to(self.dev)
+        noise = self.vae_model.uncertainty(cleaned_minmax.to())
+        noise_df = pd.DataFrame(data=noise.cpu().numpy(), columns=self.cleaned.columns)
+        self.uncertainty = noise_df * (self.cleaned.max() - self.cleaned.min())
 
     def get_settings(self) -> ManagerSettings:
         return ManagerSettings(
@@ -214,4 +254,13 @@ class ModelManager:
             inputs_constrained=self.inputs_constrained,
             col_defs=self.column_types_loaded,
             loaded=self.loaded,
+        )
+
+    def get_dp(self, idx):
+        return DataPoint(
+            inputs=self.cleaned[self.input_cols].iloc[idx].values.tolist(),
+            outputs=self.cleaned[self.output_cols].iloc[idx].values.tolist(),
+            projected_outputs=self.embedded_tsne[idx].tolist(),
+            index=idx,
+            uncertainties=self.uncertainty.loc[idx, :].to_list(),
         )

@@ -38,6 +38,7 @@ class DataPoint(BaseModel):
     inputs: list[float]
     outputs: list[float]
     projected_outputs: list[float] = None
+    uncertainties: list[float] = None
     index: int = None
 
 
@@ -63,6 +64,7 @@ class InterpolationResult(BaseModel):
     projected_outputs: dict[str, list[list[float]]]
     indices: list[int]
     explainations: list[list[float]] = None
+    uncertainties: list[list[float]] = None
 
 
 class DataPointSensitivity(BaseModel):

@@ -1,10 +1,10 @@
-import models.base
+from ucq.models.base import BaseUCQModel
 import torch as t
 
 from torch.utils.data import DataLoader
 
 
-class RandomBaseline(models.base.BaseUCQModel):
+class RandomBaseline(BaseUCQModel):
     def __init__(self, input_size: int, seed=42, latent_size=16, **kwargs):
         super(RandomBaseline, self).__init__()
         self.input_size = input_size

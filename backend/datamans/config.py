@@ -1,5 +1,19 @@
 from dataclasses import dataclass
 import os
+from enum import Enum
+from ucq.models import RandomBaseline, GP_VAE, VAE, BaseUCQModel
+import typing
+
+
+class VAEOptions(Enum):
+    m_GPVAE = "gpvae"
+    m_VAE = "vae"
+
+    def toClass(self) -> BaseUCQModel.__class__:
+        if self == VAEOptions.m_GPVAE:
+            return GP_VAE
+        if self == VAEOptions.m_VAE:
+            return VAE
 
 
 @dataclass
@@ -14,3 +28,4 @@ class DataConfig:
     time_col: int | None = None
     inputs_constrained: bool = True
     is_config: bool = True
+    vae_mode: VAEOptions = VAEOptions.m_VAE

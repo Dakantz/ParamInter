@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { Api, DataDescription, DataPoint, DataPoints, ManagerSettings } from "../api/Api";
+import { Api, DataDescription, DataPoint, DataPoints, InterpolationResult, ManagerSettings } from "../api/Api";
 import { API_BASE_URL } from "../config";
 import { toRaw } from "vue";
 import { colormaps_d3 } from "../components/helpers/colormaps";
@@ -119,4 +119,13 @@ export function colorForIndex(idx: number, lightness: number = 0): string {
     let col = d3.color(colormaps_d3['Roma'](1 - offset));
     return col?.brighter(lightness).toString() || d3.schemeObservable10[idx % 10];
 
+}
+export function get_dp_from_interpolation(i: number, int?: InterpolationResult) {
+    const dp = {
+        inputs: int?.knn_inputs[i],
+        uncertainties: int?.uncertainties?.at(i),
+        outputs: int?.outputs?.at(i),
+        index: i,
+    } as DataPoint
+    return dp
 }
