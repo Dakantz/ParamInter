@@ -6,13 +6,12 @@
 <script lang="ts" setup>
 import { ref, reactive, watch, onMounted, useTemplateRef, computed } from 'vue';
 import * as d3 from 'd3';
-import { inverseSpider, reSpider } from '../helpers/utils';
-import { DataDescription } from '../../api/Api';
+import { inverseNormalCdf, inverseSpider, reSpider as rescaleSpider } from '../helpers/utils';
 import { DataRepository } from '../../proc/data-store';
 const dim_data = defineModel<Array<number>>({
     default: () => []
 });
-const { editable, factor, sensitivities, uncertainties, rep, width, height, color, show_labels, sensitivity_scale } = defineProps({
+const { editable, factor, sensitivities, uncertainties, uncertainty_steps, rep, width, height, color, show_labels, sensitivity_scale } = defineProps({
     rep: {
         type: Object as () => DataRepository,
         default: () => (null)
@@ -32,6 +31,10 @@ const { editable, factor, sensitivities, uncertainties, rep, width, height, colo
     uncertainties: {
         type: Array as () => Array<number>,
         default: () => []
+    },
+    uncertainty_steps: {
+        type: Number,
+        default: 7
     },
     width: {
         type: Number,
@@ -76,21 +79,36 @@ function updateChart() {
     d3.select(spiderContainer.value)
         .selectAll('*')
         .remove();
+    const radius = Math.min(width, height) / 2;
     const dim_mapped = dimensions.value.map((dim, i) => {
-
+        let val = dim_data.value[i]
         let min = rep && rep.description ? rep.description.min_values[dim] : 0;
         let max = rep && rep.description ? rep.description.max_values[dim] : 1;
+        let sense = sensitivities.length > 0 ? sensitivities[i] : 0;
+        let uc = uncertainties?.length > 0 ? uncertainties[i] : 0
+        let rescaled_val = rescaleSpider(val, min, max)
         return {
             name: dim,
             value: dim_data.value[i],
-            rescale_val: reSpider(dim_data.value[i], min, max),
+            rescale_val: rescaled_val,
             idx: i,
             angle: -1,
+            sensitivity: {
+                sense: sense,
+                idx: i,
+                val: rescaled_val,
+                name: dim,
+                effective_length: radius * sense * sensitivity_scale,
+            },
+            uncertainties: {
+                lower: rescaleSpider(val - uc, min, max),
+                uppder: rescaleSpider(val + uc, min, max),
+                uc
+            },
             min,
             max,
         };
     });
-    const radius = Math.min(width, height) / 2;
     if (spiderContainer.value) {
 
         const g = d3.select(spiderContainer.value).append('g')
@@ -115,98 +133,6 @@ function updateChart() {
             .attr('y2', d => radius * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length)))
             .attr('stroke', 'darkgray')
             .attr('stroke-width', 1);
-        if (show_labels) {
-            const text = g.append('g')
-                .attr('class', 'spider-text')
-                .selectAll('g.spider-text-item')
-                .data(dim_mapped)
-                .join('g')
-                .attr('transform', d => {
-                    let x = (radius + 5) * Math.cos(d.idx * (2 * Math.PI / dim_mapped.length))
-                    let y = (radius + 5) * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length))
-                    let angle = d.idx * (360 / dim_mapped.length) + 90;
-                    if (angle > 180) {
-                        angle -= 360; // Normalize angle to [-180, 180]
-                    }
-                    if (angle < -90) {
-                        angle += 180; // Adjust for left side text
-                    }
-                    if (angle > 90) {
-                        angle -= 180; // Adjust for right side text
-                    }
-                    d.angle = angle; // Store angle for reference
-                    return `translate(${x}, ${y}), rotate(${angle})`;
-                })
-                .append('text')
-                .attr('x', 0)
-                .attr('y', 0)
-                .attr('text-anchor', d => {
-                    return 'middle'; // 'start' or 'end' based on position
-                    //rotate the text based on the angle
-                })
-                .text(d => d.name)
-                .attr('font-size', '10px')
-                .attr('fill', 'black')
-                .attr('class', 'spider-text-item')
-        }
-        const spider = g
-            .selectAll('path.spider-path')
-            .data([dim_mapped])
-            .join('path')
-            .attr('class', 'spider-path')
-            .attr('d', d => {
-                let pieces = d.map((v, i) => {
-                    let angle = (i / d.length) * 2 * Math.PI;
-                    let x = Math.cos(angle) * radius * (v.rescale_val / factor);
-                    let y = Math.sin(angle) * radius * (v.rescale_val / factor);
-                    return { x, y };
-                });
-                let path = d3.path();
-                pieces.forEach((piece, i) => {
-                    if (i === 0) {
-                        path.moveTo(piece.x, piece.y);
-                    } else {
-                        path.lineTo(piece.x, piece.y);
-                    }
-                });
-                path.closePath();
-                return path.toString();
-            })
-            // .attr('class', 'spider-path')
-            .attr('class', () => {
-                return 'spider-path';
-            })
-        const filtered_sensitivities = sensitivities.map((s, i) => {
-            return {
-                sense: s, idx: i, val: dim_mapped[i].rescale_val, name: dim_mapped[i].name, effective_length: radius * s * sensitivity_scale
-            };
-        }).filter(d => Math.abs(d.sense) > 0.2)
-        // console.log("Filtered sensitivities:", filtered_sensitivities);
-        const sensitivity = g
-            .selectAll('path.sensitivity')
-            .data(filtered_sensitivities) // filter out very small sensitivities
-            // .filter(d => d.effective_length > 0.01) // filter out very small sensitivities
-            .join('path')
-            .attr('d', d => {
-                // draw an arrow depending on the sensitivity value
-                let angle = (d.idx / dim_mapped.length) * 2 * Math.PI;
-                let base_x = Math.cos(angle) * radius * (d.val / factor);
-                let base_y = Math.sin(angle) * radius * (d.val / factor);
-
-                let to_x = base_x + Math.cos(angle) * d.effective_length;
-                let to_y = base_y + Math.sin(angle) * d.effective_length;
-
-                let path = d3.path();
-                path.moveTo(base_x, base_y);
-                path.lineTo(to_x, to_y);
-                return path.toString();
-            })
-            .attr('marker-end', d => {
-                return d.sense > 0 ? 'url(#arrow-pos)' : 'url(#arrow-neg)';
-            })
-            .attr('class', d => {
-                return d.sense > 0 ? 'sensitivity_pos sensitivity' : 'sensitivity_neg sensitivity';
-            })
 
         g
             .on('mousedown', (event: MouseEvent, d) => {
@@ -280,6 +206,167 @@ function updateChart() {
                 state.editing_spider = false;
                 console.log("Editing spider ended (mouseleave).");
             })
+        if (show_labels) {
+            const text = g.append('g')
+                .attr('class', 'spider-text')
+                .selectAll('g.spider-text-item')
+                .data(dim_mapped)
+                .join('g')
+                .attr('transform', d => {
+                    let x = (radius + 5) * Math.cos(d.idx * (2 * Math.PI / dim_mapped.length))
+                    let y = (radius + 5) * Math.sin(d.idx * (2 * Math.PI / dim_mapped.length))
+                    let angle = d.idx * (360 / dim_mapped.length) + 90;
+                    if (angle > 180) {
+                        angle -= 360; // Normalize angle to [-180, 180]
+                    }
+                    if (angle < -90) {
+                        angle += 180; // Adjust for left side text
+                    }
+                    if (angle > 90) {
+                        angle -= 180; // Adjust for right side text
+                    }
+                    d.angle = angle; // Store angle for reference
+                    return `translate(${x}, ${y}), rotate(${angle})`;
+                })
+                .append('text')
+                .attr('x', 0)
+                .attr('y', 0)
+                .attr('text-anchor', d => {
+                    return 'middle'; // 'start' or 'end' based on position
+                    //rotate the text based on the angle
+                })
+                .text(d => d.name)
+                .attr('font-size', '10px')
+                .attr('fill', 'black')
+                .attr('class', 'spider-text-item')
+        }
+        const spider = g
+            .selectAll('path.spider-path')
+            .data([dim_mapped])
+            .join('path')
+            .attr('class', 'spider-path')
+            .attr('d', d => {
+                let pieces = d.map((v, i) => {
+                    let angle = (i / d.length) * 2 * Math.PI;
+                    let x = Math.cos(angle) * radius * (v.rescale_val / factor);
+                    let y = Math.sin(angle) * radius * (v.rescale_val / factor);
+                    return { x, y };
+                });
+                let path = d3.path();
+                pieces.forEach((piece, i) => {
+                    if (i === 0) {
+                        path.moveTo(piece.x, piece.y);
+                    } else {
+                        path.lineTo(piece.x, piece.y);
+                    }
+                });
+                path.closePath();
+                return path.toString();
+            })
+            // .attr('class', 'spider-path')
+            .attr('class', () => {
+                return 'spider-path';
+            })
+        const filtered_sensitivities = dim_mapped.map((d, i) => {
+            return d.sensitivity;
+        }).filter(d => Math.abs(d.sense) > 0.2)
+        // console.log("Filtered sensitivities:", filtered_sensitivities);
+        const sensitivity = g
+            .selectAll('path.sensitivity')
+            .data(filtered_sensitivities) // filter out very small sensitivities
+            // .filter(d => d.effective_length > 0.01) // filter out very small sensitivities
+            .join('path')
+            .attr('d', d => {
+                // draw an arrow depending on the sensitivity value
+                let angle = (d.idx / dim_mapped.length) * 2 * Math.PI;
+                let base_x = Math.cos(angle) * radius * (d.val / factor);
+                let base_y = Math.sin(angle) * radius * (d.val / factor);
+
+                let to_x = base_x + Math.cos(angle) * d.effective_length;
+                let to_y = base_y + Math.sin(angle) * d.effective_length;
+
+                let path = d3.path();
+                path.moveTo(base_x, base_y);
+                path.lineTo(to_x, to_y);
+                return path.toString();
+            })
+            .attr('marker-end', d => {
+                return d.sense > 0 ? 'url(#arrow-pos)' : 'url(#arrow-neg)';
+            })
+            .attr('class', d => {
+                return d.sense > 0 ? 'sensitivity_pos sensitivity' : 'sensitivity_neg sensitivity';
+            })
+        if (display_ucq.value) {
+            console.log("Uncertainties", display_ucq, uncertainties)
+            let ucq_steps = Array.from({ length: uncertainty_steps }).map((_, i) => {
+                let q = 0.3 * i / uncertainty_steps
+                let qs = [
+                    0.6 + q,
+                    0.4 - q,
+                ]
+
+                return qs.map(q => {
+                    return {
+                        dims: dim_mapped.map((d, i) => {
+                            let iv = inverseNormalCdf(q, d.value, d.uncertainties.uc)
+                            let iv_r = rescaleSpider(iv, d.min, d.max)
+                            let angle = (i / dim_mapped.length) * 2 * Math.PI;
+                            let x = Math.cos(angle) * radius * (iv_r / factor);
+                            let y = Math.sin(angle) * radius * (iv_r / factor);
+
+                            return {
+                                inverse_val: iv,
+                                inverse_rescaled_vals: iv_r,
+                                val: d.value,
+                                d,
+                                x, y, radius, angle,
+                                q
+                            }
+                        }),
+                        q,
+                        level: i / uncertainty_steps
+                    }
+                })
+
+            })
+            console.log("UCQ", ucq_steps)
+            g.selectAll('path.ucq-path')
+                .data(ucq_steps)
+                .join('path')
+                .attr('class', 'ucq-path')
+                .attr('d', d => {
+                    let outer_pieces = d[1]
+                    let inner_pieces = d[0]
+                    let outer_path = d3.path();
+                    outer_pieces.dims.forEach((piece, i) => {
+                        if (i === 0) {
+                            outer_path.moveTo(piece.x, piece.y);
+                        } else {
+                            outer_path.lineTo(piece.x, piece.y);
+                        }
+                    });
+                    outer_path.closePath();
+                    let inner_path = d3.path();
+                    inner_pieces.dims.reverse().forEach((piece, i) => {
+                        if (i === 0) {
+                            inner_path.moveTo(piece.x, piece.y);
+                        } else {
+                            inner_path.lineTo(piece.x, piece.y);
+                        }
+                    });
+                    inner_path.closePath();
+                    return inner_path.toString() + outer_path.toString();
+                })
+                // .attr('class', 'spider-path')
+                .attr('class', () => {
+                    return 'ucq-path';
+                })
+                .attr('style', (d, i) => {
+                    let outer_pieces = d[0]
+                    return 'opacity:' + ((1 - outer_pieces.level) * 0.2)
+                })
+
+        }
         // console.log("Dims:", dim_mapped);
         // svg.data(dim_mapped)
         //     .join('g')
@@ -348,13 +435,34 @@ const dark_color = computed(() => {
 const sensitivities_marker_size = computed(() => {
     return `${Math.min(width, height) / 60}px`;
 });
+const fill_color = computed(() => {
+    if (display_ucq.value) {
+        return 'none'
+    } else {
+        return light_color.value
+    }
+})
+const display_ucq = computed(() => {
+    if (!uncertainties) {
+        return false
+    }
+    if (rep.manager_settings?.use_ucq) {
+        return uncertainties.length > 0
+    }
+})
 </script>
 
 <style>
 .spider-path {
-    fill: v-bind(light_color);
+    fill: v-bind(fill_color);
     stroke: v-bind(dark_color);
     stroke-width: 1px;
+}
+
+.ucq-path {
+    fill: v-bind(light_color);
+    stroke: none;
+    fill-rule: evenodd;
 }
 
 .spider-text-item {

@@ -18,7 +18,7 @@
                 "8091"
             ],
             "env": {
-                "SETS_CONFIG_JSON": "${workspaceFolder}/data/datasets/config_only_scivis.json"
+                "SETS_CONFIG_JSON": "${workspaceFolder}/data/datasets/config_minimal.json"
             },
             "jinja": true
         },

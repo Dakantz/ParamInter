@@ -60,7 +60,6 @@ export class DataRepository {
     all_types: Record<string, string[]> = {};
     description: DataDescription | null = null;
     manager_settings: ManagerSettings | null = null;
-
     constructor(public set_name: string) {
         this.data_points = new LoadedDataPoints();
         this.client = new Api(

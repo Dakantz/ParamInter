@@ -44,20 +44,11 @@ def get_similar_data_point(index: int, set_name: str = None) -> list[float]:
 
 @dp_router.get("/idx/{index}")
 def get_data_point(index: int, set_name: str = None) -> DataPoint:
-    data_man = sets_manager.get_manager(set_name)
+
+    data_man = sets_manager.get_manager(set_name, load=True)
     if index < 0 or index >= len(data_man.data):
         return None
-
-    input_data = data_man.cleaned[data_man.input_cols].iloc[index].values.tolist()
-    output_data = data_man.cleaned[data_man.output_cols].iloc[index].values.tolist()
-    projected_output = data_man.embedded_tsne[index].tolist()
-
-    return DataPoint(
-        inputs=input_data,
-        outputs=output_data,
-        projected_outputs=projected_output,
-        index=index,
-    )
+    return data_man.get_dp(index)
 
 
 @dp_router.get("/interpolation")
@@ -148,12 +139,14 @@ def get_similar_data_points(
     input_data = data_man.cleaned[data_man.input_cols].iloc[indices].values.tolist()
     output_data = data_man.cleaned[data_man.output_cols].iloc[indices].values.tolist()
     projected_output = data_man.embedded_tsne[indices].tolist()
+    uc = data_man.uncertainty.iloc[indices].values.tolist()
     similar_data_points = [
         DataPoint(
             inputs=input_data[i],
             outputs=output_data[i],
             projected_outputs=projected_output[i],
             index=indices[i],
+            uncertainties=uc[i],
         )
         for i in range(indices.shape[0])
     ]

@@ -114,3 +114,4 @@ class ManagerSettings(BaseModel):
     inputs_constrained: bool = True
     col_defs: dict[str, list[str]] = {}
     loaded: bool = False
+    use_ucq: bool = False

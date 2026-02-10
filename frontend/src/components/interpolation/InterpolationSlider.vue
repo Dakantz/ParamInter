@@ -15,7 +15,7 @@
                 <SpyderChart_Base v-if="hovered_dp" :rep="data_rep" v-model="hovered_dp.inputs"
                     :sensitivities="state.displayed_sensitivities" :editable="false" :show_labels="false"
                     :height="spyder_size * hover_scale" :width="spyder_size * hover_scale"
-                    :color="colorForIndex(display_intersection_index)" :sensitivity_scale="0.5" />
+                    :color="colorForIndex(display_intersection_index)" :uncertainties="hovered_dp.uncertainties" :sensitivity_scale="0.5" />
             </g>
 
         </svg>

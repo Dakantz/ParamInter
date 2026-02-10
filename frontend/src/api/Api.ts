@@ -236,6 +236,11 @@ export interface ManagerSettings {
    * @default false
    */
   loaded?: boolean;
+  /**
+   * Use Ucq
+   * @default false
+   */
+  use_ucq?: boolean;
 }
 
 /**

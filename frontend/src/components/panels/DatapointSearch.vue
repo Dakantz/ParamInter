@@ -9,7 +9,7 @@
             <div v-for="(result, idx) in state.search_results" :key="idx" class="search-result-item"
                 @mouseenter="emit('preview', result.index || -1)" @click.capture="emit('select', result.index || -1)">
                 <SpyderChart :rep="data_rep" v-model="result.inputs" :editable="false" :height="'6vw'"
-                    :show_labels="false" />
+                    :show_labels="false" :uncertainties="result.uncertainties"/>
             </div>
         </div>
     </div>

@@ -3,7 +3,7 @@
         <h2>Build Minimizer</h2>
         <h3>Start Point</h3>
         <SpyderChart v-if="state.dp" :rep="data_rep" v-model="state.dp.inputs" :editable="false"
-            :sensitivities="state.sensitivities_for_hover" />
+            :sensitivities="state.sensitivities_for_hover" :uncertainties="state.dp.uncertainties" />
         <h3>Linear Objective</h3>
         <h4 class="info">Drag to adjust</h4>
         <div class="linear-objectives">
@@ -124,7 +124,9 @@ function showSensitivity(out_col: string) {
                 resolution: 16
             }).then((result) => {
                 // console.log("Sensitivity Analysis Result:", result);
-                state.sensitivities_for_hover = result.data[0].sensitivity_scores;
+                if (result.data[0]) {
+                    state.sensitivities_for_hover = result.data[0].sensitivity_scores;
+                }
             }).catch((error) => {
                 console.error("Error fetching sensitivity analysis:", error);
             });

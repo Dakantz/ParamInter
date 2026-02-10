@@ -28,4 +28,5 @@ class DataConfig:
     time_col: int | None = None
     inputs_constrained: bool = True
     is_config: bool = True
-    vae_mode: VAEOptions = VAEOptions.m_VAE
+    use_ucq: bool = False
+    vae_mode: VAEOptions = VAEOptions.m_GPVAE

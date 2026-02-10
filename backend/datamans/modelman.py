@@ -193,23 +193,27 @@ class ModelManager:
         self.vae_model_path = (
             self.models_path / f"vae_model_{self.cfg.vae_mode.name}.pckle"
         )
-        if self.vae_model_path.exists():
-            print("Loading VAE model from", self.vae_model_path)
-            with open(self.vae_model_path, "rb") as f:
-                self.vae_model = pickle.load(f)
-        else:
-            print("Training VAE model, no model @", self.vae_model_path)
-            self.vae_model = train_vae_noiseless(
-                self.cleaned,
-                self.cfg.vae_mode.toClass(),
-                epochs=3,
-                log=True,
-                model_kwargs={"latent_size": int(np.sqrt(self.cleaned.shape[1]))},
-            )
+        self.vae_model = None
+        if self.cfg.use_ucq:
+            if self.vae_model_path.exists():
+                print("Loading VAE model from", self.vae_model_path)
+                with open(self.vae_model_path, "rb") as f:
+                    self.vae_model = pickle.load(f)
 
-            with open(self.vae_model_path, "wb") as f:
-                pickle.dump(self.vae_model.cpu(), f)
-        self.vae_model = self.vae_model.to(self.dev)
+            if self.vae_model is None:
+                print("Training VAE model, no model @", self.vae_model_path)
+                self.vae_model = train_vae_noiseless(
+                    self.cleaned,
+                    self.cfg.vae_mode.toClass(),
+                    epochs=3,
+                    log=True,
+                    model_kwargs={"latent_size": int(np.sqrt(self.cleaned.shape[1]))},
+                )
+
+                with open(self.vae_model_path, "wb") as f:
+                    pickle.dump(self.vae_model.cpu(), f)
+
+            self.vae_model = self.vae_model.to(self.dev)
         self.eval_uncertainties()
         self.model_ensemble = model_ensemble
         self.scaler_outs = scaler_outs
@@ -225,6 +229,11 @@ class ModelManager:
         self.loaded = True
 
     def eval_uncertainties(self):
+        if self.vae_model is None:
+            self.uncertainty = pd.DataFrame(
+                data=np.zeros_like(self.cleaned), columns=self.cleaned.columns
+            )
+            return
         cleaned_minmax = minmaxnormed_tensor_of(self.cleaned).to(self.dev)
         noise = self.vae_model.uncertainty(cleaned_minmax.to())
         noise_df = pd.DataFrame(data=noise.cpu().numpy(), columns=self.cleaned.columns)
@@ -254,6 +263,7 @@ class ModelManager:
             inputs_constrained=self.inputs_constrained,
             col_defs=self.column_types_loaded,
             loaded=self.loaded,
+            use_ucq=self.cfg.use_ucq,
         )
 
     def get_dp(self, idx):

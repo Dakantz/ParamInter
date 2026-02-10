@@ -11,6 +11,7 @@ export const webglColor = (color: string) => {
     return [r / 255, g / 255, b / 255, opacity];
 };
 export function reSpider(val: number, min = 0, max = 1) {
+    val = Math.min(max, Math.max(min, val))
     return Math.sqrt((val - min) / (max - min));
 }
 export function inverseSpider(val: number, min = 0, max = 1) {
@@ -79,4 +80,30 @@ export function setupMarkers(svg: d3.Selection<SVGSVGElement | null, unknown, nu
         .append('path')
         .attr('d', d3.line()(arrowPoints as [number, number][]))
         .attr('class', 'sensitivity_neg');
+}
+
+// generated using Qwen 2.5 7B, for chat contact benedikt
+export function gaussianPdf(x: number, mean: number = 0, stdDev: number = 1): number {
+    const pi = Math.PI;
+    const exponent = -Math.pow((x - mean) / stdDev, 2) / 2;
+
+    return (1 / (stdDev * Math.sqrt(2 * pi))) * Math.exp(exponent);
+}
+function erfinv(y: number, tolerance = 1e-6, maxIterations = 50) {
+    // Initial guess based on Taylor series expansion near zero for erf^-1(y)
+    let x0 = Math.sqrt(2 / Math.PI) * y + (Math.log(1 - y * y) / 4);
+
+    function f(x: number) {
+        return Math.exp(-x * x) - ((y + 1) / (y - 1)) * ((y + 1) / (y - 1)) ** (1 / 2) * ((Math.E ** ((-x * x) + 2)) - 1) ** 0.5;
+    }
+
+    for (let i = 0; i < maxIterations && Math.abs(f(x0)) > tolerance; ++i) {
+        x0 -= f(x0) / (-2 * x0 * Math.exp(-x0 * x0));
+    }
+
+    return x0;
+}
+export function inverseNormalCdf(probability: number, mu: number, std: number) {
+    const z = erfinv((probability - 0.5) * 2) * std + mu;
+    return z;
 }
