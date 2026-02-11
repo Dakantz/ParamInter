@@ -21,15 +21,7 @@ def get_objective_costs(
     set_name: str = None,
 ) -> list[float]:
     data_man = sets_manager.get_manager(set_name)
-    costs: dict[str, np.ndarray] = {}
-    for target in q.targets:
-        costs_target = data_man.cleaned[target.name].to_numpy() - target.val
-        costs[target.name] = target.weight * costs_target
-    total_cost = np.empty((len(q.targets), data_man.cleaned.shape[0]))
-    for i, cost in enumerate(costs.values()):
-        total_cost[i, :] = cost**2
-
-    total_cost_clean: np.ndarray = np.sqrt(total_cost).sum(axis=0)
+    total_cost_clean = get_costs(q.targets, data_man.cleaned)
     total_cost_clean_normed = (total_cost_clean - total_cost_clean.min()) / (
         total_cost_clean.max() - total_cost_clean.min()
     )
@@ -39,7 +31,10 @@ def get_objective_costs(
 def get_costs(targets: list[DataPointMinimzer], data: pd.DataFrame) -> np.ndarray:
     costs_dict: dict[str, np.ndarray] = {}
     for target in targets:
-        costs_target = data[target.name].to_numpy() - target.val
+        # ((target-min) - (data-min)) => (target - data) / (data.max - data.min)
+        costs_target = (target.val - data[target.name].to_numpy()) / (
+            data[target.name].max() - data[target.name].min()
+        )
         costs_dict[target.name] = target.weight * costs_target
     costs = np.empty(
         (

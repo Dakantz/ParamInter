@@ -34,7 +34,7 @@ const { editable, factor, sensitivities, uncertainties, uncertainty_steps, rep, 
     },
     uncertainty_steps: {
         type: Number,
-        default: 7
+        default: 4
     },
     width: {
         type: Number,
@@ -299,7 +299,7 @@ function updateChart() {
         if (display_ucq.value) {
             console.log("Uncertainties", display_ucq, uncertainties)
             let ucq_steps = Array.from({ length: uncertainty_steps }).map((_, i) => {
-                let q = 0.3 * i / uncertainty_steps
+                let q = 0.2 * i / uncertainty_steps
                 let qs = [
                     0.6 + q,
                     0.4 - q,

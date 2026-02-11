@@ -89,7 +89,8 @@ function refetchSelectionState() {
         data_rep.client.datasets.getMinimizationInterpolationDatasetsSetNameDataPointMinimizeInterpolationPost(data_rep.set_name, {
             start_idx: sel,
             min: target,
-            samples: 512
+            samples: 512,
+            k_options: 1
         }).then((int) => {
             interpolations = int.data;
             state.loading = false

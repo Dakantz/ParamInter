@@ -17,7 +17,7 @@ import { computed, onMounted, useTemplateRef, watch, onUpdated, reactive } from 
 import { colorForIndex, DataRepository } from '../../proc/data-store';
 import * as d3 from 'd3';
 import { InterpolationResult } from '../../api/Api';
-import { outValues } from '../helpers/utils';
+import { inverseNormalCdf, outValues } from '../helpers/utils';
 import { HoveredInterpolation } from '../types';
 
 const emit = defineEmits<{
@@ -28,7 +28,7 @@ const hovered_index = defineModel<HoveredInterpolation>({
     type: Object as () => HoveredInterpolation,
     default: { interpolation_idx: -1, index_in_interpolation: -1 }
 });
-const { int_results, out_idx, out_name, data_rep } = defineProps({
+const { int_results, out_idx, out_name, data_rep, uncertainty_steps } = defineProps({
     int_results: {
         type: Object as () => InterpolationResult[],
         required: true
@@ -45,6 +45,11 @@ const { int_results, out_idx, out_name, data_rep } = defineProps({
         type: Object as () => DataRepository,
         required: true
     },
+    uncertainty_steps: {
+        type: Number,
+        required: false,
+        default: 4
+    }
 
 })
 const out_values = computed(() => {
@@ -115,6 +120,73 @@ function updateGraph() {
             .x((d, i) => xScale(i))
             .y(d => yScale(d))
         );
+    if (display_ucq.value) {
+        let ucq_steps = Array.from({ length: uncertainty_steps }).map((_, i) => {
+            let q = 0.2 * i / uncertainty_steps
+            let qs = [
+                0.6 + q,
+                0.4 - q,
+            ]
+
+            return {
+                ucq_series: uncertainties.value.map((ucq, i) => {
+                    let qs_results = qs.map(q => {
+                        let values = out_values.value[i];
+                        let uncertainties_value = uncertainties.value[i];
+                        let ivs = uncertainties_value?.map((u, i) =>
+                            inverseNormalCdf(q, values[i], u)) || values.map(_ => 0);
+
+                        return {
+                            inverse_quantiles: ivs,
+                            uncertainties: uncertainties_value,
+                            values: values,
+                            q,
+                            level: i / uncertainty_steps
+                        }
+                    })
+                    return {
+                        upper_qant: qs_results[0].inverse_quantiles,
+                        lower_qant: qs_results[1].inverse_quantiles,
+                        ucq: qs_results[0].uncertainties,
+                        values: qs_results[0].values,
+                    }
+                }),
+                q: q + 0.6,
+                level: i / uncertainty_steps
+            }
+        })
+        console.log("UCQ steps:", ucq_steps, uncertainties.value);
+        ucq_steps.forEach((step, step_idx) => {
+            svg.selectAll(`.ucq-line#step_${step_idx}`)
+                .data(step.ucq_series)
+                .join('path')
+                .attr('class', 'ucq-line')
+                .attr('id', `step_${step_idx}`)
+                .attr('stroke', (d, i) => colorForIndex(i, 0))
+                .attr('fill', (d, i) => colorForIndex(i, 0))
+                .attr('opacity', (d, i) => 0.3 * (1 - step.level))
+                .attr('d', (d) => {
+                    let path = d3.path();
+                    d.upper_qant.forEach((v, idx) => {
+                        let x = xScale(idx);
+                        let y = yScale(d.upper_qant[idx]);
+                        if (idx === 0) {
+                            path.moveTo(x, y);
+                        } else {
+                            path.lineTo(x, y);
+                        }
+                    });
+                    d.lower_qant.slice().reverse().forEach((v, idx) => {
+                        let idx_reversed = d.lower_qant.length - 1 - idx;
+                        let x = xScale(idx_reversed);
+                        let y = yScale(d.lower_qant[idx_reversed]);
+                        path.lineTo(x, y);
+                    });
+                    path.closePath();
+                    return path.toString();
+                });
+        });
+    }
 }
 watch(() => hovered_index.value, (idx) => {
     const svg = d3.select(svg_ref.value);
@@ -169,6 +241,14 @@ onMounted(() => {
 watch(() => out_values.value, () => {
     updateGraph();
 }, { immediate: true });
+const uncertainties = computed(() => {
+    return int_results.map(int => int.uncertainties ? int.uncertainties.map((uq) => uq[out_idx]) : []);
+});
+const display_ucq = computed(() => {
+    return int_results.reduce((has_ucq, int) => {
+        return has_ucq || int.uncertainties != undefined;
+    }, true);
+})
 </script>
 <style>
 .single-outview {
