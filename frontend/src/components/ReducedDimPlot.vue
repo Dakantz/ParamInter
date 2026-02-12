@@ -17,10 +17,10 @@ import { DataRepository, Embeddings, LoadedDataPoints } from '../proc/data-store
 import * as d3 from 'd3';
 import * as fc from 'd3fc';
 import { ModelRef } from 'vue';
-import { MappedData, PlotSelection, PlotSelectionResults } from './types';
+import { CostOverviewData, MappedData, PlotSelection, PlotSelectionResults } from './types';
 import { AnnotationData, seriesSvgAnnotation } from './helpers/annotation-series';
 import { webglColor } from './helpers/utils';
-import { InterpolationResult } from '../api/Api';
+import { CostOverview, InterpolationResult } from '../api/Api';
 import { colormaps_d3 } from './helpers/colormaps';
 const { embedded_data, full_data, data_rep, results, embedding_name, interpolations } = defineProps({
     embedded_data: {
@@ -44,8 +44,8 @@ const { embedded_data, full_data, data_rep, results, embedding_name, interpolati
         default: () => []
     },
     results: {
-        type: Object as () => PlotSelectionResults,
-        default: () => new PlotSelectionResults()
+        type: Object as () => CostOverviewData,
+        default: () => new CostOverviewData()
     }
 
 });
@@ -232,11 +232,12 @@ const similiarityColorScale = d3
     .range([0, 0.5])
     .interpolator(colormaps_d3['Lajolla']);
 
-watch(() => results.similarities, (sim) => {
+watch(() => results, (sim) => {
     // console.log("Updating similarity colors with data:", sim);
     const similarityFill = (d: MappedData) => {
-        const similarity = sim[d.index];
-        if (similarity === undefined) {
+        const similarity = sim.costs[d.index];
+
+        if (similarity === undefined || !sim.within_filter[d.index]) {
             return [0, 0, 0, 1]; // Default color for undefined similarities
         }
         const color = similiarityColorScale(similarity);

@@ -164,7 +164,7 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
                         y: yScale(d[1]),
                         data: d,
                         index: idx, // no index for interpolation points
-                        inputs: int.knn_inputs[idx] || [],
+                        inputs: int.knn_inputs[small_idx] || [],
                     } as ProjectedData);
                 });
                 createSpyderFromProjectedData(sel, projected_smalls, `interpolation_spyder_${idx}`, spyder_size * 0.6, colorForIndex(idx));

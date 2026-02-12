@@ -36,7 +36,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from 'vue';
 import { AllEmbeddings, DataRepository } from '../../proc/data-store';
-import { PlotSelection, PlotSelectionResults } from '../types';
+import { CostOverviewData, PlotSelection, PlotSelectionResults } from '../types';
 import PlotsOverview from '../PlotsOverview.vue';
 import DatapointSearch from './DatapointSearch.vue';
 import DatapointGuide from './DatapointGuide.vue';
@@ -48,7 +48,7 @@ const { data_rep } = defineProps<{
 }>();
 const state = reactive({
     selection: new PlotSelection(),
-    current_results: new PlotSelectionResults(),
+    current_results: new CostOverviewData(),
     loading: false,
     loading_progress: 0,
     loaded_keys: [] as string[],
@@ -75,7 +75,7 @@ function refetchSelectionState() {
     if (!target) return;
     state.loading = true
     data_rep.client.datasets.getObjectiveCostsDatasetsSetNameDataPointMinimizeCostPost(data_rep.set_name, target).then((similarity) => {
-        state.current_results.similarities = similarity.data;
+        state.current_results = similarity.data;
         state.loading = false
         // console.log("Current similarity scores:", state.current_results.similarities);
     }).catch((error) => {

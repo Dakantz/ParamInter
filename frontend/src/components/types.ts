@@ -1,4 +1,4 @@
-import { DataPoint, DataPointMinimzer, FilterCondition, InterpolationResult, LinearTarget } from "../api/Api";
+import { CostOverview, DataPoint, DataPointMinimzer, FilterCondition, InterpolationResult, LinearTarget } from "../api/Api";
 
 export class PlotSelection {
     constructor(
@@ -48,4 +48,10 @@ export class ColumnObjective {
     ) {
 
     }
+}
+export class CostOverviewData implements CostOverview {
+    constructor(
+        public costs: number[] = [],
+        public within_filter: boolean[] = [],
+    ) { }
 }

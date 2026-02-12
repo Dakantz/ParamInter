@@ -11,7 +11,7 @@
 <script lang="ts" setup>
 import { reactive, watch, ref, onMounted, ModelRef } from 'vue';
 import { AllEmbeddings, DataRepository, Embeddings } from '../proc/data-store';
-import { PlotSelection, PlotSelectionResults } from './types';
+import { CostOverviewData, PlotSelection, PlotSelectionResults } from './types';
 import ReducedDimPlot from './ReducedDimPlot.vue';
 import { InterpolationResult } from '../api/Api';
 
@@ -38,8 +38,8 @@ const { data_rep, loaded_keys, results } = defineProps({
         default: () => []
     },
     results: {
-        type: Object as () => PlotSelectionResults,
-        default: () => new PlotSelectionResults()
+        type: Object as () => CostOverviewData,
+        default: () => new CostOverviewData()
     }
 
 });

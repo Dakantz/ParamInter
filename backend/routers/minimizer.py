@@ -37,16 +37,19 @@ def get_costs(targets: list[DataPointMinimzer], data: pd.DataFrame) -> np.ndarra
     return costs_sum
 
 
-def apply_filters(filters: list[FilterCondition], data: pd.DataFrame) -> pd.DataFrame:
-    filtered_data = data.copy()
+def apply_filters(
+    filters: list[FilterCondition], data: pd.DataFrame
+) -> tuple[pd.DataFrame, np.ndarray, pd.Series]:
+    dps = data.copy()
     filtered_points = np.ones(len(data), dtype=bool)
     for filter_cond in filters:
         if filter_cond.min is not None:
             filtered_points &= data[filter_cond.name] >= filter_cond.min
         if filter_cond.max is not None:
             filtered_points &= data[filter_cond.name] <= filter_cond.max
-    filtered_data = filtered_data[filtered_points]
-    return filtered_data, filtered_points
+    filtered_data = dps[filtered_points]
+    lookup_table = data.index.to_series()[filtered_points].reset_index(drop=True)
+    return filtered_data, filtered_points, lookup_table
 
 
 @minimizer_router.post("/cost")
@@ -56,7 +59,7 @@ def get_objective_costs(
 ) -> CostOverview:
     data_man = sets_manager.get_manager(set_name)
 
-    filtered_data, within_filter = apply_filters(q.filters, data_man.cleaned)
+    filtered_data, within_filter, _ = apply_filters(q.filters, data_man.cleaned)
     total_cost_clean = get_costs(q.targets, data_man.cleaned)
     total_cost_clean_normed = (total_cost_clean - total_cost_clean.min()) / (
         total_cost_clean.max() - total_cost_clean.min()
@@ -72,7 +75,9 @@ def get_minimization_interpolation(
     set_name: str = None,
 ) -> list[InterpolationResult]:
     data_man = sets_manager.get_manager(set_name)
-    filtered_df, within_filter = apply_filters(q.min.filters, data_man.cleaned)
+    filtered_df, within_filter, lookup_table = apply_filters(
+        q.min.filters, data_man.cleaned
+    )
     costs_sum = get_costs(q.min.targets, filtered_df)
     nn_stacked_X = np.concatenate(
         [
@@ -85,14 +90,13 @@ def get_minimization_interpolation(
     nn_inputs = NearestNeighbors(n_neighbors=1)
     nn_inputs.fit(nn_stacked_X)
 
-    argmin_index = np.argsort(costs_sum)[: q.k_options]
+    argmin_indexes = np.argsort(costs_sum)[: q.k_options]
     int_results = []
-    for argmin_index in argmin_index:
-        dp_idxs = [q.start_idx, argmin_index]
+    for argmin_index in argmin_indexes:
+        start_dp = data_man.cleaned.iloc[q.start_idx, :][data_man.input_cols].values
+        end_dp = filtered_df.iloc[argmin_index, :][data_man.input_cols].values
 
-        inputs = filtered_df[data_man.input_cols].values[dp_idxs]
-
-        inputs_interpolated: np.ndarray = np.linspace(inputs[0], inputs[1], q.samples)
+        inputs_interpolated: np.ndarray = np.linspace(start_dp, end_dp, q.samples)
 
         outputs_interpolated: np.ndarray = np.empty(
             (q.samples, len(data_man.output_cols))
@@ -118,15 +122,15 @@ def get_minimization_interpolation(
 
         _, indices = nn_inputs.kneighbors(nn_stacked_query)
         indices = indices.flatten()
-        indices[0] = q.start_idx
+        # indices[0] = q.start_idx
         indices[-1] = argmin_index
 
         uncertainties_interpolated = data_man.uncertainty.loc[indices, :]
 
         embeddings_nn: dict[str, list] = {}
-
+        indices_global = lookup_table.iloc[indices].tolist()
         for col_name, embedded in data_man.embedding_subsets.items():
-            embeddings_nn[col_name] = embedded[indices].tolist()
+            embeddings_nn[col_name] = embedded[indices_global].tolist()
         int_results.append(
             InterpolationResult(
                 inputs=inputs_interpolated.tolist(),
@@ -134,7 +138,7 @@ def get_minimization_interpolation(
                 knn_inputs=filtered_df[data_man.input_cols].values[indices].tolist(),
                 knn_outputs=filtered_df[data_man.output_cols].values[indices].tolist(),
                 projected_outputs=embeddings_nn,
-                indices=indices.tolist(),
+                indices=indices_global,
                 uncertainties=uncertainties_interpolated.values.tolist(),
             )
         )

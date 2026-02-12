@@ -68,7 +68,7 @@ function initScales() {
     if (!svg_ref.value || !wrapper_ref.value) return;
     const width = wrapper_ref.value.clientWidth - 5;
     const height = wrapper_ref.value.clientHeight - 5;
-
+    const text_padding = 40;
     // console.log("Updating graph with width:", width, "height:", height);
     const svg = d3.select(svg_ref.value)
         .attr('width', width)
@@ -81,22 +81,23 @@ function initScales() {
         .range([height, 0]);
     xScale = d3.scaleLinear()
         .domain([min_value.value, max_value.value])
-        .range([0, width]);
+        .range([text_padding, width - text_padding]);
     const fixed_group = svg.append('g').attr('class', 'fixed-elements');
 
     fixed_group.append('text')
-        .attr('x', 7)
+        .attr('x', xScale(min_value.value) - 5)
         .attr('y', yScale(0.2))
         .text(min_value.value.toFixed(2))
         .attr('font-size', '10px')
+        .attr('text-anchor', 'end')
         .attr('fill', 'black');
 
     fixed_group.append('text')
-        .attr('x', width - 7)
+        .attr('x', xScale(max_value.value) + 5)
         .attr('y', yScale(0.2))
         .text(max_value.value.toFixed(2))
         .attr('font-size', '10px')
-        .attr('text-anchor', 'end')
+        .attr('text-anchor', 'start')
         .attr('fill', 'black');
 }
 function updateGraph() {
@@ -159,8 +160,25 @@ function updateGraph() {
         .attr('width', brush_size)
         .attr('height', yScale(0.2) - yScale(0.8));
 
+    if (objective_filter.value.filter.min !== undefined) {
 
+        selection_group.append('text')
+            .attr('x', xScale(min_val) + 7)
+            .attr('y', yScale(0.2))
+            .text(min_val.toFixed(2))
+            .attr('font-size', '10px')
+            .attr('fill', 'black');
+    }
+    if (objective_filter.value.filter.max !== undefined) {
 
+        selection_group.append('text')
+            .attr('x', xScale(max_val) - 7)
+            .attr('y', yScale(0.2))
+            .text(max_val.toFixed(2))
+            .attr('font-size', '10px')
+            .attr('text-anchor', 'end')
+            .attr('fill', 'black');
+    }
 
 }
 enum DraggingElement {
@@ -175,14 +193,13 @@ onMounted(() => {
     function updateSelectionPos(evt: MouseEvent) {
         if (!wrapper_ref.value) return;
         if (clicked_element === null) return;
+        let val = xScale.invert(d3.pointer(evt)[0])
+        val = Math.min(Math.max(val, min_value.value), max_value.value);
         if (clicked_element == DraggingElement.HoverPoint) {
-            const val = xScale.invert(d3.pointer(evt)[0])
             objective_filter.value.objective.val = val;
         } else if (clicked_element == DraggingElement.MinBrush) {
-            const val = xScale.invert(d3.pointer(evt)[0])
             objective_filter.value.filter.min = Math.min(val, objective_filter.value.filter.max || max_value.value);
         } else if (clicked_element == DraggingElement.MaxBrush) {
-            const val = xScale.invert(d3.pointer(evt)[0])
             objective_filter.value.filter.max = Math.max(val, objective_filter.value.filter.min || min_value.value);
         }
         if (objective_filter.value.filter.min !== undefined && objective_filter.value.filter.max !== undefined) {
