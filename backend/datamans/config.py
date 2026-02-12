@@ -5,7 +5,7 @@ from ucq.models import RandomBaseline, GP_VAE, VAE, BaseUCQModel
 import typing
 
 
-class VAEOptions(Enum):
+class VAEOptions(str, Enum):
     m_GPVAE = "gpvae"
     m_VAE = "vae"
 
@@ -30,3 +30,6 @@ class DataConfig:
     is_config: bool = True
     use_ucq: bool = False
     vae_mode: VAEOptions = VAEOptions.m_GPVAE
+
+    def __post_init__(self):
+        self.vae_mode = VAEOptions(self.vae_mode)

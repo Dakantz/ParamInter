@@ -141,6 +141,12 @@ class ModelManager:
             self.column_types_loaded.items(), desc="Creating embeddings"
         ):
             data_path = self.models_path / Path(f"{col_name}_{self.mode}.npy")
+            if len(col_list) == 2:
+                # for 2D subsets, use the original data as "embedding"
+                embedding_subsets[col_name] = MinMaxScaler().fit_transform(
+                    cleaned[col_list].values.astype(np.float32)
+                )
+                continue
             if data_path.exists():
                 embedded_tsne = np.load(data_path)
                 embedding_subsets[col_name] = embedded_tsne

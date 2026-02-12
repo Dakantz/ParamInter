@@ -83,8 +83,20 @@ class LinearTarget(BaseModel):
     val: float
 
 
+class FilterCondition(BaseModel):
+    name: str
+    min: float = None
+    max: float = None
+
+
 class DataPointMinimzer(BaseModel):
     targets: list[LinearTarget] = []
+    filters: list[FilterCondition] = []
+
+
+class CostOverview(BaseModel):
+    costs: list[float]
+    within_filter: list[bool]
 
 
 class DataPointMinimzerInterpolation(BaseModel):

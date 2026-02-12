@@ -5,8 +5,10 @@ from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 
 from backend.models import (
+    CostOverview,
     DataPointMinimzer,
     DataPointMinimzerInterpolation,
+    FilterCondition,
     InterpolationResult,
 )
 from backend.routers.sets import sets_manager
@@ -15,26 +17,13 @@ from backend.routers.sets import sets_manager
 minimizer_router = APIRouter(prefix="/minimize")
 
 
-@minimizer_router.post("/cost")
-def get_objective_costs(
-    q: DataPointMinimzer = Body(DataPointMinimzer),
-    set_name: str = None,
-) -> list[float]:
-    data_man = sets_manager.get_manager(set_name)
-    total_cost_clean = get_costs(q.targets, data_man.cleaned)
-    total_cost_clean_normed = (total_cost_clean - total_cost_clean.min()) / (
-        total_cost_clean.max() - total_cost_clean.min()
-    )
-    return total_cost_clean_normed.tolist()
-
-
 def get_costs(targets: list[DataPointMinimzer], data: pd.DataFrame) -> np.ndarray:
     costs_dict: dict[str, np.ndarray] = {}
     for target in targets:
         # ((target-min) - (data-min)) => (target - data) / (data.max - data.min)
-        costs_target = (target.val - data[target.name].to_numpy()) / (
-            data[target.name].max() - data[target.name].min()
-        )
+        diff = data[target.name].max() - data[target.name].min()
+        diff = diff if diff > 1e-6 else 1.0
+        costs_target = (target.val - data[target.name].to_numpy()) / diff
         costs_dict[target.name] = target.weight * costs_target
     costs = np.empty(
         (
@@ -48,16 +37,46 @@ def get_costs(targets: list[DataPointMinimzer], data: pd.DataFrame) -> np.ndarra
     return costs_sum
 
 
+def apply_filters(filters: list[FilterCondition], data: pd.DataFrame) -> pd.DataFrame:
+    filtered_data = data.copy()
+    filtered_points = np.ones(len(data), dtype=bool)
+    for filter_cond in filters:
+        if filter_cond.min is not None:
+            filtered_points &= data[filter_cond.name] >= filter_cond.min
+        if filter_cond.max is not None:
+            filtered_points &= data[filter_cond.name] <= filter_cond.max
+    filtered_data = filtered_data[filtered_points]
+    return filtered_data, filtered_points
+
+
+@minimizer_router.post("/cost")
+def get_objective_costs(
+    q: DataPointMinimzer = Body(DataPointMinimzer),
+    set_name: str = None,
+) -> CostOverview:
+    data_man = sets_manager.get_manager(set_name)
+
+    filtered_data, within_filter = apply_filters(q.filters, data_man.cleaned)
+    total_cost_clean = get_costs(q.targets, data_man.cleaned)
+    total_cost_clean_normed = (total_cost_clean - total_cost_clean.min()) / (
+        total_cost_clean.max() - total_cost_clean.min()
+    )
+    return CostOverview(
+        costs=total_cost_clean_normed.tolist(), within_filter=within_filter.tolist()
+    )
+
+
 @minimizer_router.post("/interpolation")
 def get_minimization_interpolation(
     q: DataPointMinimzerInterpolation = Body(DataPointMinimzerInterpolation),
     set_name: str = None,
 ) -> list[InterpolationResult]:
     data_man = sets_manager.get_manager(set_name)
-    costs_sum = get_costs(q.min.targets, data_man.cleaned)
+    filtered_df, within_filter = apply_filters(q.min.filters, data_man.cleaned)
+    costs_sum = get_costs(q.min.targets, filtered_df)
     nn_stacked_X = np.concatenate(
         [
-            data_man.cleaned[data_man.input_cols].to_numpy(),
+            filtered_df[data_man.input_cols].to_numpy(),
             q.cost_penalty * costs_sum.reshape(-1, 1),
         ],
         axis=1,
@@ -71,7 +90,7 @@ def get_minimization_interpolation(
     for argmin_index in argmin_index:
         dp_idxs = [q.start_idx, argmin_index]
 
-        inputs = data_man.cleaned[data_man.input_cols].values[dp_idxs]
+        inputs = filtered_df[data_man.input_cols].values[dp_idxs]
 
         inputs_interpolated: np.ndarray = np.linspace(inputs[0], inputs[1], q.samples)
 
@@ -88,7 +107,7 @@ def get_minimization_interpolation(
         )
         interpolated_data = pd.DataFrame(
             interpolated,
-            columns=data_man.cleaned.columns,
+            columns=filtered_df.columns,
         )
         interpolated_costs = get_costs(q.min.targets, interpolated_data)
 
@@ -112,12 +131,8 @@ def get_minimization_interpolation(
             InterpolationResult(
                 inputs=inputs_interpolated.tolist(),
                 outputs=outputs_interpolated.tolist(),
-                knn_inputs=data_man.cleaned[data_man.input_cols]
-                .values[indices]
-                .tolist(),
-                knn_outputs=data_man.cleaned[data_man.output_cols]
-                .values[indices]
-                .tolist(),
+                knn_inputs=filtered_df[data_man.input_cols].values[indices].tolist(),
+                knn_outputs=filtered_df[data_man.output_cols].values[indices].tolist(),
                 projected_outputs=embeddings_nn,
                 indices=indices.tolist(),
                 uncertainties=uncertainties_interpolated.values.tolist(),

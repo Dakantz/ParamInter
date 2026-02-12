@@ -108,3 +108,15 @@ export function inverseNormalCdf(probability: number, mu: number, std: number) {
     const z = erfinv((probability - 0.5) * 2) * std + mu;
     return z;
 }
+
+export function debounce(func: Function, wait: number) {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    return function (...args: any[]) {
+        if (timeout) {
+            clearTimeout(timeout);
+        }
+        timeout = setTimeout(() => {
+            func(...args);
+        }, wait);
+    };
+}

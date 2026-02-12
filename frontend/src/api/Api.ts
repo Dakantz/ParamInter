@@ -10,6 +10,14 @@
  * ---------------------------------------------------------------
  */
 
+/** CostOverview */
+export interface CostOverview {
+  /** Costs */
+  costs: number[];
+  /** Within Filter */
+  within_filter: boolean[];
+}
+
 /**
  * DataDescription
  * DataDescription model to describe the data structure.
@@ -66,6 +74,11 @@ export interface DataPointMinimzer {
    * @default []
    */
   targets?: LinearTarget[];
+  /**
+   * Filters
+   * @default []
+   */
+  filters?: FilterCondition[];
 }
 
 /** DataPointMinimzerInterpolation */
@@ -149,6 +162,16 @@ export interface DataPoints {
   outputs: number[][];
   /** Projected Outputs */
   projected_outputs?: number[][];
+}
+
+/** FilterCondition */
+export interface FilterCondition {
+  /** Name */
+  name: string;
+  /** Min */
+  min?: number;
+  /** Max */
+  max?: number;
 }
 
 /** HTTPValidationError */
@@ -264,6 +287,10 @@ export interface ValidationError {
   msg: string;
   /** Error Type */
   type: string;
+  /** Input */
+  input?: any;
+  /** Context */
+  ctx?: object;
 }
 
 import type {
@@ -593,7 +620,7 @@ export class Api<
       data: DataPointMinimzer,
       params: RequestParams = {},
     ) =>
-      this.request<number[], HTTPValidationError>({
+      this.request<CostOverview, HTTPValidationError>({
         path: `/datasets/${setName}/data-point/minimize/cost`,
         method: "POST",
         body: data,

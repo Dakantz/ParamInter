@@ -7,15 +7,17 @@
         <h3>Linear Objective</h3>
         <h4 class="info">Drag to adjust</h4>
         <div class="linear-objectives">
-            <div v-for="(target, idx) in state.linear_combination" :key="idx" @mouseenter="showSensitivity(target.name)"
-                class="linear-objective">
-                <SingleAdj v-model="target.val" :out_name="target.name" :data_rep="data_rep"
-                    @hover="showSensitivity(target.name)" @remove="removeTarget(target.name)" />
+            <div v-for="(target, idx) in Object.keys(state.filter_targets).map(key => ({ k: key, v: state.filter_targets[key] }))"
+                :key="idx" @mouseenter="showSensitivity(target.v.objective.name)" class="linear-objective">
+                <SingleAdj v-model="state.filter_targets[target.v.objective.name]" :out_name="target.v.objective.name"
+                    :data_rep="data_rep" @hover="showSensitivity(target.v.objective.name)"
+                    @remove="removeTarget(target.v.objective.name)" />
             </div>
             min
-            <span v-for="(target, idx) in state.linear_combination" :key="idx">
-                {{ target.weight.toFixed(2) }} ({{ target.name }} - {{ target.val.toFixed(2) }}) <span
-                    v-if="idx < state.linear_combination.length - 1"> + <br /> </span>
+            <span v-for="(target, idx) in Object.values(state.filter_targets)" :key="idx">
+                {{ target.objective.weight.toFixed(2) }} ({{ target.objective.name }} - {{
+                    target.objective.val.toFixed(2) }}) <span v-if="idx < Object.values(state.filter_targets).length - 1"> +
+                    <br /> </span>
             </span>
         </div>
         <h3>Choose Variables</h3>
@@ -27,7 +29,7 @@
             </div> -->
             <div v-for="(types, idx) of state.visible_types" :key="idx">
                 <Overview v-model="state.dp" :types="types" :data_rep="data_rep" :cat_name="idx"
-                    @hover="showSensitivity($event)" @add="addLinearTarget($event)" />
+                    @hover="showSensitivity($event)" @add="addFilterTarget($event)" />
             </div>
         </div>
 
@@ -50,10 +52,11 @@ import { ref, reactive, watch, onMounted, useTemplateRef } from 'vue';
 import * as d3 from 'd3';
 import { DataRepository, LoadedDataPoints } from '../../proc/data-store';
 import SpyderChart from '../spyder/SpyderChart.vue';
-import { DataPoint, LinearTarget } from '../../api/Api';
+import { DataPoint, FilterCondition, LinearTarget } from '../../api/Api';
 import Overview from '../adjuster/Overview.vue';
 import { PlotSelection } from '../types';
 import SingleAdj from '../adjuster/SingleAdj.vue';
+import { debounce } from '../helpers/utils';
 
 const selection = defineModel<PlotSelection>();
 const emit = defineEmits<{
@@ -77,8 +80,10 @@ const state = reactive({
     sensitivities_for_hover: [] as number[],
     search_results: [] as DataPoint[],
     visible_types: {} as Record<string, string[]>,
-
-    linear_combination: [] as LinearTarget[],
+    filter_targets: {} as Record<string, {
+        objective: LinearTarget,
+        filter: FilterCondition
+    }>,
 
 });
 
@@ -133,7 +138,7 @@ function showSensitivity(out_col: string) {
     }
 }
 
-function addLinearTarget(name: string) {
+function addFilterTarget(name: string) {
     console.log("Adding linear target:", name);
     if (state.dp) {
         let idx = data_rep.getTypeIndex(name);
@@ -143,27 +148,36 @@ function addLinearTarget(name: string) {
         } else {
             value = state.dp.inputs[idx];
         }
-        state.linear_combination.push({
-            name: name,
-            val: value,
-            weight: 1.0
-        });
+        state.filter_targets[name] = {
+            objective: {
+                name: name,
+                val: value,
+                weight: 1.0
+            },
+            filter: {
+                name: name,
+
+            }
+        };
     }
 }
 function removeTarget(name: string) {
     console.log("Removing linear target:", name);
-    state.linear_combination = state.linear_combination.filter((t) => t.name !== name);
+    delete state.filter_targets[name];
 }
-watch(() => state.linear_combination, (newComb) => {
+function updateSelection() {
+    if (selection.value) {
+        selection.value.setTarget({
+            targets: Object.values(state.filter_targets).map(t => t.objective),
+            filters: Object.values(state.filter_targets).map(t => t.filter)
+        });
+    }
+}
+let debouncedUpdateSelection = debounce(updateSelection, 300);
+watch(() => state.filter_targets, (newComb) => {
     console.log("Updated linear combination:", newComb);
     if (selection.value == null) return;
-    selection.value.setTarget({
-        targets: newComb.map((t) => ({
-            name: t.name,
-            val: t.val,
-            weight: t.weight
-        }))
-    });
+    debouncedUpdateSelection();
 }, { deep: true });
 </script>
 

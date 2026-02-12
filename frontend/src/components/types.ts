@@ -1,4 +1,4 @@
-import { DataPoint, DataPointMinimzer, InterpolationResult } from "../api/Api";
+import { DataPoint, DataPointMinimzer, FilterCondition, InterpolationResult, LinearTarget } from "../api/Api";
 
 export class PlotSelection {
     constructor(
@@ -40,4 +40,12 @@ export interface MappedData {
 export interface HoveredInterpolation {
     interpolation_idx: number;
     index_in_interpolation: number;
+}
+export class ColumnObjective {
+    constructor(
+        public objective: LinearTarget,
+        public filter: FilterCondition,
+    ) {
+
+    }
 }

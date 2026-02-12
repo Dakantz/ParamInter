@@ -95,10 +95,11 @@ class SetsManager:
                             data_file=f"blast_furnace/parts/{key}.csv",
                             data_name=f"Blast Furnace Data Set, BAS{bas}, Split: {split}, Output Group: {out_group}, Normalized: {normalize}",
                             short_data_name=f"blast_furnace_split{split}_bas{bas}_{'norm' if normalize else 'nonorm'}_{out_group}",
-                            input_cols=5,
+                            input_cols=6,
                             output_cols=2,
                             time_col=0,
                             inputs_constrained=False,
+                            use_ucq=True,
                         )
         self.configs: dict[str, dict[str, DataConfig] | DataConfig] = {
             "scivis_2025": scivis_man,
@@ -110,7 +111,12 @@ class SetsManager:
         with open("configs.json", "w") as f:
             import json
 
-            json.dump(self.configs, f, default=lambda o: o.__dict__, indent=4)
+            json.dump(
+                self.configs,
+                f,
+                default=lambda o: o.__dict__ if isinstance(o, DataConfig) else o,
+                indent=4,
+            )
 
     def get_manager(self, name: str, load=False) -> ModelManager | None:
         part_names = name.split(self.separator)
