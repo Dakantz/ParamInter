@@ -180,6 +180,16 @@ export interface HTTPValidationError {
   detail?: ValidationError[];
 }
 
+/** HistogramData */
+export interface HistogramData {
+  /** Bins */
+  bins: number[];
+  /** Counts */
+  counts: number[];
+  /** Relative */
+  relative: number[];
+}
+
 /**
  * InterpolationResult
  * InterpolationResult model to represent the result of interpolation.
@@ -567,6 +577,34 @@ export class Api<
       this.request<DataPoints, HTTPValidationError>({
         path: `/datasets/${setName}/data/`,
         method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name GetHistogramDatasetsSetNameDataHistGet
+     * @summary Get Histogram
+     * @request GET:/datasets/{set_name}/data/hist
+     */
+    getHistogramDatasetsSetNameDataHistGet: (
+      setName: string,
+      query: {
+        /** Col Name */
+        col_name: string;
+        /**
+         * Bins
+         * @default 10
+         */
+        bins?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<HistogramData, HTTPValidationError>({
+        path: `/datasets/${setName}/data/hist`,
+        method: "GET",
+        query: query,
         format: "json",
         ...params,
       }),

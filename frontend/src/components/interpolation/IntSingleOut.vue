@@ -287,7 +287,7 @@ const display_ucq = computed(() => {
 
 .svg-outchart {
     min-width: 64px;
-    min-height: 32px;
+    min-height: 64px;
 }
 
 .output-line {

@@ -1,9 +1,9 @@
 <template>
     <div class="adj-outview">
         <div class="adj-top"> <span class="adjuster-name"> {{ out_name }}={{ objective_filter.objective.val.toFixed(2)
-                }}</span> <button @click="$emit('remove')">X</button></div>
+        }}</span> <button @click="$emit('remove')">X</button></div>
         <div class="dp-value" ref="wrapper_ref" @compositionend="updateGraph">
-            <svg ref="svg_ref" class="svg-outchart" width="0px" height="0px">
+            <svg ref="svg_ref" class="svg-selchart" width="0px" height="0px">
                 <g>
                     <path d="" />
                 </g>
@@ -18,6 +18,7 @@ import { DataRepository } from '../../proc/data-store';
 import * as d3 from 'd3';
 import { ColumnObjective } from '../types';
 import { debounce } from '../helpers/utils';
+import { HistogramData } from '../../api/Api';
 defineEmits<{
     (e: 'hover'): void;
     (e: 'remove'): void;
@@ -25,6 +26,11 @@ defineEmits<{
 const objective_filter = defineModel<ColumnObjective>({
     type: Object as () => ColumnObjective,
     required: true
+});
+const state = reactive({
+    loading: false,
+    hist: null as HistogramData | null,
+    active_bins: [] as number[]
 });
 const { out_name, data_rep } = defineProps({
 
@@ -63,12 +69,13 @@ let yScale = d3.scaleLinear()
 let xScale = d3.scaleLinear()
     .domain([0, 1])
     .range([0, 64]);
+const text_padding = 40;
+const brush_padding = 20;
 
 function initScales() {
     if (!svg_ref.value || !wrapper_ref.value) return;
     const width = wrapper_ref.value.clientWidth - 5;
     const height = wrapper_ref.value.clientHeight - 5;
-    const text_padding = 40;
     // console.log("Updating graph with width:", width, "height:", height);
     const svg = d3.select(svg_ref.value)
         .attr('width', width)
@@ -78,7 +85,7 @@ function initScales() {
 
     yScale = d3.scaleLinear()
         .domain([0, 1])
-        .range([height, 0]);
+        .range([height - brush_padding, brush_padding]);
     xScale = d3.scaleLinear()
         .domain([min_value.value, max_value.value])
         .range([text_padding, width - text_padding]);
@@ -86,7 +93,7 @@ function initScales() {
 
     fixed_group.append('text')
         .attr('x', xScale(min_value.value) - 5)
-        .attr('y', yScale(0.2))
+        .attr('y', yScale(0) + 5)
         .text(min_value.value.toFixed(2))
         .attr('font-size', '10px')
         .attr('text-anchor', 'end')
@@ -94,11 +101,13 @@ function initScales() {
 
     fixed_group.append('text')
         .attr('x', xScale(max_value.value) + 5)
-        .attr('y', yScale(0.2))
+        .attr('y', yScale(0) + 5)
         .text(max_value.value.toFixed(2))
         .attr('font-size', '10px')
         .attr('text-anchor', 'start')
         .attr('fill', 'black');
+
+    const hist_group = svg.append('g').attr('class', 'hist-elements');
 }
 function updateGraph() {
     if (!svg_ref.value || !wrapper_ref.value) return;
@@ -110,7 +119,7 @@ function updateGraph() {
     const selection_group = svg.append('g').attr('class', 'selection-elements');
     const line = d3.line<number>()
         .x((d, i) => xScale(d))
-        .y((d) => yScale(0.8));
+        .y((d) => yScale(0));
     selection_group.append('path')
         .datum([min_val, max_val])
         .attr('class', 'full-line')
@@ -122,49 +131,48 @@ function updateGraph() {
     selection_group.append('circle')
         .attr('class', 'selector-point')
         .attr('cx', xScale(objective_filter.value.objective.val))
-        .attr('cy', yScale(0.8))
+        .attr('cy', yScale(0))
         .attr('r', 5)
     selection_group.append('circle')
         .attr('class', 'selector-point-brush')
         .attr('id', 'hover-brush')
         .attr('cx', xScale(objective_filter.value.objective.val))
-        .attr('cy', yScale(0.8))
+        .attr('cy', yScale(0))
         .attr('r', 20)
     // add brushing sides
     let brush_size = 10
     selection_group.append('path')
         .attr('class', "brush")
         .attr('d', d3.line()([
-            [xScale(min_val), yScale(0.8)],
-            [xScale(min_val), yScale(0.2)]]));
+            [xScale(min_val), yScale(0)],
+            [xScale(min_val), yScale(0) + brush_padding]]));
     selection_group.append('rect')
         .attr('class', "brush-handle")
         .attr('id', "min-brush")
         .attr('x', xScale(min_val) - brush_size / 2)
-        .attr('y', yScale(0.8))
+        .attr('y', yScale(0))
         .attr('width', brush_size)
-        .attr('height', yScale(0.2) - yScale(0.8));
+        .attr('height', brush_padding);
 
 
     selection_group.append('path')
         .attr('class', "brush ")
-
         .attr('d', d3.line()([
-            [xScale(max_val), yScale(0.8)],
-            [xScale(max_val), yScale(0.2)]]));
+            [xScale(max_val), yScale(0)],
+            [xScale(max_val), yScale(0) + brush_padding]]));
     selection_group.append('rect')
         .attr('class', "brush-handle")
         .attr('id', "max-brush")
         .attr('x', xScale(max_val) - brush_size / 2)
-        .attr('y', yScale(0.8))
+        .attr('y', yScale(0))
         .attr('width', brush_size)
-        .attr('height', yScale(0.2) - yScale(0.8));
+        .attr('height', brush_padding);
 
     if (objective_filter.value.filter.min !== undefined) {
 
         selection_group.append('text')
             .attr('x', xScale(min_val) + 7)
-            .attr('y', yScale(0.2))
+            .attr('y', yScale(0) + brush_padding / 2 + 5)
             .text(min_val.toFixed(2))
             .attr('font-size', '10px')
             .attr('fill', 'black');
@@ -173,7 +181,7 @@ function updateGraph() {
 
         selection_group.append('text')
             .attr('x', xScale(max_val) - 7)
-            .attr('y', yScale(0.2))
+            .attr('y', yScale(0) + brush_padding / 2 + 5)
             .text(max_val.toFixed(2))
             .attr('font-size', '10px')
             .attr('text-anchor', 'end')
@@ -187,7 +195,8 @@ enum DraggingElement {
     MinBrush,
     MaxBrush
 }
-onMounted(() => {
+function setupEvents() {
+
     const wrapper = d3.select(wrapper_ref.value)
     let clicked_element: DraggingElement = DraggingElement.None;
     function updateSelectionPos(evt: MouseEvent) {
@@ -216,6 +225,8 @@ onMounted(() => {
 
             objective_filter.value.objective.val = Math.min(objective_filter.value.objective.val, objective_filter.value.filter.max);
         }
+        recalculateActiveBins();
+        updateHistogram();
     }
     wrapper
         .on('mousemove', (evt) => {
@@ -243,8 +254,53 @@ onMounted(() => {
             clicked_element = DraggingElement.None;
 
         });
+}
+onMounted(async () => {
     initScales();
     updateGraph();
+    setupEvents();
+    try {
+        let hist = await data_rep.client.datasets.getHistogramDatasetsSetNameDataHistGet(data_rep.set_name, { bins: 32, col_name: out_name });
+        state.hist = hist.data;
+    } catch (error) {
+        console.error("Error fetching histogram data:", error);
+
+    }
+
+});
+function updateHistogram() {
+    if (!state.hist || !svg_ref.value) return;
+    console.log("Redrawing histogram with data:", state.hist);
+    const hist_group = d3.select(svg_ref.value).select('g.hist-elements');
+    const bin_width = (xScale(state.hist.bins[1]) - xScale(state.hist.bins[0])) * 0.9;
+    let max_rel = d3.max(state.hist.relative) || 1;
+    let relative_values = state.hist.relative.map(d => d / max_rel);
+
+
+    hist_group
+        .selectAll('rect')
+        .data(relative_values)
+        .join('rect')
+        .attr('class', (d, i) => state.active_bins.includes(i) ? 'hist-bar hist-active' : 'hist-bar')
+        .attr('x', (d, i) => xScale(state.hist?.bins[i] || 0) - bin_width / 2)
+        .attr('y', d => yScale(d))
+        .attr('width', bin_width)
+        .attr('height', d => yScale(0) - yScale(d))
+}
+function recalculateActiveBins() {
+    if (!state.hist) return;
+    state.active_bins = [];
+    let min_val = objective_filter.value.filter.min || min_value.value;
+    let max_val = objective_filter.value.filter.max || max_value.value;
+    state.hist.bins.forEach((bin_edge, idx) => {
+        if (bin_edge >= min_val && bin_edge <= max_val) {
+            state.active_bins.push(idx);
+        }
+    });
+}
+watch(() => state.hist, () => {
+    recalculateActiveBins();
+    updateHistogram();
 });
 watch(() => objective_filter.value, () => {
     updateGraph();
@@ -296,9 +352,9 @@ watch(() => objective_filter.value, () => {
     font-size: 1.1em;
 }
 
-.svg-outchart {
+.svg-selchart {
     min-width: 64px;
-    min-height: 32px;
+    min-height: 96px;
 }
 
 .select-line {
@@ -333,5 +389,13 @@ watch(() => objective_filter.value, () => {
     fill: rgba(191, 190, 190, 0);
     cursor: ew-resize;
 
+}
+
+.hist-bar {
+    fill: rgb(200, 200, 200);
+}
+
+.hist-bar.hist-active {
+    fill: rgb(52, 166, 220);
 }
 </style>

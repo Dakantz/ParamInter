@@ -30,6 +30,12 @@ class DataPoints(BaseModel):
     projected_outputs: list[list[float]] = None
 
 
+class HistogramData(BaseModel):
+    bins: list[float]
+    counts: list[int]
+    relative: list[float]
+
+
 class DataPoint(BaseModel):
     """
     DataPoint model to represent a single data point.

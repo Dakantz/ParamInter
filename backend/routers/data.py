@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
 
-from backend.models import DataDescription, DataPoints
+from backend.models import DataDescription, DataPoints, HistogramData
 from backend.routers.sets import sets_manager
+import numpy as np
+import pandas as pd
 
 data_router = APIRouter(prefix="/data")
 
@@ -33,6 +35,20 @@ def get_data(set_name: str = None) -> DataPoints:
         projected_outputs=data_man.embedded_tsne.tolist(),
     )
     return data_points
+
+
+@data_router.get("/hist")
+def get_histogram(col_name: str, set_name: str = None, bins: int = 10) -> HistogramData:
+    data_man = sets_manager.get_manager(set_name, True)
+
+    if col_name not in data_man.cleaned.columns:
+        return HistogramData(bins=[], counts=[], relative=[])
+    col_data = data_man.cleaned[col_name].dropna()
+    hist, bin_edges = np.histogram(col_data, bins=bins)
+    relative = hist / hist.sum() if hist.sum() > 0 else np.zeros_like(hist)
+    return HistogramData(
+        bins=bin_edges.tolist(), counts=hist.tolist(), relative=relative.tolist()
+    )
 
 
 @data_router.get("/column_types")
