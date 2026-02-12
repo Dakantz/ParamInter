@@ -79,7 +79,10 @@ function updateChart() {
     d3.select(spiderContainer.value)
         .selectAll('*')
         .remove();
-    const radius = Math.min(width, height) / 2;
+    let radius = Math.min(width, height) / 2;
+    if(show_labels){
+        radius = radius * 0.8; // leave space for labels
+    }
     const dim_mapped = dimensions.value.map((dim, i) => {
         let val = dim_data.value[i]
         let min = rep && rep.description ? rep.description.min_values[dim] : 0;
