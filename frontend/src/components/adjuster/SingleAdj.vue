@@ -370,13 +370,13 @@ watch(() => objective_filter.value, () => {
 }
 
 .selector-point {
-    fill: rgb(52, 166, 220);
-    stroke: white;
+    fill: rgb(244, 197, 66);
+    stroke: rgb(197, 189, 85);
     stroke-width: 1.5;
 }
 
 .selector-point-brush {
-    fill: rgba(52, 167, 220, 0);
+    fill: rgba(244, 197, 66, 0);
     cursor: move;
 }
 

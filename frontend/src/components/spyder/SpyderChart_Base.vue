@@ -300,7 +300,7 @@ function updateChart() {
                 return d.sense > 0 ? 'sensitivity_pos sensitivity' : 'sensitivity_neg sensitivity';
             })
         if (display_ucq.value) {
-            console.log("Uncertainties", display_ucq, uncertainties)
+            // console.log("Uncertainties", display_ucq, uncertainties)
             let ucq_steps = Array.from({ length: uncertainty_steps }).map((_, i) => {
                 let q = 0.2 * i / uncertainty_steps
                 let qs = [
@@ -332,7 +332,7 @@ function updateChart() {
                 })
 
             })
-            console.log("UCQ", ucq_steps)
+            // console.log("UCQ", ucq_steps)
             g.selectAll('path.ucq-path')
                 .data(ucq_steps)
                 .join('path')

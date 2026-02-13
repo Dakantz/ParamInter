@@ -78,6 +78,12 @@ def get_minimization_interpolation(
     filtered_df, within_filter, lookup_table = apply_filters(
         q.min.filters, data_man.cleaned
     )
+    if q.start_idx not in lookup_table.values:
+        filtered_df = pd.concat([data_man.cleaned.iloc[[q.start_idx]], filtered_df])
+        lookup_table = pd.concat(
+            [pd.Series([q.start_idx]), lookup_table],
+            ignore_index=True,
+        )
     costs_sum = get_costs(q.min.targets, filtered_df)
     nn_stacked_X = np.concatenate(
         [
@@ -122,7 +128,7 @@ def get_minimization_interpolation(
 
         _, indices = nn_inputs.kneighbors(nn_stacked_query)
         indices = indices.flatten()
-        # indices[0] = q.start_idx
+        indices[0] = 0
         indices[-1] = argmin_index
 
         uncertainties_interpolated = data_man.uncertainty.loc[indices, :]

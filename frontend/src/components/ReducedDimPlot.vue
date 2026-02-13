@@ -174,7 +174,7 @@ const chart = fc
             .on('click', () => {
                 if (annotations.length > 0) {
                     const clickedData = annotations[0];
-                    console.log("Clicked data:", clickedData);
+                    // console.log("Clicked data:", clickedData);
                     if (selection.value.selected_indices.length == 2) {
                         selection.value.selected_indices = [];
                     }
@@ -183,7 +183,7 @@ const chart = fc
                 redraw();
             })
             .on("mouseleave", () => {
-                console.log("Mouse left the plot area, clearing annotations.");
+                // console.log("Mouse left the plot area, clearing annotations.");
 
                 annotations.length = 0; // Clear the annotations array
                 redraw();

@@ -96,7 +96,7 @@ watch(() => selected_dp, (newIdx) => {
     if (newIdx >= 0) {
         data_rep.dps.getDP(newIdx).then((dp) => {
             state.dp = dp;
-            console.log("Selected Data Point:", dp);
+            // console.log("Selected Data Point:", dp);
         }).catch((error) => {
             console.error("Error fetching data point:", error);
         });
@@ -175,7 +175,7 @@ function updateSelection() {
 }
 let debouncedUpdateSelection = debounce(updateSelection, 300);
 watch(() => state.filter_targets, (newComb) => {
-    console.log("Updated linear combination:", newComb);
+    // console.log("Updated linear combination:", newComb);
     if (selection.value == null) return;
     debouncedUpdateSelection();
 }, { deep: true });

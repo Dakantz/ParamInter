@@ -29,7 +29,7 @@ import { HoveredInterpolation, PlotSelection } from '../types';
 import IntOverview from '../interpolation/IntOverview.vue';
 import InterpolationSlider from '../interpolation/InterpolationSlider.vue';
 onMounted(() => {
-    console.log("Interpolation component mounted");
+    // console.log("Interpolation component mounted");
 });
 const selection = defineModel<PlotSelection>(
     {
@@ -67,7 +67,7 @@ const state = reactive({
     hovered_index: -1,
 });
 function selectDp(idx: HoveredInterpolation) {
-    console.log("Selecting Data Point:", idx);
+    // console.log("Selecting Data Point:", idx);
     if (idx.interpolation_idx >= 0) {
         const true_idx = state.interpolation_copy?.[idx.interpolation_idx]?.indices[idx.index_in_interpolation];
         if (true_idx !== undefined) {
@@ -113,7 +113,7 @@ const interpolation_ends = computed(() => {
     return [];
 });
 watch(() => data_rep.description, (desc) => {
-    console.log("New types:", desc);
+    // console.log("New types:", desc);
     if (desc?.all_columns.length === 0) {
         console.warn("No types available in data repository.");
         return;

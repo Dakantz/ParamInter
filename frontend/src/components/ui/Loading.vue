@@ -77,7 +77,6 @@ function updateChart() {
                 rescale_val,
             }
         });
-        console.log("Dimensions:", dims, values);
 
         const angleScale = d3.scaleLinear()
             .domain([0, dims.length])

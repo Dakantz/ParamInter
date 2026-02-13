@@ -113,7 +113,7 @@ function previewSelected(idx: number) {
     state.selection.previewed_index = idx
 }
 function updateSelection(newSelection: number) {
-    console.log("Updating selection:", newSelection);
+    // console.log("Updating selection:", newSelection);
     // if (state.selection.selected_indices.length == 2) {
     //   // If two indices are already selected, replace the first one
     //   state.selection.selected_indices = [newSelection];

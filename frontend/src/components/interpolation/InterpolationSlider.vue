@@ -37,7 +37,7 @@ const svg_ref = useTemplateRef('svg_ref');
 const wrapper_ref = useTemplateRef('wrapper_ref');
 
 onMounted(() => {
-    console.log("Interpolation component mounted");
+    // console.log("Interpolation component mounted");
 });
 const selection = defineModel<PlotSelection>(
     {
@@ -205,7 +205,7 @@ watch(() => selection.value.hovered_int, (int) => {
     updateSlider();
 }, { immediate: true, deep: true });
 onMounted(() => {
-    console.log("InterpolationSlider mounted with data_rep:", data_rep);
+    // console.log("InterpolationSlider mounted with data_rep:", data_rep);
     setUpLayout();
 
     setupMarkers(d3.select(svg_ref.value), 2);

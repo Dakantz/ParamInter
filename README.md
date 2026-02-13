@@ -1,8 +1,8 @@
-# AlloyInter
+# ParamInter
 
 ## Description
 
-AlloyInter is our entry to the [SciVis Contest 2025](https://sciviscontest2025.github.io/). The approach interpolates between selected input samples over an embedded subspace, guiding the user towards required solutions for their target output parameters.
+ParamInter is a novel toolset to explore continous input-output parameter sets interactively through guidance by XAI and UCQ. The approach interpolates between selected input samples over an embedded subspace, guiding the user towards required solutions for their target output parameters.
 
 ![](demos/similar_point_search.png)
 ![](demos/mixture_adaption_sensitivity.png)
