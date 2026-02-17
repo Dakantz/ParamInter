@@ -45,5 +45,5 @@ export default defineConfig({
     port: 3000,
   },
 
-  envPrefix: 'ALLOY_',
+  envPrefix: 'PI_',
 })

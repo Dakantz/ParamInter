@@ -19,15 +19,16 @@ const app = createApp(App)
 
 import DataSetSelector from './views/DataSetSelector.vue'
 import Interpolator from './views/Interpolator.vue'
-import { SITE_BASE_URL } from './config'
+import { API_BASE_URL, SITE_BASE_URL } from './config'
 
+console.log('SITE_BASE_URL:', SITE_BASE_URL, 'API_BASE_URL:', API_BASE_URL)
 const routes = [
-  { path: '/', component: DataSetSelector },
-  { path: '/interpolator/:setname', component: Interpolator },
+  { path: `${SITE_BASE_URL}/`, component: DataSetSelector },
+  { path: `${SITE_BASE_URL}/interpolator/:setname`, component: Interpolator },
 ]
-
+console.log('Routes:', routes, window.location.pathname)
 export const router = createRouter({
-  history: createWebHistory(SITE_BASE_URL),
+  history: createWebHistory(),
   routes,
 })
 registerPlugins(app)
