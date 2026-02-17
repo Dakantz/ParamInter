@@ -54,7 +54,7 @@ const { editable, factor, sensitivities, uncertainties, uncertainty_steps, rep, 
     },
     sensitivity_scale: {
         type: Number,
-        default: 1
+        default: 0.5
     }
 });
 const spiderContainer = useTemplateRef('spider-container');
@@ -279,6 +279,7 @@ function updateChart() {
             .data(filtered_sensitivities) // filter out very small sensitivities
             // .filter(d => d.effective_length > 0.01) // filter out very small sensitivities
             .join('path')
+            .attr('class', 'sensitivity')
             .attr('d', d => {
                 // draw an arrow depending on the sensitivity value
                 let angle = (d.idx / dim_mapped.length) * 2 * Math.PI;

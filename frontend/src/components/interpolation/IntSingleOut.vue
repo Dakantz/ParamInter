@@ -77,6 +77,7 @@ const hovered_value = computed(() => {
         && hovered_index.value.index_in_interpolation < out_values.value[hovered_index.value.interpolation_idx].length) {
         return `- ${out_values.value[hovered_index.value.interpolation_idx][hovered_index.value.index_in_interpolation].toFixed(2)}`;
     }
+
     return "--";
 });
 
@@ -200,6 +201,9 @@ watch(() => hovered_index.value, (idx) => {
             .attr('cx', xScale(idx.index_in_interpolation))
             .attr('cy', yScale(out_values.value[idx.interpolation_idx][idx.index_in_interpolation]))
             .attr('r', 5)
+    }else {
+        // Remove hover point if no valid index
+        svg.selectAll('.hover-point').remove();
     }
 }, { immediate: true, deep: true });
 function idxFromHover(evt: MouseEvent): HoveredInterpolation {

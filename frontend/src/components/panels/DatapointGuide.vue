@@ -13,12 +13,12 @@
                     :data_rep="data_rep" @hover="showSensitivity(target.v.objective.name)"
                     @remove="removeTarget(target.v.objective.name)" />
             </div>
-            min
+            <!-- min
             <span v-for="(target, idx) in Object.values(state.filter_targets)" :key="idx">
                 {{ target.objective.weight.toFixed(2) }} ({{ target.objective.name }} - {{
                     target.objective.val.toFixed(2) }}) <span v-if="idx < Object.values(state.filter_targets).length - 1"> +
                     <br /> </span>
-            </span>
+            </span> -->
         </div>
         <h3>Choose Variables</h3>
         <h4 class="info">Click to add, hover variables to see sensitivity!</h4>

@@ -2,6 +2,8 @@ from fastapi import APIRouter, Body
 import numpy as np
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import MinMaxScaler
+from torch.utils import data
 from tqdm import tqdm
 
 from backend.models import (
@@ -75,6 +77,8 @@ def get_minimization_interpolation(
     set_name: str = None,
 ) -> list[InterpolationResult]:
     data_man = sets_manager.get_manager(set_name)
+    considered_cols = data_man.input_cols + data_man.output_cols
+
     filtered_df, within_filter, lookup_table = apply_filters(
         q.min.filters, data_man.cleaned
     )
@@ -84,10 +88,12 @@ def get_minimization_interpolation(
             [pd.Series([q.start_idx]), lookup_table],
             ignore_index=True,
         )
+    # scaler = MinMaxScaler().fit(filtered_df[considered_cols])
+    # scaled_df = scaler.transform(filtered_df[considered_cols])
     costs_sum = get_costs(q.min.targets, filtered_df)
     nn_stacked_X = np.concatenate(
         [
-            filtered_df[data_man.input_cols].to_numpy(),
+            filtered_df[considered_cols].to_numpy(),
             q.cost_penalty * costs_sum.reshape(-1, 1),
         ],
         axis=1,
@@ -99,10 +105,14 @@ def get_minimization_interpolation(
     argmin_indexes = np.argsort(costs_sum)[: q.k_options]
     int_results = []
     for argmin_index in argmin_indexes:
-        start_dp = data_man.cleaned.iloc[q.start_idx, :][data_man.input_cols].values
-        end_dp = filtered_df.iloc[argmin_index, :][data_man.input_cols].values
+        start_dp = data_man.cleaned.iloc[q.start_idx, :][considered_cols].values
+        end_dp = filtered_df.iloc[argmin_index, :][considered_cols].values
 
-        inputs_interpolated: np.ndarray = np.linspace(start_dp, end_dp, q.samples)
+        inputs_interpolated: np.ndarray = np.linspace(
+            start_dp[: len(data_man.input_cols)],
+            end_dp[: len(data_man.input_cols)],
+            q.samples,
+        )
 
         outputs_interpolated: np.ndarray = np.empty(
             (q.samples, len(data_man.output_cols))
@@ -115,14 +125,19 @@ def get_minimization_interpolation(
         interpolated = np.concatenate(
             [inputs_interpolated, outputs_interpolated], axis=1
         )
+
         interpolated_data = pd.DataFrame(
             interpolated,
-            columns=filtered_df.columns,
+            columns=considered_cols,
         )
         interpolated_costs = get_costs(q.min.targets, interpolated_data)
 
+        # interpolated_scaled = scaler.transform(interpolated)
         nn_stacked_query = np.concatenate(
-            [inputs_interpolated, q.cost_penalty * interpolated_costs.reshape(-1, 1)],
+            [
+                interpolated_data[considered_cols].to_numpy(),
+                q.cost_penalty * interpolated_costs.reshape(-1, 1),
+            ],
             axis=1,
         )
 
