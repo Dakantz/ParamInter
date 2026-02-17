@@ -1,7 +1,7 @@
 <template>
     <div>
         <div class="header top_bar">
-            <RouterLink to="/" class="link_btn link_btn_header">
+            <RouterLink :to="SITE_BASE_URL+'/'" class="link_btn link_btn_header">
                 < </RouterLink>
                     <h2 class="small_h2"> {{ state.manager_settings?.data_name }}</h2>
         </div>
@@ -20,6 +20,7 @@ import InterpolationPanels from '../components/panels/InterpolationPanels.vue';
 import { DataRepository } from '../proc/data-store';
 import { reactive, watch } from 'vue';
 import { ManagerSettings } from '../api/Api';
+import { SITE_BASE_URL } from '../config';
 const route = useRoute()
 const state = reactive({
     data_rep: null as DataRepository | null,
