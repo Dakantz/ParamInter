@@ -26,7 +26,7 @@ export default defineConfig({
       },
     }),
   ],
-  base: '',
+  base: './',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -43,16 +43,6 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-  },
-  experimental: {
-    renderBuiltUrl(filename: string, { hostType }: { hostType: 'js' | 'css' | 'html' }) {
-      console.log('Resolving built URL for:', filename, 'with hostType:', hostType);
-      if (hostType === 'js') {
-        return { runtime: `window.__getFile(${JSON.stringify(filename)})` }
-      } else {
-        return { relative: true }
-      }
-    }
   },
   envPrefix: 'PI_',
 })
