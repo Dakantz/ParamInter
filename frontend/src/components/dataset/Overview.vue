@@ -7,6 +7,7 @@
         <p>Output Columns: <span class="col_desc" v-for="col in dataset.data_description.output_cols" :key="col">{{ col
         }}</span></p>
         <p>Inputs Constrained: {{ dataset.inputs_constrained ? "Yes" : "No" }}</p>
+        <p>Using Uncertainty: {{ dataset.use_ucq ? "Yes" : "No" }}</p>
         <p>Loaded: {{ dataset.loaded ? "Yes" : "No" }}</p>
         <p>
             <button v-bind:class="load_btn_class" @click="loadDataset">Load</button>
