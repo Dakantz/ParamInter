@@ -8,7 +8,6 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     Constant: typeof import('./src/components/formulation/parts/Constant.vue')['default']
-    copy: typeof import('./src/components/spyder/SpyderChart copy.vue')['default']
     DatapointGuide: typeof import('./src/components/panels/DatapointGuide.vue')['default']
     DatapointInterpolation: typeof import('./src/components/panels/DatapointInterpolation.vue')['default']
     DatapointSearch: typeof import('./src/components/panels/DatapointSearch.vue')['default']
@@ -16,19 +15,16 @@ declare module 'vue' {
     Input: typeof import('./src/components/formulation/parts/Input.vue')['default']
     InterpolationPanels: typeof import('./src/components/panels/InterpolationPanels.vue')['default']
     InterpolationSlider: typeof import('./src/components/interpolation/InterpolationSlider.vue')['default']
-    IntInputSlider: typeof import('./src/components/interpolation/IntInputSlider.vue')['default']
     IntOverview: typeof import('./src/components/interpolation/IntOverview.vue')['default']
     IntSingleOut: typeof import('./src/components/interpolation/IntSingleOut.vue')['default']
     Loading: typeof import('./src/components/ui/Loading.vue')['default']
     NaryOp: typeof import('./src/components/formulation/parts/NaryOp.vue')['default']
     Overview: typeof import('./src/components/adjuster/Overview.vue')['default']
-    Panels: typeof import('./src/components/Panels.vue')['default']
     PlotsOverview: typeof import('./src/components/PlotsOverview.vue')['default']
     ReducedDimPlot: typeof import('./src/components/ReducedDimPlot.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SingleAdj: typeof import('./src/components/adjuster/SingleAdj.vue')['default']
-    SingleOut: typeof import('./src/components/adjuster/SingleOut.vue')['default']
     SpyderChart: typeof import('./src/components/spyder/SpyderChart.vue')['default']
     SpyderChart_Base: typeof import('./src/components/spyder/SpyderChart_Base.vue')['default']
   }
