@@ -46,7 +46,8 @@ export default defineConfig({
   },
   experimental: {
     renderBuiltUrl(filename: string, { hostType }: { hostType: 'js' | 'css' | 'html' }) {
-      if (['js', 'css'].includes(hostType)) {
+      console.log('Resolving built URL for:', filename, 'with hostType:', hostType);
+      if (hostType === 'js') {
         return { runtime: `window.__getFile(${JSON.stringify(filename)})` }
       } else {
         return { relative: true }
