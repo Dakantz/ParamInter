@@ -44,6 +44,14 @@ export default defineConfig({
   server: {
     port: 3000,
   },
-
+  experimental: {
+    renderBuiltUrl(filename: string, { hostType }: { hostType: 'js' | 'css' | 'html' }) {
+      if (['js', 'css'].includes(hostType)) {
+        return { runtime: `window.__getFile(${JSON.stringify(filename)})` }
+      } else {
+        return { relative: true }
+      }
+    }
+  },
   envPrefix: 'PI_',
 })

@@ -6,6 +6,13 @@
     <!-- <link rel="icon" href="/favicon.ico" /> -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Welcome to the Gradient Landscape Explorer</title>
+    <script>
+        // Dynamically set the base URL for the application
+        window.__getFile = function (filename) {
+            const baseUrl = import.meta.env.PI_ENV_SITE_BASE_URL || '/';
+            return baseUrl + filename;
+        };
+    </script>
 </head>
 
 <body>
