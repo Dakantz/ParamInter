@@ -44,8 +44,8 @@ const { embedded_data, full_data, data_rep, results, embedding_name, interpolati
         default: () => []
     },
     results: {
-        type: Object as () => CostOverviewData,
-        default: () => new CostOverviewData()
+        type: Object as () => CostOverviewData | null, 
+        default: () => null
     }
 
 });
@@ -235,9 +235,9 @@ const similiarityColorScale = d3
 watch(() => results, (sim) => {
     // console.log("Updating similarity colors with data:", sim);
     const similarityFill = (d: MappedData) => {
-        const similarity = sim.costs[d.index];
+        const similarity = sim?.costs[d.index];
 
-        if (similarity === undefined || !sim.within_filter[d.index]) {
+        if (similarity === undefined || !sim?.within_filter[d.index]) {
             return [0, 0, 0, 1]; // Default color for undefined similarities
         }
         const color = similiarityColorScale(similarity);

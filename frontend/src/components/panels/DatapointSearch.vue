@@ -7,9 +7,10 @@
         <h4 class="info">Click to start next step!</h4>
         <div class="search-results">
             <div v-for="(result, idx) in state.search_results" :key="idx" class="search-result-item"
-                @mouseenter="emit('preview', result.index || -1)" @click.capture="emit('select', result.index || -1)">
-                <SpyderChart :rep="data_rep" v-model="result.inputs" :editable="false" :height="'6vw'"
-                    :show_labels="false" :uncertainties="result.uncertainties"/>
+                @mouseenter="emit('preview', result.index || -1)" @click.capture="emit('select', result.index || -1)"
+                @mouseleave="emit('preview', -1)">
+                <SpyderChart :rep="data_rep" v-model="result.inputs" :editable="false" :height="'4vw'"
+                    :show_labels="false" :uncertainties="result.uncertainties" />
             </div>
         </div>
     </div>
@@ -21,10 +22,10 @@ import * as d3 from 'd3';
 import { DataRepository } from '../../proc/data-store';
 import SpyderChart from '../spyder/SpyderChart.vue';
 import { DataPoint } from '../../api/Api';
+import { PlotSelection } from '../types';
 
-const start_idx = defineModel({
-    type: Number,
-    default: -1
+const selection = defineModel<PlotSelection>({
+    required: true,
 });
 const emit = defineEmits<{
     (e: 'preview', idx: number): void;
@@ -97,12 +98,14 @@ watch(() => state.dim_data, (dim_data) => {
 }
 
 .search-result-item {
-    width: 7vw;
-    height: 7vw;
+    width: 4vw;
+    height: 4vw;
+    min-height: 110px;
+    min-width: 110px;
     display: flex;
     justify-content: center;
-    margin: 5px;
-    padding: 5px;
+    margin: 3px;
+    padding: 3px;
     border: 1px solid #ccc;
     background-color: #f9f9f9;
     cursor: grab;

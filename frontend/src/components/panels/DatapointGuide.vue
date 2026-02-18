@@ -6,7 +6,7 @@
             :sensitivities="state.sensitivities_for_hover" :uncertainties="state.dp.uncertainties" />
         <h3>Linear Objective</h3>
         <h4 class="info">Drag to adjust</h4>
-        <div class="linear-objectives">
+        <div class="linear-objectives" v-if="state.filter_targets">
             <div v-for="(target, idx) in Object.keys(state.filter_targets).map(key => ({ k: key, v: state.filter_targets[key] }))"
                 :key="idx" @mouseenter="showSensitivity(target.v.objective.name)" class="linear-objective">
                 <SingleAdj v-model="state.filter_targets[target.v.objective.name]" :out_name="target.v.objective.name"
@@ -167,10 +167,15 @@ function removeTarget(name: string) {
 }
 function updateSelection() {
     if (selection.value) {
-        selection.value.setTarget({
-            targets: Object.values(state.filter_targets).map(t => t.objective),
-            filters: Object.values(state.filter_targets).map(t => t.filter)
-        });
+        selection.value.setTarget(state.filter_targets);
+    }
+}
+function targetsFromSelection() {
+    let newTargets = selection.value?.targetToRecord() || {};;
+    if (!newTargets) return;
+    if (JSON.stringify(newTargets) !== JSON.stringify(state.filter_targets)) {
+        console.log("Updating targets from selection:", selection.value, newTargets);
+        state.filter_targets = reactive(newTargets);
     }
 }
 let debouncedUpdateSelection = debounce(updateSelection, 300);
@@ -179,6 +184,13 @@ watch(() => state.filter_targets, (newComb) => {
     if (selection.value == null) return;
     debouncedUpdateSelection();
 }, { deep: true });
+watch(() => selection.value?.target, (newSelection) => {
+    console.log("New selection in guide:", newSelection);
+    targetsFromSelection();
+}, { deep: true });
+onMounted(() => {
+    targetsFromSelection();
+});
 </script>
 
 <style scoped>

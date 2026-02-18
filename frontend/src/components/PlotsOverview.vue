@@ -38,8 +38,8 @@ const { data_rep, loaded_keys, results } = defineProps({
         default: () => []
     },
     results: {
-        type: Object as () => CostOverviewData,
-        default: () => new CostOverviewData()
+        type: Object as () => CostOverviewData | null,
+        default: () => null
     }
 
 });

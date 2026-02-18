@@ -72,13 +72,19 @@ export class DataRepository {
         all_embeddings.all_embeddings[type] = toRaw(new Embeddings(embeddings));
         load_cb(1, Object.keys(all_embeddings.all_embeddings));
     }
-    async loadSetting(): Promise<ManagerSettings> {
-        this.manager_settings = (await this.client.datasets.getSetDatasetsSetNameGet(this.set_name, { load: true })).data;
-        return this.manager_settings;
-    }
-    async loadAll(load_cb: (progress: number, loaded_keys: string[]) => void = () => { }, all_embeddings: AllEmbeddings) {
+
+    async loadDescription(): Promise<void> {
         this.all_types = (await this.client.datasets.getColumnTypesDatasetsSetNameDataColumnTypesGet(this.set_name)).data;
         this.manager_settings = (await this.client.datasets.getSetDatasetsSetNameGet(this.set_name, { load: true })).data;
+    }
+    async loadAll(load_cb: (progress: number, loaded_keys: string[]) => void = () => { }, all_embeddings: AllEmbeddings) {
+        if(!this.manager_settings) {
+            await this.loadDescription();
+        }
+        if(!this.manager_settings){
+            console.error("Failed to load manager settings for dataset:", this.set_name);
+            return;
+        }
         this.description = this.manager_settings.data_description;
         let promises: Promise<void>[] = [];
         for (const type in this.all_types) {

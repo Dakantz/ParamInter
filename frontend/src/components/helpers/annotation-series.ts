@@ -44,10 +44,10 @@ interface ProjectedData {
 
 //     redraw();
 // }
-export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: number, cls: string = 'annotation', n_interpolation_subsamples = 4) => {
+export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: number, cls: string = 'annotation', n_interpolation_subsamples = 3) => {
     // the underlying component that we are wrapping
     // const d3Annotation = d3.annotation();
-
+    
     let xScale = d3.scaleLinear();
     let yScale = d3.scaleLinear();
     let min_values = data_rep.description?.input_cols.map((col) => data_rep.description?.min_values[col] || 0) || [];
@@ -126,7 +126,15 @@ export const seriesSvgAnnotation = (data_rep: DataRepository, spyder_size: numbe
             createSpyderFromPoints(sel, selectionData, 'selection', spyder_size);
             sel.selectAll('.hovered').remove();
 
+            sel.selectAll('.interpolation_spyder_hover').remove();
             sel.selectAll('.interpolation').remove();
+            if(!data.interpolations){
+                sel.selectAll('.interpolation').remove();
+                for(let i = 0; i < 5; i++){
+                     sel.selectAll(`.interpolation_path_${i}`).remove();
+                     sel.selectAll(`.interpolation_spyder_${i}`).remove();
+                }
+            }
             data.interpolations?.forEach((int, i) => {
                 sel.selectAll(`.interpolation_path_${i}`).remove();
                 sel.selectAll(`.interpolation_spyder_${i}`).remove();

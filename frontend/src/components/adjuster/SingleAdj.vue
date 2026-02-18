@@ -270,7 +270,7 @@ onMounted(async () => {
 });
 function updateHistogram() {
     if (!state.hist || !svg_ref.value) return;
-    console.log("Redrawing histogram with data:", state.hist);
+    // console.log("Redrawing histogram with data:", state.hist);
     const hist_group = d3.select(svg_ref.value).select('g.hist-elements');
     const bin_width = (xScale(state.hist.bins[1]) - xScale(state.hist.bins[0])) * 0.9;
     let max_rel = d3.max(state.hist.relative) || 1;

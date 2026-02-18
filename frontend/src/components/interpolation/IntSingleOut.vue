@@ -156,7 +156,7 @@ function updateGraph() {
                 level: i / uncertainty_steps
             }
         })
-        console.log("UCQ steps:", ucq_steps, uncertainties.value);
+        // console.log("UCQ steps:", ucq_steps, uncertainties.value);
         ucq_steps.forEach((step, step_idx) => {
             svg.selectAll(`.ucq-line#step_${step_idx}`)
                 .data(step.ucq_series)

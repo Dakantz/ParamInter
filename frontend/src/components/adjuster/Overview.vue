@@ -39,11 +39,14 @@ const { types, data_rep, cat_name } = defineProps({
 const type_indices = types.map((t) => { return { name: t, idx: data_rep.getTypeIndex(t) } });
 function valueOf(name: string) {
     const idx = data_rep.getTypeIndex(name);
+    let value = 0;
     if (idx >= dp.value.inputs.length) {
-        return dp.value.outputs[idx - dp.value.inputs.length];
+        value = dp.value.outputs[idx - dp.value.inputs.length];
     } else {
-        return dp.value.inputs[idx];
+        value = dp.value.inputs[idx];
     }
+    if(!isFinite(value)) value = 0;
+    return value;
 };
 const addToSet = (name: string, dp: DataPoint) => {
     console.log("Adding to set:", name);
