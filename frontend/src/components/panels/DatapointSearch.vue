@@ -104,7 +104,7 @@ watch(() => state.dim_data, (dim_data) => {
     min-width: 110px;
     display: flex;
     justify-content: center;
-    margin: 3px;
+    margin: 5px;
     padding: 3px;
     border: 1px solid #ccc;
     background-color: #f9f9f9;

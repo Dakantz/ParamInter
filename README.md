@@ -4,10 +4,7 @@
 
 ParamInter is a novel toolset to explore continous input-output parameter sets interactively through guidance by XAI and UCQ. The approach interpolates between selected input samples over an embedded subspace, guiding the user towards required solutions for their target output parameters.
 
-![](demos/similar_point_search.png)
-![](demos/mixture_adaption_sensitivity.png)
-![](demos/interpolation_exploration.png)
-
+![](demos/full_overview.png)
 ## Installation
 <!-- There is a `uv` project already available, but the NVIDIA wheels do not play nice with the correct dependency tree of `uv`. You can install the required dependencies for the backend in a new `venv` using the following commands:
 ```
