@@ -18,7 +18,7 @@ import { DataRepository } from '../../proc/data-store';
 import * as d3 from 'd3';
 import { ColumnObjective } from '../types';
 import { debounce } from '../helpers/utils';
-import { HistogramData } from '../../api/Api';
+import { DataPoint, HistogramData } from '../../api/Api';
 defineEmits<{
     (e: 'hover'): void;
     (e: 'remove'): void;
@@ -32,7 +32,7 @@ const state = reactive({
     hist: null as HistogramData | null,
     active_bins: [] as number[]
 });
-const { out_name, data_rep } = defineProps({
+const { out_name, data_rep, dp } = defineProps({
 
     out_name: {
         type: String,
@@ -42,6 +42,10 @@ const { out_name, data_rep } = defineProps({
         type: Object as () => DataRepository,
         required: true
     },
+    dp: {
+        type: Object as () => DataPoint | null,
+        default: null
+    }
 
 })
 const min_value = computed(() => {
@@ -128,6 +132,13 @@ function updateGraph() {
         .datum([min_val, objective_filter.value.objective.val])
         .attr('class', 'select-line')
         .attr('d', line);
+    if (dp) {
+        selection_group.append('circle')
+            .attr('class', 'dp-point')
+            .attr('cx', xScale(dp.outputs[data_rep.getTypeIndex(out_name) - dp.inputs.length]))
+            .attr('cy', yScale(0))
+            .attr('r', 5);
+    }
     selection_group.append('circle')
         .attr('class', 'selector-point')
         .attr('cx', xScale(objective_filter.value.objective.val))
@@ -305,6 +316,9 @@ watch(() => state.hist, () => {
 watch(() => objective_filter.value, () => {
     updateGraph();
 }, { immediate: true, deep: true });
+watch(() => dp, () => {
+    updateGraph();
+}, { immediate: true });
 </script>
 <style>
 .adj-outview {
@@ -366,6 +380,12 @@ watch(() => objective_filter.value, () => {
 .full-line {
     fill: none;
     stroke: rgb(213, 213, 213);
+    stroke-width: 1.5;
+}
+
+.dp-point {
+    fill: rgb(180, 255, 111);
+    stroke: rgb(75, 189, 96);
     stroke-width: 1.5;
 }
 

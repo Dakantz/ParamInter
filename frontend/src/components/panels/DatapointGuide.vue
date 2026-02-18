@@ -10,7 +10,7 @@
             <div v-for="(target, idx) in Object.keys(state.filter_targets).map(key => ({ k: key, v: state.filter_targets[key] }))"
                 :key="idx" @mouseenter="showSensitivity(target.v.objective.name)" class="linear-objective">
                 <SingleAdj v-model="state.filter_targets[target.v.objective.name]" :out_name="target.v.objective.name"
-                    :data_rep="data_rep" @hover="showSensitivity(target.v.objective.name)"
+                    :data_rep="data_rep" @hover="showSensitivity(target.v.objective.name)" :dp="state.dp"
                     @remove="removeTarget(target.v.objective.name)" />
             </div>
             <!-- min
