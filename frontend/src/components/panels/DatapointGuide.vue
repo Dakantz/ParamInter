@@ -1,10 +1,10 @@
 <template>
     <div class="datapoint-guide" :class="{ 'non_active': !state.dp }">
-        <h2>Build Minimizer</h2>
+        <h2>Build Objective</h2>
         <h3>Start Point</h3>
         <SpyderChart v-if="state.dp" :rep="data_rep" v-model="state.dp.inputs" :editable="false"
             :sensitivities="state.sensitivities_for_hover" :uncertainties="state.dp.uncertainties" />
-        <h3>Linear Objective</h3>
+        <h3>Objective</h3>
         <h4 class="info">Drag to adjust</h4>
         <div class="linear-objectives" v-if="state.filter_targets">
             <div v-for="(target, idx) in Object.keys(state.filter_targets).map(key => ({ k: key, v: state.filter_targets[key] }))"
