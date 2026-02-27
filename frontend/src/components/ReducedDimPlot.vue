@@ -244,8 +244,12 @@ const generateLegend = () => {
         .attr("height", parentRect.height);
 
     const legendItemPadding = 5;
-    const xScaleLegend = d3.scaleLinear().domain([0, 1]).range([legendItemPadding, parentRect.width - legendItemPadding]);
+    const excludedBoxSize = 30;
+    const xScaleLegend = d3.scaleLinear().domain([0, 1]).range([legendItemPadding, parentRect.width - legendItemPadding * 4 - excludedBoxSize]);
+
     const yScaleLegend = d3.scaleLinear().domain([0, 1]).range([12, parentRect.height - 12]);
+
+
 
     const legendItems = d3.select(legend_svg.value)
         .append("g")
@@ -304,6 +308,23 @@ const generateLegend = () => {
         .attr("width", rectWidth)
         .attr("height", rectHeight)
         .style("fill", "url(#legend-gradient)");
+
+    d3.select(legend_svg.value)
+        .append("rect")
+        .attr("x", xScaleLegend(1) + legendItemPadding * 2)
+        .attr("y", yScaleLegend(0.5))
+        .attr("width", rectHeight)
+        .attr("height", rectHeight)
+        .style("fill", "black");
+
+    legendItems.append("text")
+        .attr("x", xScaleLegend(1) + legendItemPadding * 2)
+        .attr("y", yScaleLegend(1.5))
+        .attr("text-anchor", "start")
+        .attr("alignment-baseline", "middle")
+        .text("excluded")
+        .style("font-size", "8px")
+        .style("fill", "black");
 };
 
 watch(() => embedded_data, (newData) => {
@@ -371,8 +392,7 @@ onMounted(() => {
     align-items: center;
 }
 
-.plot-container {
-}
+.plot-container {}
 
 .annotation {
     fill: rgba(208, 162, 35, 0.754);
