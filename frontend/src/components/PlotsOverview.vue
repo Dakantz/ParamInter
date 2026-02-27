@@ -1,10 +1,10 @@
 <template>
     <div ref="plot" class="plot-containers">
-        <div v-for="emb_key in loaded_keys" :key="emb_key">
+        <div v-for="emb_key, i in loaded_keys" :key="emb_key">
             <h3>{{ emb_key }}</h3>
             <ReducedDimPlot :embedded_data='all_embeddings.all_embeddings[emb_key]' :full_data="data_rep.data_points"
                 v-model="selection" :embedding_name="emb_key" :data_rep="data_rep" :results="results"
-                :interpolations="interpolations" />
+                :interpolations="interpolations" :show_legend="i === 0" />
         </div>
     </div>
 </template>

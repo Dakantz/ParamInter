@@ -1,5 +1,11 @@
 <template>
     <div class="reduced-dim-plot">
+        <div class="legend-container" ref="legend" v-if="show_legend">
+            <svg width="200" height="100" ref="legend-svg">
+            </svg>
+
+        </div>
+
         <div :id="`plot-${embedding_name}`" class="plot-container" ref="plot" style="width: 22vw; height: 22vw; ">
         </div>
         <!-- <svg width="360" height="360" xmlns="http://www.w3.org/2000/svg" ref="plot" :id="`plot-${embedding_name}`">
@@ -44,8 +50,12 @@ const { embedded_data, full_data, data_rep, results, embedding_name, interpolati
         default: () => []
     },
     results: {
-        type: Object as () => CostOverviewData | null, 
+        type: Object as () => CostOverviewData | null,
         default: () => null
+    },
+    show_legend: {
+        type: Boolean,
+        default: true
     }
 
 });
@@ -61,6 +71,10 @@ const ui_params = reactive({
 });
 
 const plot = useTemplateRef('plot');
+
+const legend = useTemplateRef('legend');
+const legend_svg = useTemplateRef('legend-svg');
+
 // const spyders = useTemplateRef('spyders');
 
 const xScale = d3.scaleLinear().domain([0, 1]);
@@ -72,7 +86,7 @@ const yScaleOriginal = yScale.copy();
 const pointSeries = fc
     .seriesWebglPoint()
     .equals((a: MappedData, b: MappedData) => a === b)
-    .size(1)
+    .size(10)
     .crossValue((d: MappedData) => d.x)
     .mainValue((d: MappedData) => d.y);
 
@@ -132,6 +146,12 @@ function updateData() {
     redraw();
 }
 const annotationSeries = seriesSvgAnnotation(data_rep, ui_params.spyder_size);
+
+const similiarityColorScale = d3
+    .scaleSequential()
+    .domain([0, 1])
+    .range([0, 1])
+    .interpolator(colormaps_d3['Roma']);
 // const createAnnotationData = datapoint => ({
 //   note: {
 //     label: datapoint.first_author_name + " " + datapoint.year,
@@ -215,6 +235,77 @@ const redraw = () => {
         .call(chart);
     // d3.select(plot.value).append("p").html("Hover over points to see details");
 };
+
+const generateLegend = () => {
+    if (!legend_svg.value || !legend.value) return;
+    const parentRect = legend.value.getBoundingClientRect();
+    d3.select(legend_svg.value)
+        .attr("width", parentRect.width)
+        .attr("height", parentRect.height);
+
+    const legendItemPadding = 5;
+    const xScaleLegend = d3.scaleLinear().domain([0, 1]).range([legendItemPadding, parentRect.width - legendItemPadding]);
+    const yScaleLegend = d3.scaleLinear().domain([0, 1]).range([12, parentRect.height - 12]);
+
+    const legendItems = d3.select(legend_svg.value)
+        .append("g")
+        .attr("class", "legend-item")
+
+    legendItems.append("text")
+        .attr("x", xScaleLegend(0))
+        .attr("y", yScaleLegend(-0.1))
+        .attr("text-anchor", "start")
+        .attr("alignment-baseline", "middle")
+        .text("cost:")
+        .style("font-size", "8px")
+        .style("fill", "black");
+    // upper / lower text for similarity values
+    legendItems.append("text")
+        .attr("x", xScaleLegend(0))
+        .attr("y", yScaleLegend(1.5))
+        .attr("text-anchor", "start")
+        .attr("alignment-baseline", "middle")
+        .text("low")
+        .style("font-size", "8px")
+        .style("fill", "black");
+    legendItems.append("text")
+        .attr("x", xScaleLegend(1))
+        .attr("y", yScaleLegend(1.5))
+        .attr("text-anchor", "end")
+        .attr("alignment-baseline", "middle")
+        .text("high")
+        .style("font-size", "8px")
+        .style("fill", "black");
+
+    // create a gradient for the legend
+    const defs = d3.select(legend_svg.value).append("defs");
+    const gradient = defs.append("linearGradient")
+        .attr("id", "legend-gradient")
+        .attr("x1", "0%")
+        .attr("y1", "0%")
+        .attr("x2", "100%")
+        .attr("y2", "0%");
+    const resolution = 10;
+    for (let i = 0; i <= resolution; i++) {
+        const t = i / resolution;
+        gradient.append("stop")
+            .attr("offset", `${t * 100}%`)
+            .attr("stop-color", similiarityColorScale(t))
+            .attr("stop-opacity", 1);
+    }
+    // add a rectangle with the gradient fill
+    const rectWidth = xScaleLegend(1) - xScaleLegend(0);
+    const rectHeight = yScaleLegend(0.5) - yScaleLegend(0);
+    console.log("Adding legend rectangle with dimensions:", rectWidth, "x", parentRect.height);
+    d3.select(legend_svg.value)
+        .append("rect")
+        .attr("x", xScaleLegend(0))
+        .attr("y", yScaleLegend(0.5))
+        .attr("width", rectWidth)
+        .attr("height", rectHeight)
+        .style("fill", "url(#legend-gradient)");
+};
+
 watch(() => embedded_data, (newData) => {
     if (plot.value) {
         updateData();
@@ -226,11 +317,6 @@ watch(() => selection.value, (newSelection) => {
     redraw();
 }, { immediate: true, deep: true });
 
-const similiarityColorScale = d3
-    .scaleSequential()
-    .domain([0, 1])
-    .range([0, 0.5])
-    .interpolator(colormaps_d3['Lajolla']);
 
 watch(() => results, (sim) => {
     // console.log("Updating similarity colors with data:", sim);
@@ -256,6 +342,9 @@ onMounted(() => {
     if (plot.value) {
         updateData();
     }
+    if (legend_svg.value) {
+        generateLegend();
+    }
 });
 </script>
 
@@ -267,10 +356,22 @@ onMounted(() => {
     max-height: 22vw;
     margin: 7px;
     display: flex;
+    flex-direction: column;
+    align-items: start;
+    justify-items: center;
+    background-color: rgb(250, 254, 254);
+
+}
+
+.legend-container {
+    width: 200px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .plot-container {
-    background-color: rgb(223, 239, 238);
 }
 
 .annotation {
