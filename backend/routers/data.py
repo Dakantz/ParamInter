@@ -58,7 +58,10 @@ def get_column_types(set_name: str = None) -> dict[str, list[str]]:
 
 
 @data_router.get("/embedding/{col_type}")
-def get_embedding(col_type: str, set_name: str = None) -> list[list[float]]:
+def get_embedding(
+    col_type: str,
+    set_name: str = None,
+) -> list[list[float]]:
     data_man = sets_manager.get_manager(set_name)
     if col_type in data_man.embedding_subsets:
         return data_man.embedding_subsets[col_type].tolist()

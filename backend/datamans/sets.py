@@ -7,10 +7,12 @@ from .config import DataConfig
 cfg_type = dict[str, dict[str, DataConfig] | DataConfig]
 
 
-scivis_man = DataConfig(mode=os.getenv("EMBEDDING", "tsne"))
+scivis_man = DataConfig(
+    modes=os.getenv("EMBEDDING", "tsne").split(","),
+)
 
 privbayes_man = DataConfig(
-    mode=os.getenv("EMBEDDING", "tsne"),
+    modes=os.getenv("EMBEDDING", "tsne").split(","),
     data_file="privbayes/privbayes_encoded.csv",
     data_name="PrivBayes Data",
     short_data_name="privbayes",
@@ -21,7 +23,7 @@ privbayes_man = DataConfig(
 
 
 mast_man = DataConfig(
-    mode=os.getenv("EMBEDDING", "tsne"),
+    modes=os.getenv("EMBEDDING", "tsne").split(","),
     data_file="mast/processed_mast_data.csv",
     data_name="MAST Data",
     short_data_name="mast",
@@ -31,7 +33,7 @@ mast_man = DataConfig(
 )
 
 eaf_man = DataConfig(
-    mode=os.getenv("EMBEDDING", "tsne"),
+    modes=os.getenv("EMBEDDING", "tsne").split(","),
     data_file="eaf/eaf_simulation_data.csv",
     data_name="Electric Arc Furnace Simulation Data",
     short_data_name="eaf",
@@ -74,6 +76,15 @@ class SetsManager:
                 if isinstance(cfg, dict):
                     if "is_config" in cfg and cfg["is_config"] is True:
                         # leaf config
+                        if "modes" in cfg:
+                            cfg["modes"] = (
+                                cfg["modes"]
+                                if isinstance(cfg["modes"], list)
+                                else [cfg["mode"]]
+                            )
+                        if "mode" in cfg:
+                            cfg["modes"] = [cfg["mode"]]
+                            del cfg["mode"]
                         target_dict[name] = DataConfig(**cfg)
                     else:
                         # nested configs
@@ -91,7 +102,7 @@ class SetsManager:
                         # example name: blast_furnace_alkper_BAS2_split_0_normalize_False
                         key = f"blast_furnace_{out_group}_BAS{bas}_split_{split}_normalize_{normalize}"
                         blast_furnace_sets[key] = DataConfig(
-                            mode=os.getenv("EMBEDDING", "tsne"),
+                            modes=os.getenv("EMBEDDING", "tsne").split(","),
                             data_file=f"blast_furnace/parts/{key}.csv",
                             data_name=f"Blast Furnace Data Set, BAS{bas}, Split: {split}, Output Group: {out_group}, Normalized: {normalize}",
                             short_data_name=f"blast_furnace_split{split}_bas{bas}_{'norm' if normalize else 'nonorm'}_{out_group}",

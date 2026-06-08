@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from enum import Enum
 from ucq.models import RandomBaseline, GP_VAE, VAE, BaseUCQModel
@@ -19,7 +19,7 @@ class VAEOptions(str, Enum):
 @dataclass
 class DataConfig:
     base_dir: str = os.getenv("DATA_DIR", "./data")
-    mode: str = "tsne"
+    modes: list[str] | str = field(default_factory=lambda: ["tsne", "pca", "umap"])
     data_file: str = "scivis/alloy_data.txt"
     data_name: str = "Alloy Simulation Data (SciVis Contest 2025)"
     short_data_name: str = "scivis"
@@ -33,3 +33,5 @@ class DataConfig:
 
     def __post_init__(self):
         self.vae_mode = VAEOptions(self.vae_mode)
+        if isinstance(self.modes, str):
+            self.modes = [self.modes]

@@ -1,6 +1,7 @@
 #!/bin/sh
 # from https://stackoverflow.com/a/77454537
-for i in $(env | grep PARAM_INTER_) // Make sure to use the prefix MY_APP_ if you have any other prefix in env.production file varialbe name replace it with MY_APP_
+# Make sure to use the prefix MY_APP_ if you have any other prefix in env.production file varialbe name replace it with MY_APP_
+for i in $(env | grep PARAM_INTER_) 
 do
     key=$(echo $i | cut -d '=' -f 1)
     value=$(echo $i | cut -d '=' -f 2-)

@@ -42,7 +42,7 @@ class ModelManager:
     ):
         self.cfg = config
         self.base_dir = Path(config.base_dir)
-        self.mode = config.mode
+        self.modes = config.modes
         self.data_file = config.data_file
         self.data_name = config.data_name
         self.short_data_name = config.short_data_name
@@ -140,7 +140,8 @@ class ModelManager:
         for col_name, col_list in tqdm.tqdm(
             self.column_types_loaded.items(), desc="Creating embeddings"
         ):
-            data_path = self.models_path / Path(f"{col_name}_{self.mode}.npy")
+            mode = self.modes[0] if isinstance(self.modes, list) else self.modes
+            data_path = self.models_path / Path(f"{col_name}_{mode}.npy")
             if len(col_list) == 2:
                 # for 2D subsets, use the original data as "embedding"
                 embedding_subsets[col_name] = MinMaxScaler().fit_transform(
@@ -156,7 +157,7 @@ class ModelManager:
                         n_components=2,
                         perplexity=40,
                     )
-                    if self.mode == "tsne"
+                    if mode == "tsne"
                     else UMAP(
                         n_neighbors=15,
                     )
@@ -260,7 +261,7 @@ class ModelManager:
                 all_columns=self.cleaned.columns.tolist(),
                 inputs_constrained=self.inputs_constrained,
             ),
-            mode=self.mode,
+            modes=self.modes[0] if isinstance(self.modes, list) else self.modes,
             data_name=self.data_name,
             short_data_name=self.short_data_name,
             input_cols=len(self.input_cols),
