@@ -30,6 +30,16 @@ class DataPoints(BaseModel):
     projected_outputs: list[list[float]] = None
 
 
+class DataSample(BaseModel):
+    """
+    A random sample of raw input rows (indices into the dataset), for client-side plots that
+    need real rows without paying for the full dataset (which also carries every output column).
+    """
+
+    indices: list[int]
+    inputs: list[list[float]]
+
+
 class HistogramData(BaseModel):
     bins: list[float]
     counts: list[int]
@@ -119,6 +129,67 @@ class DataPointSuggestions(BaseModel):
     values: list[float] = []
     k: int = 5
     weigh_changes: float = 1.5
+
+
+class EffectsRequest(BaseModel):
+    output_col: str
+    max_samples: int = 200
+    seed: int = 0
+
+
+class BeeswarmResult(BaseModel):
+    """
+    Per-feature SHAP values (first order) for a sample of the dataset, for one output column.
+    """
+
+    output_col: str
+    features: list[str]
+    indices: list[int]
+    shap_values: dict[str, list[float]]
+    feature_values: dict[str, list[float]]
+    base_value: float
+
+
+class InteractionRequest(BaseModel):
+    output_col: str
+    features: list[str] = []  # candidate pool to search within; empty = every input column
+    order: int = 2
+    top_k: int = 10
+    max_samples: int = 200
+    n_permutations: int = 64
+    seed: int = 0
+
+
+class InteractionForRowsRequest(BaseModel):
+    output_col: str
+    features: list[str] = []  # candidate pool to search within; empty = every input column
+    order: int = 2
+    top_k: int = 10
+    inputs: list[list[float]]
+    n_permutations: int = 64
+    seed: int = 0
+
+
+class InteractionCombo(BaseModel):
+    features: list[str]
+    mean_abs: float
+    values: list[float]
+
+
+class InteractionResult(BaseModel):
+    """
+    The top `top_k` combinations of size `order`, drawn from a candidate feature pool and ranked
+    by mean |Shapley interaction value|, evaluated over either a sample of the dataset or
+    caller-supplied rows: order 1 is the plain SHAP value, order 2 the pairwise SHAP interaction
+    value (both exact, from a single TreeSHAP call covering every combination at once), and
+    order >= 3 a Monte-Carlo estimate of the generalized Shapley interaction index per combination.
+    """
+
+    output_col: str
+    order: int
+    indices: list[int] = []
+    combinations: list[InteractionCombo]
+    feature_values: dict[str, list[float]]
 
 
 class ManagerSettings(BaseModel):

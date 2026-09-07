@@ -55,7 +55,7 @@ def get_data_point(index: int, set_name: str = None) -> DataPoint:
 def get_interpolation(
     from_index: int,
     to_index: int,
-    n_samples=128,
+    n_samples: int = 128,
     embedding_type: str = "all",
     include_explainations: bool = False,
     set_name: str = None,

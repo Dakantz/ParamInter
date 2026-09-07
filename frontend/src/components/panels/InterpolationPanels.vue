@@ -1,8 +1,10 @@
 <template>
     <div class="main_container">
         <div class="inter-panel">
-            <DatapointSearch :data_rep="(data_rep as DataRepository)" v-model="selection" @preview="previewSelected"
-                @select="updateSelection" />
+            <ParallelCoordinatesSelector v-if="use_parallel_coords" :data_rep="(data_rep as DataRepository)"
+                @preview="previewSelected" @select="updateSelection" />
+            <DatapointSearch v-else :data_rep="(data_rep as DataRepository)" v-model="selection"
+                @preview="previewSelected" @select="updateSelection" />
         </div>
         <div class="divider"></div>
         <div class="inter-panel" v-if="!state.loading_manager">
@@ -34,6 +36,7 @@ import { ref, reactive, watch, onMounted, computed } from 'vue';
 import { AllEmbeddings, DataRepository } from '../../proc/data-store';
 import { CostOverviewData, PlotSelection } from '../types';
 import PlotsOverview from '../PlotsOverview.vue';
+import ParallelCoordinatesSelector from './ParallelCoordinatesSelector.vue';
 import DatapointSearch from './DatapointSearch.vue';
 import DatapointGuide from './DatapointGuide.vue';
 import DatapointInterpolation from './DatapointInterpolation.vue';
@@ -193,6 +196,7 @@ const current_costs = computed(() => {
     }
     return state.current_results;
 });
+const use_parallel_coords = computed(() => (data_rep.description?.input_cols?.length ?? 0) > 6);
 </script>
 <style>
 .main_container {

@@ -7,10 +7,12 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
+    BeeswarmChart: typeof import('./src/components/effects/BeeswarmChart.vue')['default']
     Constant: typeof import('./src/components/formulation/parts/Constant.vue')['default']
     DatapointGuide: typeof import('./src/components/panels/DatapointGuide.vue')['default']
     DatapointInterpolation: typeof import('./src/components/panels/DatapointInterpolation.vue')['default']
     DatapointSearch: typeof import('./src/components/panels/DatapointSearch.vue')['default']
+    EffectsPanels: typeof import('./src/components/panels/EffectsPanels.vue')['default']
     Formulation: typeof import('./src/components/formulation/Formulation.vue')['default']
     Input: typeof import('./src/components/formulation/parts/Input.vue')['default']
     InterpolationPanels: typeof import('./src/components/panels/InterpolationPanels.vue')['default']
@@ -20,10 +22,12 @@ declare module 'vue' {
     Loading: typeof import('./src/components/ui/Loading.vue')['default']
     NaryOp: typeof import('./src/components/formulation/parts/NaryOp.vue')['default']
     Overview: typeof import('./src/components/adjuster/Overview.vue')['default']
+    ParallelCoordinatesSelector: typeof import('./src/components/panels/ParallelCoordinatesSelector.vue')['default']
     PlotsOverview: typeof import('./src/components/PlotsOverview.vue')['default']
     ReducedDimPlot: typeof import('./src/components/ReducedDimPlot.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ScatterplotMatrix: typeof import('./src/components/effects/ScatterplotMatrix.vue')['default']
     SingleAdj: typeof import('./src/components/adjuster/SingleAdj.vue')['default']
     SpyderChart: typeof import('./src/components/spyder/SpyderChart.vue')['default']
     SpyderChart_Base: typeof import('./src/components/spyder/SpyderChart_Base.vue')['default']

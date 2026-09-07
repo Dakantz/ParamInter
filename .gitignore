@@ -16,3 +16,5 @@ data
 *.out
 results/*.csv
 configs.json
+hilti*
+.uv-agent

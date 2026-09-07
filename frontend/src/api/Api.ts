@@ -10,6 +10,25 @@
  * ---------------------------------------------------------------
  */
 
+/**
+ * BeeswarmResult
+ * Per-feature SHAP values (first order) for a sample of the dataset, for one output column.
+ */
+export interface BeeswarmResult {
+  /** Output Col */
+  output_col: string;
+  /** Features */
+  features: string[];
+  /** Indices */
+  indices: number[];
+  /** Shap Values */
+  shap_values: Record<string, number[]>;
+  /** Feature Values */
+  feature_values: Record<string, number[]>;
+  /** Base Value */
+  base_value: number;
+}
+
 /** CostOverview */
 export interface CostOverview {
   /** Costs */
@@ -164,6 +183,34 @@ export interface DataPoints {
   projected_outputs?: number[][];
 }
 
+/**
+ * DataSample
+ * A random sample of raw input rows (indices into the dataset), for client-side plots that
+ * need real rows without paying for the full dataset (which also carries every output column).
+ */
+export interface DataSample {
+  /** Indices */
+  indices: number[];
+  /** Inputs */
+  inputs: number[][];
+}
+
+/** EffectsRequest */
+export interface EffectsRequest {
+  /** Output Col */
+  output_col: string;
+  /**
+   * Max Samples
+   * @default 200
+   */
+  max_samples?: number;
+  /**
+   * Seed
+   * @default 0
+   */
+  seed?: number;
+}
+
 /** FilterCondition */
 export interface FilterCondition {
   /** Name */
@@ -188,6 +235,109 @@ export interface HistogramData {
   counts: number[];
   /** Relative */
   relative: number[];
+}
+
+/** InteractionCombo */
+export interface InteractionCombo {
+  /** Features */
+  features: string[];
+  /** Mean Abs */
+  mean_abs: number;
+  /** Values */
+  values: number[];
+}
+
+/** InteractionForRowsRequest */
+export interface InteractionForRowsRequest {
+  /** Output Col */
+  output_col: string;
+  /**
+   * Features
+   * @default []
+   */
+  features?: string[];
+  /**
+   * Order
+   * @default 2
+   */
+  order?: number;
+  /**
+   * Top K
+   * @default 10
+   */
+  top_k?: number;
+  /** Inputs */
+  inputs: number[][];
+  /**
+   * N Permutations
+   * @default 64
+   */
+  n_permutations?: number;
+  /**
+   * Seed
+   * @default 0
+   */
+  seed?: number;
+}
+
+/** InteractionRequest */
+export interface InteractionRequest {
+  /** Output Col */
+  output_col: string;
+  /**
+   * Features
+   * @default []
+   */
+  features?: string[];
+  /**
+   * Order
+   * @default 2
+   */
+  order?: number;
+  /**
+   * Top K
+   * @default 10
+   */
+  top_k?: number;
+  /**
+   * Max Samples
+   * @default 200
+   */
+  max_samples?: number;
+  /**
+   * N Permutations
+   * @default 64
+   */
+  n_permutations?: number;
+  /**
+   * Seed
+   * @default 0
+   */
+  seed?: number;
+}
+
+/**
+ * InteractionResult
+ * The top `top_k` combinations of size `order`, drawn from a candidate feature pool and ranked
+ * by mean |Shapley interaction value|, evaluated over either a sample of the dataset or
+ * caller-supplied rows: order 1 is the plain SHAP value, order 2 the pairwise SHAP interaction
+ * value (both exact, from a single TreeSHAP call covering every combination at once), and
+ * order >= 3 a Monte-Carlo estimate of the generalized Shapley interaction index per combination.
+ */
+export interface InteractionResult {
+  /** Output Col */
+  output_col: string;
+  /** Order */
+  order: number;
+  /**
+   * Indices
+   * @default []
+   */
+  indices?: number[];
+  /** Combinations */
+  combinations: InteractionCombo[];
+  /** Feature Values */
+  feature_values: Record<string, number[]>;
 }
 
 /**
@@ -297,10 +447,6 @@ export interface ValidationError {
   msg: string;
   /** Error Type */
   type: string;
-  /** Input */
-  input?: any;
-  /** Context */
-  ctx?: object;
 }
 
 import type {
@@ -582,6 +728,37 @@ export class Api<
       }),
 
     /**
+     * @description A random sample of raw input rows (indices + values), for client-side plots (e.g. parallel coordinates) that need real rows without paying for the full dataset's outputs/size.
+     *
+     * @name GetDataSampleDatasetsSetNameDataSampleGet
+     * @summary Get Data Sample
+     * @request GET:/datasets/{set_name}/data/sample
+     */
+    getDataSampleDatasetsSetNameDataSampleGet: (
+      setName: string,
+      query?: {
+        /**
+         * Max Samples
+         * @default 500
+         */
+        max_samples?: number;
+        /**
+         * Seed
+         * @default 0
+         */
+        seed?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<DataSample, HTTPValidationError>({
+        path: `/datasets/${setName}/data/sample`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * No description
      *
      * @name GetHistogramDatasetsSetNameDataHistGet
@@ -745,7 +922,7 @@ export class Api<
          * N Samples
          * @default 128
          */
-        n_samples?: any;
+        n_samples?: number;
         /**
          * Embedding Type
          * @default "all"
@@ -846,6 +1023,69 @@ export class Api<
       this.request<any, HTTPValidationError>({
         path: `/datasets/${setName}/data-point/posterior/${index}`,
         method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description First-order SHAP values for every input feature, for a sample of the dataset.
+     *
+     * @name GetBeeswarmDatasetsSetNameEffectsBeeswarmPost
+     * @summary Get Beeswarm
+     * @request POST:/datasets/{set_name}/effects/beeswarm
+     */
+    getBeeswarmDatasetsSetNameEffectsBeeswarmPost: (
+      setName: string,
+      data: EffectsRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<BeeswarmResult, HTTPValidationError>({
+        path: `/datasets/${setName}/effects/beeswarm`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Every order-`req.order` combination of features drawn from `req.features` (or, if empty, every input column), ranked by mean |Shapley interaction value| over a sample of the dataset, top `req.top_k` returned.
+     *
+     * @name GetInteractionDatasetsSetNameEffectsInteractionPost
+     * @summary Get Interaction
+     * @request POST:/datasets/{set_name}/effects/interaction
+     */
+    getInteractionDatasetsSetNameEffectsInteractionPost: (
+      setName: string,
+      data: InteractionRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<InteractionResult, HTTPValidationError>({
+        path: `/datasets/${setName}/effects/interaction`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Same as `/interaction`, but evaluated on arbitrary, caller-supplied input rows (e.g. the path of an interpolation between two data points) instead of a sample of the dataset.
+     *
+     * @name GetInteractionForRowsDatasetsSetNameEffectsInteractionForRowsPost
+     * @summary Get Interaction For Rows
+     * @request POST:/datasets/{set_name}/effects/interaction-for-rows
+     */
+    getInteractionForRowsDatasetsSetNameEffectsInteractionForRowsPost: (
+      setName: string,
+      data: InteractionForRowsRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<InteractionResult, HTTPValidationError>({
+        path: `/datasets/${setName}/effects/interaction-for-rows`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
