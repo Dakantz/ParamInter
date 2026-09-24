@@ -12,6 +12,7 @@
         <p>
             <button v-bind:class="load_btn_class" @click="loadDataset">Load</button>
             <RouterLink :to="`./interpolator/${dataset_id}`" v-bind:class="explore_link_class">Explore</RouterLink>
+            <RouterLink :to="`./effects/${dataset_id}`" v-bind:class="explore_link_class">Effects</RouterLink>
 
         </p>
     </div>

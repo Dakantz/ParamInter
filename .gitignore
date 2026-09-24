@@ -17,3 +17,4 @@ data
 results/*.csv
 configs.json
 hilti*
+.uv-agent

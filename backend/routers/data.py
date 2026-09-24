@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from backend.models import DataDescription, DataPoints, HistogramData
+from backend.models import DataDescription, DataPoints, DataSample, HistogramData
 from backend.routers.sets import sets_manager
 import numpy as np
 import pandas as pd
@@ -35,6 +35,23 @@ def get_data(set_name: str = None) -> DataPoints:
         projected_outputs=data_man.embedded_tsne.tolist(),
     )
     return data_points
+
+
+@data_router.get("/sample")
+def get_data_sample(
+    set_name: str = None, max_samples: int = 500, seed: int = 0
+) -> DataSample:
+    """A random sample of raw input rows (indices + values), for client-side plots (e.g. parallel
+    coordinates) that need real rows without paying for the full dataset's outputs/size."""
+    data_man = sets_manager.get_manager(set_name)
+    n = len(data_man.cleaned)
+    if max_samples >= n or max_samples <= 0:
+        indices = np.arange(n)
+    else:
+        rng = np.random.default_rng(seed)
+        indices = np.sort(rng.choice(n, size=max_samples, replace=False))
+    inputs = data_man.cleaned[data_man.input_cols].iloc[indices].values.tolist()
+    return DataSample(indices=indices.tolist(), inputs=inputs)
 
 
 @data_router.get("/hist")

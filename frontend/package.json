@@ -5,7 +5,8 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "generate-client": "sta generate -p http://localhost:8091/openapi.json -o ./src/api/ --axios"
+    "generate-client": "sta generate -p http://localhost:8091/openapi.json -o ./src/api/ --axios",
+    "test:e2e": "node --test e2e/*.test.mjs"
   },
   "dependencies": {
     "@mdi/font": "6.2.95",
@@ -26,6 +27,7 @@
     "@babel/types": "^7.24.0",
     "@types/node": "^20.19.30",
     "@vitejs/plugin-vue": "^5.0.4",
+    "puppeteer": "^25.10.0",
     "sass": "^1.71.1",
     "swagger-typescript-api": "^13.2.7",
     "typescript": "^5.4.2",
