@@ -43,6 +43,17 @@ eaf_man = DataConfig(
     inputs_constrained=False,
 )
 
+hilti_man = DataConfig(
+    modes=os.getenv("EMBEDDING", "tsne").split(","),
+    data_file="hilti/hilti_data.csv",
+    data_name="Hilti Data",
+    short_data_name="hilti",
+    input_cols=45,
+    output_cols=2,
+    time_col=0,
+    inputs_constrained=False,
+)
+
 
 class SetsManager:
     def __init__(self, separator: str = "-"):
@@ -118,6 +129,7 @@ class SetsManager:
             "mast": mast_man,
             "electric_arc_furnace": eaf_man,
             "blast_furnace": blast_furnace_sets,
+            "hilti": hilti_man,
         }
         with open("configs.json", "w") as f:
             import json

@@ -16,3 +16,4 @@ data
 *.out
 results/*.csv
 configs.json
+hilti*
