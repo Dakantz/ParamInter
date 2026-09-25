@@ -14,9 +14,12 @@
 import { reactive, computed, watch, nextTick, onMounted, onBeforeUnmount, useTemplateRef, type PropType } from 'vue';
 import * as d3 from 'd3';
 import { DataRepository } from '../../proc/data-store';
+import { InteractionBackgroundResult } from '../../api/Api';
+import { colormaps_d3 } from '../helpers/colormaps';
+import { BackgroundMode } from './types';
 import Loading from '../ui/Loading.vue';
 
-const { data_rep, highlight_row, highlight_cell, highlight_point_index } = defineProps({
+const { data_rep, highlight_row, highlight_cell, highlight_point_index, output_col, background_mode } = defineProps({
     data_rep: {
         type: Object as () => DataRepository,
         required: true,
@@ -35,6 +38,18 @@ const { data_rep, highlight_row, highlight_cell, highlight_point_index } = defin
         type: Number as PropType<number | null>,
         default: null,
     },
+    // Output column the KNN-interpolated popover background is computed against - no background
+    // is fetched/shown without one.
+    output_col: {
+        type: String,
+        default: '',
+    },
+    // Which field of the interpolated background to color the popover by - both are returned by
+    // the same request, so switching this never re-fetches, only re-renders.
+    background_mode: {
+        type: String as PropType<BackgroundMode>,
+        default: 'output',
+    },
 });
 
 // Cells shrink to fit the container's width rather than a fixed size (a fixed size would make
@@ -47,6 +62,9 @@ const POINT_R = 1.4;
 const ROW_HIGHLIGHT = '#ffe9b3';
 const CELL_HIGHLIGHT = '#ffbf69';
 const POPOVER_MARGIN = { top: 12, right: 16, bottom: 46, left: 58 };
+const BG_RESOLUTION = 40;
+const BG_K_NEIGHBORS = 5;
+const BG_FETCH_DEBOUNCE_MS = 150;
 
 const container = useTemplateRef('container');
 const plot = useTemplateRef('plot');
@@ -57,12 +75,52 @@ interface Cell { row: string; col: string; ri: number; ci: number }
 const state = reactive({
     loading: false,
     dims: [] as string[],
-    rows: [] as number[][],
+    // rows: [] as number[][],
     indices: [] as number[],
     domains: {} as Record<string, [number, number]>,
     cell_size: MAX_CELL,
     hovered_cell: null as { row: string; col: string } | null,
+    // KNN-interpolated background for whichever (var1=col, var2=row) pair the popover currently
+    // shows - null while nothing has loaded yet for that pair (see fetchBackground below).
+    background: null as InteractionBackgroundResult | null,
 });
+
+// Keyed by set/output/pair so re-hovering an already-seen cell (or flipping background_mode,
+// which only changes which field of the same response is drawn) never re-fetches.
+const background_cache = new Map<string, InteractionBackgroundResult>();
+let background_req_seq = 0;
+let background_timer: ReturnType<typeof setTimeout> | null = null;
+
+function backgroundKey(var1: string, var2: string) {
+    return `${data_rep.set_name}::${output_col}::${var1}::${var2}`;
+}
+
+async function fetchBackground(cell: { row: string; col: string }) {
+    const key = backgroundKey(cell.col, cell.row);
+    const seq = ++background_req_seq;
+    try {
+        const res = await data_rep.client.datasets.getInteractionBackgroundDatasetsSetNameEffectsInteractionBackgroundPost(
+            data_rep.set_name,
+            {
+                output_col,
+                var1: cell.col,
+                var2: cell.row,
+                resolution: BG_RESOLUTION,
+                k_neighbors: BG_K_NEIGHBORS,
+            },
+        );
+        background_cache.set(key, res.data);
+        // Ignore stale responses: only apply if this is still the latest request and the popover
+        // is still showing the same pair it was fetched for.
+        if (seq !== background_req_seq) return;
+        const current = popover_cell.value;
+        if (current && current.row === cell.row && current.col === cell.col) {
+            state.background = res.data;
+        }
+    } catch (error) {
+        console.error('Error fetching interaction background:', error);
+    }
+}
 
 function getDesc() {
     // EffectsPanels only calls data_rep.loadDescription() (which populates manager_settings),
@@ -70,7 +128,7 @@ function getDesc() {
     // same way EffectsPanels itself does, rather than relying on .description alone.
     return data_rep.description || data_rep.manager_settings?.data_description || null;
 }
-
+let rows = [] as number[][];
 async function loadData() {
     const desc = getDesc();
     if (!desc || !desc.input_cols?.length) return;
@@ -88,17 +146,17 @@ async function loadData() {
         //     40,
         //     Math.min(250, Math.floor(20000 / Math.max(1, state.dims.length * state.dims.length))),
         // );
-        const sample_size = -1;
+        const sample_size = 20000;
         const res = await data_rep.client.datasets.getDataSampleDatasetsSetNameDataSampleGet(
             data_rep.set_name,
             { max_samples: sample_size, seed: 0 },
         );
-        state.rows = res.data.inputs;
+        rows = res.data.inputs;
         state.indices = res.data.indices;
         redraw();
     } catch (error) {
         console.error('Error loading data for scatterplot matrix:', error);
-        state.rows = [];
+        rows = [];
     } finally {
         state.loading = false;
     }
@@ -175,7 +233,7 @@ function redraw() {
         const col_i = dim_index[d.col];
         const row_i = dim_index[d.row];
         cell.selectAll('circle')
-            .data(state.rows)
+            .data(rows)
             .join('circle')
             .attr('cx', r => x_scale(r[col_i]))
             .attr('cy', r => y_scale(r[row_i]))
@@ -246,11 +304,70 @@ const popoverStyle = computed(() => ({
     height: `${popoverSize.value}px`,
 }));
 
+// The KNN-interpolated background, rasterized to a small canvas and embedded as one <image> -
+// far cheaper than one <rect> per grid cell, and it gives a smooth gradient look matching the
+// heatmaps in hilti_exp.py's exploratory version of this feature.
+function drawBackground(
+    g: d3.Selection<SVGGElement, unknown, null, undefined>,
+    cell: { row: string; col: string },
+    inner_w: number,
+    inner_h: number,
+) {
+    const bg = state.background;
+    if (!bg || bg.var1 !== cell.col || bg.var2 !== cell.row) return;
+    const grid = background_mode === 'shap' ? bg.shap_effect : bg.predictions;
+    const res_y = grid.length;
+    const res_x = grid[0]?.length ?? 0;
+    if (!res_y || !res_x) return;
+
+    const [lo, hi] = d3.extent(grid.flat()) as [number, number];
+    const domain: [number, number] = (lo === undefined || hi === undefined || lo === hi) ? [0, 1] : [lo, hi];
+    const color = d3.scaleSequential().domain(domain).interpolator(colormaps_d3['Roma']);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = res_x;
+    canvas.height = res_y;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const img = ctx.createImageData(res_x, res_y);
+    for (let i = 0; i < res_y; i++) {
+        // Grid rows run low->high on var2 (bg.y); canvas rows run top->bottom, and the popover's
+        // y_scale puts high values at the top - flip rows here so the two line up.
+        const src_row = res_y - 1 - i;
+        for (let j = 0; j < res_x; j++) {
+            const c = d3.rgb(color(grid[src_row][j]));
+            const idx = (i * res_x + j) * 4;
+            img.data[idx] = c.r;
+            img.data[idx + 1] = c.g;
+            img.data[idx + 2] = c.b;
+            img.data[idx + 3] = 255;
+        }
+    }
+    ctx.putImageData(img, 0, 0);
+
+    g.append('image')
+        .attr('href', canvas.toDataURL())
+        .attr('x', 0)
+        .attr('y', 0)
+        .attr('width', inner_w)
+        .attr('height', inner_h)
+        .attr('preserveAspectRatio', 'none')
+        .attr('opacity', 0.9);
+
+    g.append('text')
+        .attr('class', 'splom-bg-caption')
+        .attr('x', 0)
+        .attr('y', -4)
+        .attr('font-size', 8)
+        .attr('fill', '#555')
+        .text(`background: ${background_mode === 'shap' ? 'SHAP effect' : 'model output'} (${lo.toFixed(2)}–${hi.toFixed(2)})`);
+}
+
 function drawPopover() {
     if (!popoverPlot.value) return;
     const cell = popover_cell.value;
     const svg = d3.select(popoverPlot.value);
-    if (!cell || !state.rows.length) {
+    if (!cell || !rows.length) {
         svg.selectAll('*').remove();
         return;
     }
@@ -271,11 +388,15 @@ function drawPopover() {
 
     const g = svg.append('g').attr('transform', `translate(${POPOVER_MARGIN.left}, ${POPOVER_MARGIN.top})`);
 
+    // Drawn first (behind the axes/points appended below) - the KNN-interpolated model
+    // output/SHAP-effect surface for this pair, when it's finished loading.
+    drawBackground(g, cell, inner_w, inner_h);
+
     const isHighlighted = (r: number[], i: number) =>
         highlight_point_index != null && i === highlight_point_index;
 
     const points = g.selectAll('circle')
-        .data(state.rows)
+        .data(rows)
         .join('circle')
         .attr('cx', r => x_scale(r[col_i]))
         .attr('cy', r => y_scale(r[row_i]))
@@ -322,8 +443,29 @@ function truncateLabel(label: string, available_px: number) {
 }
 
 watch(popover_cell, () => nextTick(drawPopover));
-watch(() => state.rows, () => nextTick(drawPopover));
+watch(() => rows, () => nextTick(drawPopover));
 watch(() => highlight_point_index, () => nextTick(drawPopover));
+watch(() => state.background, () => nextTick(drawPopover));
+// Both fields are already in whatever's cached for the current pair, so a mode flip only needs a
+// re-render - never a re-fetch.
+watch(() => background_mode, () => nextTick(drawPopover));
+
+// Debounced so quickly sweeping the mouse across the matrix doesn't fire a request per cell -
+// only the cell the pointer settles on for a beat actually gets fetched.
+watch([popover_cell, () => output_col], ([cell]) => {
+    if (background_timer) clearTimeout(background_timer);
+    if (!cell || !output_col) {
+        state.background = null;
+        return;
+    }
+    const cached = background_cache.get(backgroundKey(cell.col, cell.row));
+    if (cached) {
+        state.background = cached;
+        return;
+    }
+    state.background = null;
+    background_timer = setTimeout(() => fetchBackground(cell), BG_FETCH_DEBOUNCE_MS);
+});
 
 let resize_observer: ResizeObserver | null = null;
 onMounted(() => {
@@ -333,6 +475,7 @@ onMounted(() => {
     }
 });
 onBeforeUnmount(() => {
+    if (background_timer) clearTimeout(background_timer);
     resize_observer?.disconnect();
 });
 </script>

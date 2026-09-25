@@ -51,6 +51,20 @@ export const interactionResultHilti = {
     feature_values: { temp: [10, 20], pressure: [30, 40] },
 };
 
+// KNN-interpolated background for the scatterplot matrix popover, as served by
+// POST /datasets/hilti/effects/interaction-background. var1/var2 match the (col, row) the
+// Dependency-row-hover popover resolves to for hilti's one combination (temp & pressure) - see
+// effects.test.mjs's background test, which hovers exactly that row.
+export const interactionBackgroundResultHilti = {
+    output_col: 'strength',
+    var1: 'pressure',
+    var2: 'temp',
+    x: [0, 50, 100],
+    y: [0, 50, 100],
+    predictions: [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+    shap_effect: [[9, 8, 7], [6, 5, 4], [3, 2, 1]],
+};
+
 // A second dataset with 7 input dimensions (> the 6-dimension cutoff), used to exercise the
 // parallel-coordinates selector branch of the Interpolator (the old spider-chart + similar-points
 // selector is used at <= 6 dimensions - see `hilti`, which has 2, above).

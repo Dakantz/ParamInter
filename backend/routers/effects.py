@@ -6,11 +6,14 @@ import numpy as np
 import pandas as pd
 import shap
 from fastapi import APIRouter, Body, HTTPException
+from sklearn.neighbors import NearestNeighbors
 
 from backend.datamans.modelman import ModelManager
 from backend.models import (
     BeeswarmResult,
     EffectsRequest,
+    InteractionBackgroundRequest,
+    InteractionBackgroundResult,
     InteractionCombo,
     InteractionForRowsRequest,
     InteractionRequest,
@@ -28,6 +31,9 @@ MAX_ORDER = 6
 MAX_POOL_FOR_HIGH_ORDER = 10
 MAX_COMBOS = 3000
 MAX_TOP_K = 50
+MIN_BG_RESOLUTION = 8
+MAX_BG_RESOLUTION = 80
+MAX_BG_K_NEIGHBORS = 30
 
 
 def _get_manager(set_name: str | None) -> ModelManager:
@@ -283,4 +289,66 @@ def get_interaction_for_rows(
         indices=[],
         combinations=combos,
         feature_values={col: rows[col].to_numpy().tolist() for col in used_features},
+    )
+
+
+@effects_router.post("/interaction-background")
+def get_interaction_background(
+    req: InteractionBackgroundRequest = Body(InteractionBackgroundRequest),
+    set_name: str = None,
+) -> InteractionBackgroundResult:
+    """
+    A smooth (var1, var2) background for the scatterplot matrix: for every cell of a
+    `resolution` x `resolution` grid spanning var1/var2's ranges, take the `k_neighbors` nearest
+    dataset rows in the (var1, var2) plane, inverse-distance-weight their *full* input rows into
+    one synthetic input vector for that grid cell, then run it through the output model and the
+    SHAP explainer. Lets a scatterplot cell show model output or overall SHAP attribution strength
+    even in regions with few or no real samples. See hilti_exp.py's "Nearest Neighbors for
+    Interpolated Inputs + Output views" section for the exploratory version this is based on.
+    """
+    data_man = _get_manager(set_name)
+    _validate_output(data_man, req.output_col)
+    for var in (req.var1, req.var2):
+        if var not in data_man.input_cols:
+            raise HTTPException(status_code=400, detail=f"Unknown input column: {var}")
+    if req.var1 == req.var2:
+        raise HTTPException(status_code=400, detail="var1 and var2 must differ")
+    model = data_man.model_ensemble.get(req.output_col)
+    if model is None:
+        raise HTTPException(
+            status_code=400, detail=f"No trained model for output column '{req.output_col}'"
+        )
+
+    cleaned = data_man.cleaned
+    res = max(MIN_BG_RESOLUTION, min(MAX_BG_RESOLUTION, req.resolution))
+    k = max(1, min(MAX_BG_K_NEIGHBORS, req.k_neighbors, len(cleaned)))
+
+    xs = np.linspace(cleaned[req.var1].min(), cleaned[req.var1].max(), res)
+    ys = np.linspace(cleaned[req.var2].min(), cleaned[req.var2].max(), res)
+    xx, yy = np.meshgrid(xs, ys)  # xx/yy shape (res, res): row i = ys[i], col j = xs[j]
+    grid = np.stack([xx.ravel(), yy.ravel()], axis=1)
+
+    nn = NearestNeighbors(n_neighbors=k).fit(cleaned[[req.var1, req.var2]].to_numpy())
+    dist, idxes = nn.kneighbors(grid, return_distance=True)
+
+    input_arr = cleaned[data_man.input_cols].to_numpy(dtype=np.float32)
+    neighbor_inputs = input_arr[idxes]  # (res*res, k, n_inputs)
+    weights = 1.0 / (dist + 1e-6)
+    weights /= weights.sum(axis=1, keepdims=True)
+    interp_inputs = np.sum(neighbor_inputs * weights[..., None], axis=1)
+
+    predictions = np.asarray(model.predict(interp_inputs))
+    explanation = _tree_explainer(data_man, req.output_col)(
+        pd.DataFrame(interp_inputs, columns=data_man.input_cols)
+    )
+    shap_effect = np.abs(np.asarray(explanation.values)).sum(axis=1)
+
+    return InteractionBackgroundResult(
+        output_col=req.output_col,
+        var1=req.var1,
+        var2=req.var2,
+        x=xs.tolist(),
+        y=ys.tolist(),
+        predictions=predictions.reshape(res, res).tolist(),
+        shap_effect=shap_effect.reshape(res, res).tolist(),
     )

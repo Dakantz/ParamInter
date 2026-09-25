@@ -11,7 +11,7 @@
         <p>Loaded: {{ dataset.loaded ? "Yes" : "No" }}</p>
         <p>
             <button v-bind:class="load_btn_class" @click="loadDataset">Load</button>
-            <RouterLink :to="`./interpolator/${dataset_id}`" v-bind:class="explore_link_class">Explore</RouterLink>
+            <RouterLink :to="`./interpolator/${dataset_id}`" v-bind:class="explore_link_class">Interpolator</RouterLink>
             <RouterLink :to="`./effects/${dataset_id}`" v-bind:class="explore_link_class">Effects</RouterLink>
 
         </p>
