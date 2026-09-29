@@ -48,7 +48,7 @@ const container = useTemplateRef('container');
 const plot = useTemplateRef('plot');
 
 const margin = { top: 24, right: 56, bottom: 28, left: 16 };
-const label_width = 140;
+const label_width = 200;
 const legend_width = 10;
 const legend_gap = 14;
 const legend_max_height = 160;
@@ -126,12 +126,37 @@ function redraw() {
             .on('mouseenter', emitRowEnter)
             .on('mouseleave', emitRowLeave);
 
-        row_g.append('text')
+        const label_sel = row_g.append('text')
             .attr('x', -label_width + 4)
             .attr('y', row_center)
             .attr('alignment-baseline', 'middle')
             .attr('font-size', 11)
             .text(row.label);
+        label_sel.append('title').text(row.label);
+
+        if (row.mean_abs !== undefined) {
+            row_g.append('text')
+                .attr('class', 'beeswarm-mean-abs')
+                .attr('x', -4)
+                .attr('y', row_center)
+                .attr('text-anchor', 'end')
+                .attr('alignment-baseline', 'middle')
+                .attr('font-size', 10)
+                .attr('fill', '#777')
+                .text(row.mean_abs.toFixed(2));
+
+            // Truncate the label with an ellipsis rather than let it run under the number, for
+            // combo labels too long to fit label_width alongside the mean|effect| indicator.
+            const max_label_width = label_width - 4 - 34;
+            const label_node = label_sel.node();
+            if (label_node && label_node.getComputedTextLength() > max_label_width) {
+                let text = row.label;
+                while (text.length > 1 && label_node.getComputedTextLength() > max_label_width) {
+                    text = text.slice(0, -1);
+                    label_sel.text(text + '…');
+                }
+            }
+        }
 
         const color_scale = colorScaleFor(row);
         const color_values = row.color_values && row.color_values.length ? row.color_values : row.values;

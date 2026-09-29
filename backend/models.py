@@ -192,6 +192,34 @@ class InteractionResult(BaseModel):
     feature_values: dict[str, list[float]]
 
 
+class InteractionBackgroundRequest(BaseModel):
+    output_col: str
+    var1: str
+    var2: str
+    resolution: int = 40
+    k_neighbors: int = 5
+
+
+class InteractionBackgroundResult(BaseModel):
+    """
+    A `resolution` x `resolution` heatmap over the (var1, var2) plane, meant as a background layer
+    behind a scatterplot of those two variables: each grid cell's full input vector is an
+    inverse-distance-weighted average of its `k_neighbors` nearest dataset rows in the (var1, var2)
+    subspace, then run through the output model and the SHAP explainer - giving a smooth
+    interpolated view of both the model's output and its overall SHAP attribution strength in
+    regions between real samples. See hilti_exp.py's "Nearest Neighbors for Interpolated Inputs +
+    Output views" section for the exploratory version this is based on.
+    """
+
+    output_col: str
+    var1: str
+    var2: str
+    x: list[float]
+    y: list[float]
+    predictions: list[list[float]]  # [len(y)][len(x)]
+    shap_effect: list[list[float]]  # [len(y)][len(x)], sum |SHAP value| across all inputs
+
+
 class ManagerSettings(BaseModel):
     data_description: DataDescription
     mode: str = "tsne"

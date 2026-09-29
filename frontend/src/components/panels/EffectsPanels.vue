@@ -17,6 +17,16 @@
             <button @click="fetchInteraction">
                 Compute dependency
             </button>
+
+            <h2>Scatterplot background</h2>
+            <p class="info">Color the Scatterplot Matrix's magnified cell with a smooth,
+                K-nearest-neighbor interpolated surface (see hilti_exp.py) - either the model's
+                predicted output or its overall SHAP attribution strength - to explain the model's
+                behavior between real samples.</p>
+            <select v-model="state.background_mode" class="background_select">
+                <option value="output">Model output</option>
+                <option value="shap">SHAP effect</option>
+            </select>
         </div>
         <div class="divider"></div>
         <div class="stacked-panels">
@@ -39,9 +49,16 @@
                     feature combinations by mean |Shapley interaction effect| on
                     <b>{{ state.output_col }}</b>.
                 </p>
+                <label v-if="dependency_rows.length" class="color_mode_label">
+                    Color by
+                    <select v-model="state.dependency_color_mode" class="color_mode_select">
+                        <option value="product">Feature value product</option>
+                        <option value="sum">Feature value sum</option>
+                    </select>
+                </label>
                 <Loading v-if="state.loading_interaction" />
                 <div class="chart-scroll" v-if="dependency_rows.length">
-                    <BeeswarmChart :rows="dependency_rows" color_label="SHAP interaction value"
+                    <BeeswarmChart :rows="dependency_rows" :color_label="dependency_color_label"
                         @hover-row="onHoverFeatures" @hover-point="onHoverPoint" />
                 </div>
                 <div v-else-if="!state.loading_interaction" class="info">
@@ -57,7 +74,8 @@
                     Dependency row to highlight that pair's cell. Hovering a specific point also
                     highlights it in the magnified popover, if it's in the shown sample.</p>
                 <ScatterplotMatrix :data_rep="(data_rep as DataRepository)" :highlight_row="state.hover_row"
-                    :highlight_cell="state.hover_cell" :highlight_point_index="state.hover_point_index" />
+                    :highlight_cell="state.hover_cell" :highlight_point_index="state.hover_point_index"
+                    :output_col="state.output_col" :background_mode="state.background_mode" />
             </div>
         </div>
     </div>
@@ -69,7 +87,7 @@ import { DataRepository } from '../../proc/data-store';
 import { BeeswarmResult, InteractionResult } from '../../api/Api';
 import BeeswarmChart from '../effects/BeeswarmChart.vue';
 import ScatterplotMatrix from '../effects/ScatterplotMatrix.vue';
-import { BeeswarmRow } from '../effects/types';
+import { BackgroundMode, BeeswarmRow } from '../effects/types';
 import Loading from '../ui/Loading.vue';
 
 const { data_rep } = defineProps<{
@@ -92,6 +110,8 @@ const state = reactive({
     hover_row: null as string | null,
     hover_cell: null as [string, string] | null,
     hover_point_index: null as number | null,
+    background_mode: 'output' as BackgroundMode,
+    dependency_color_mode: 'product' as 'product' | 'sum',
 });
 
 function onHoverFeatures(features: string[] | null) {
@@ -204,36 +224,64 @@ watch(orderOptions, (options) => {
 const beeswarm_rows = computed<BeeswarmRow[]>(() => {
     const bs = state.beeswarm;
     if (!bs) return [];
-    const ranked = bs.features
-        .map(f => ({
+    // Highest mean |SHAP| first, so the strongest feature ends up at the top of the chart
+    // (row_idx 0 renders at the smallest y, i.e. the top row).
+    return bs.features
+        .map(f => {
+            const values = bs.shap_values[f] || [];
+            const mean_abs = values.reduce((s, v) => s + Math.abs(v), 0) / Math.max(1, values.length);
+            return { f, values, mean_abs };
+        })
+        .sort((a, b) => b.mean_abs - a.mean_abs)
+        .slice(0, MAX_DISPLAY)
+        .map(({ f, values, mean_abs }) => ({
             key: f,
             label: f,
-            values: bs.shap_values[f] || [],
+            values,
             color_values: bs.feature_values[f] || [],
             indices: bs.indices,
             features: [f],
-            mean_abs: (bs.shap_values[f] || []).reduce((s, v) => s + Math.abs(v), 0) / Math.max(1, (bs.shap_values[f] || []).length),
-        }))
-        .sort((a, b) => b.mean_abs - a.mean_abs)
-        .slice(0, MAX_DISPLAY);
-    return ranked.reverse();
+            mean_abs,
+        }));
 });
+
+const dependency_color_label = computed(() => (
+    state.dependency_color_mode === 'sum' ? 'feature value sum' : 'feature value product'
+));
+
+// Combine the combo's own feature values (not the interaction/SHAP values) into a single
+// per-sample color signal, so the beeswarm color always reflects where a point sits in feature
+// space rather than restating the interaction strength that the x-position already shows.
+function combineFeatureValues(features: string[], feature_values: Record<string, number[]>, mode: 'product' | 'sum', n: number): number[] {
+    const result = new Array<number>(n).fill(mode === 'product' ? 1 : 0);
+    for (const f of features) {
+        const values = feature_values[f] || [];
+        for (let i = 0; i < n; i++) {
+            const v = values[i] ?? 0;
+            result[i] = mode === 'product' ? result[i] * v : result[i] + v;
+        }
+    }
+    return result;
+}
 
 const dependency_rows = computed<BeeswarmRow[]>(() => {
     const interaction = state.interaction;
     if (!interaction) return [];
-    // Backend already ranks combinations descending by mean |effect|; reverse so the strongest
-    // ends up at the top of the chart, matching beeswarm_rows' convention.
+    // Backend already ranks combinations descending by mean |effect|, which is also the order we
+    // want on screen (strongest at the top row), so no re-sort/reverse needed here.
     return interaction.combinations
         .map(combo => ({
             key: combo.features.join('-'),
             label: combo.features.join(' & '),
             values: combo.values,
+            color_values: combineFeatureValues(
+                combo.features, interaction.feature_values, state.dependency_color_mode, combo.values.length,
+            ),
             indices: interaction.indices,
             features: combo.features,
             kind: 'swarm' as const,
-        }))
-        .reverse();
+            mean_abs: combo.mean_abs,
+        }));
 });
 </script>
 
@@ -294,8 +342,18 @@ const dependency_rows = computed<BeeswarmRow[]>(() => {
 }
 
 .output_select,
-.order_select {
+.order_select,
+.background_select {
     margin-bottom: 8px;
+}
+
+.color_mode_label {
+    font-size: 11px;
+    color: #444;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
 }
 
 .chart-scroll {

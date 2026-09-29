@@ -54,16 +54,19 @@ test('parallel-coordinates: brushing an axis narrows the shown lines, and clicki
         const before_count = await page.$eval('.pc-count', (el) => el.textContent.trim());
         assert.equal(before_count, `${dataSampleWide7.inputs.length} / ${dataSampleWide7.inputs.length} shown`);
 
+        // Axes are laid out vertically (one row per dimension) with each dimension's own value
+        // scale running horizontally, so the brush (brushX) drags left/right along an axis's
+        // row, not up/down - see ParallelCoordinatesSelector.vue's redraw().
         const brush_box = await page.evaluate(() => {
             const overlay = document.querySelector('g.pc-axes g.pc-axis .overlay');
             if (!overlay) return null;
             const r = overlay.getBoundingClientRect();
-            return { x: r.x + r.width / 2, top: r.y + r.height * 0.1, bottom: r.y + r.height * 0.5 };
+            return { y: r.y + r.height / 2, left: r.x + r.width * 0.1, right: r.x + r.width * 0.5 };
         });
         assert.ok(brush_box, 'first axis brush overlay should exist');
-        await page.mouse.move(brush_box.x, brush_box.top);
+        await page.mouse.move(brush_box.left, brush_box.y);
         await page.mouse.down();
-        await page.mouse.move(brush_box.x, brush_box.bottom, { steps: 8 });
+        await page.mouse.move(brush_box.right, brush_box.y, { steps: 8 });
         await page.mouse.up();
         await sleep(200);
 

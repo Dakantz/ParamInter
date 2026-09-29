@@ -37,7 +37,7 @@ const { data_rep, title } = defineProps({
 
 const MAX_LINES = 500;
 const AXIS_SPACING = 46;
-const AXIS_WIDTH = 440;
+const MIN_AXIS_WIDTH = 120;
 const MARGIN = { top: 24, right: 32, bottom: 24, left: 150 };
 
 const ACTIVE_COLOR = '#3a8000';
@@ -143,7 +143,8 @@ function clearBrushes() {
 
 function redraw() {
     if (!plot.value || !container.value || !state.dims.length) return;
-    const width = Math.max(container.value.clientWidth, AXIS_WIDTH + MARGIN.left + MARGIN.right);
+    const width = container.value.clientWidth || MIN_AXIS_WIDTH + MARGIN.left + MARGIN.right;
+    const axis_width = Math.max(width - MARGIN.left - MARGIN.right, MIN_AXIS_WIDTH);
     const height = Math.max(
         container.value.clientHeight,
         state.dims.length * AXIS_SPACING + MARGIN.top + MARGIN.bottom,
@@ -162,7 +163,7 @@ function redraw() {
     state.dims.forEach(dim => {
         const [lo, hi] = state.domains[dim];
         const pad = (hi - lo) * 0.02 || 1;
-        x[dim] = d3.scaleLinear().domain([lo - pad, hi + pad]).range([0, AXIS_WIDTH]).clamp(true);
+        x[dim] = d3.scaleLinear().domain([lo - pad, hi + pad]).range([0, axis_width]).clamp(true);
     });
 
     const g = svg.append('g').attr('transform', `translate(${MARGIN.left}, 0)`);
@@ -216,7 +217,7 @@ function redraw() {
             .text(dim);
 
         const brush = d3.brushX<unknown>()
-            .extent([[0, -9], [AXIS_WIDTH, 9]])
+            .extent([[0, -9], [axis_width, 9]])
             .on('start brush end', (event: d3.D3BrushEvent<unknown>) => {
                 if (!event.sourceEvent) return;
                 const sel = event.selection as [number, number] | null;

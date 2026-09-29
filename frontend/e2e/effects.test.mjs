@@ -8,6 +8,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { makeApp, waitForPanelRow, hoverAt, clickComputeDependency } from './helpers.mjs';
 import {
     managerSettings, columnTypesHilti, dataSampleHilti, beeswarmResult, interactionResultHilti,
+    interactionBackgroundResultHilti,
     manyDimsManagerSettings, columnTypesManyDims, dataSampleManyDims, manyDimsCols,
     makeFixtureRouter,
 } from './fixtures.mjs';
@@ -21,6 +22,7 @@ const fixtureForHilti = makeFixtureRouter({
     'GET /datasets/hilti/data/sample': dataSampleHilti,
     'POST /datasets/hilti/effects/beeswarm': beeswarmResult,
     'POST /datasets/hilti/effects/interaction': interactionResultHilti,
+    'POST /datasets/hilti/effects/interaction-background': interactionBackgroundResultHilti,
 });
 
 const fixtureForManyDims = makeFixtureRouter({
@@ -221,5 +223,58 @@ test('Effects panel: hovering a cell directly in the scatterplot matrix shows th
         // comment on the equivalent move in the Dependency row popover test above.
         await page.mouse.move(20, 20, { steps: 10 });
         await page.waitForFunction(() => document.querySelector('.splom-popover') === null, { timeout: 5000 });
+    });
+}));
+
+test('Effects panel: scatterplot matrix popover shows a KNN-interpolated background, togglable between model output and SHAP effect', (t) => app.withPage(fixtureForHilti, async (page) => {
+    await page.goto(`${app.BASE}/effects/hilti`, { waitUntil: 'networkidle0' });
+    await page.waitForFunction(() => document.querySelectorAll('g.splom-cell').length > 0, { timeout: 10000 });
+
+    await t.test('the left panel offers a model-output/SHAP-effect background select', async () => {
+        const options = await page.$$eval(
+            'select.background_select option',
+            (els) => els.map((o) => o.value),
+        );
+        assert.deepEqual(options, ['output', 'shap']);
+    });
+
+    assert.equal(await page.$('.splom-popover image'), null, 'no background image before any hover');
+
+    // interactionBackgroundResultHilti's var1/var2 ('pressure'/'temp') match exactly the
+    // {col, row} the Dependency-row hover resolves to for hilti's one combination (see
+    // assertPopoverLabels above) - hovering anything else would leave state.background unset.
+    await clickComputeDependency(page);
+    const depRow = await waitForPanelRow(page, 1);
+    await hoverAt(page, depRow);
+    await page.waitForFunction(() => document.querySelector('.splom-popover image') !== null, { timeout: 5000 });
+
+    await t.test('renders the background as a data-URL image with a caption describing it', async () => {
+        const info = await page.evaluate(() => ({
+            href: document.querySelector('.splom-popover image')?.getAttribute('href') ?? '',
+            caption: document.querySelector('.splom-bg-caption')?.textContent ?? '',
+        }));
+        assert.ok(info.href.startsWith('data:image/'), 'background <image> should have a data: URL href');
+        assert.match(info.caption, /model output/, 'caption should default to describing the model-output background');
+    });
+
+    await t.test('switching to "SHAP effect" re-renders the caption (and range) without a new fetch', async () => {
+        let backgroundRequests = 0;
+        page.on('request', (req) => {
+            if (req.url().includes('/effects/interaction-background')) backgroundRequests += 1;
+        });
+
+        await page.select('select.background_select', 'shap');
+        // The select interaction can move the mouse off the row; re-assert the hover so the
+        // popover (and its background) stays open for the caption check below.
+        await hoverAt(page, depRow);
+        await page.waitForFunction(
+            () => document.querySelector('.splom-bg-caption')?.textContent.includes('SHAP effect'),
+            { timeout: 5000 },
+        );
+
+        // predictions range 1-9, shap_effect range 1-9 too in the fixture, so this only checks
+        // the mode label flipped, not the numbers - the request-count assertion below is what
+        // actually proves no re-fetch happened.
+        assert.equal(backgroundRequests, 0, 'switching background_mode must not re-fetch (both fields already arrived in one response)');
     });
 }));

@@ -237,6 +237,53 @@ export interface HistogramData {
   relative: number[];
 }
 
+/** InteractionBackgroundRequest */
+export interface InteractionBackgroundRequest {
+  /** Output Col */
+  output_col: string;
+  /** Var1 */
+  var1: string;
+  /** Var2 */
+  var2: string;
+  /**
+   * Resolution
+   * @default 40
+   */
+  resolution?: number;
+  /**
+   * K Neighbors
+   * @default 5
+   */
+  k_neighbors?: number;
+}
+
+/**
+ * InteractionBackgroundResult
+ * A `resolution` x `resolution` heatmap over the (var1, var2) plane, meant as a background layer
+ * behind a scatterplot of those two variables: each grid cell's full input vector is an
+ * inverse-distance-weighted average of its `k_neighbors` nearest dataset rows in the (var1, var2)
+ * subspace, then run through the output model and the SHAP explainer - giving a smooth
+ * interpolated view of both the model's output and its overall SHAP attribution strength in
+ * regions between real samples. See hilti_exp.py's "Nearest Neighbors for Interpolated Inputs +
+ * Output views" section for the exploratory version this is based on.
+ */
+export interface InteractionBackgroundResult {
+  /** Output Col */
+  output_col: string;
+  /** Var1 */
+  var1: string;
+  /** Var2 */
+  var2: string;
+  /** X */
+  x: number[];
+  /** Y */
+  y: number[];
+  /** Predictions */
+  predictions: number[][];
+  /** Shap Effect */
+  shap_effect: number[][];
+}
+
 /** InteractionCombo */
 export interface InteractionCombo {
   /** Features */
@@ -1083,6 +1130,27 @@ export class Api<
     ) =>
       this.request<InteractionResult, HTTPValidationError>({
         path: `/datasets/${setName}/effects/interaction-for-rows`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description A smooth (var1, var2) background for the scatterplot matrix: for every cell of a `resolution` x `resolution` grid spanning var1/var2's ranges, take the `k_neighbors` nearest dataset rows in the (var1, var2) plane, inverse-distance-weight their *full* input rows into one synthetic input vector for that grid cell, then run it through the output model and the SHAP explainer. Lets a scatterplot cell show model output or overall SHAP attribution strength even in regions with few or no real samples. See hilti_exp.py's "Nearest Neighbors for Interpolated Inputs + Output views" section for the exploratory version this is based on.
+     *
+     * @name GetInteractionBackgroundDatasetsSetNameEffectsInteractionBackgroundPost
+     * @summary Get Interaction Background
+     * @request POST:/datasets/{set_name}/effects/interaction-background
+     */
+    getInteractionBackgroundDatasetsSetNameEffectsInteractionBackgroundPost: (
+      setName: string,
+      data: InteractionBackgroundRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<InteractionBackgroundResult, HTTPValidationError>({
+        path: `/datasets/${setName}/effects/interaction-background`,
         method: "POST",
         body: data,
         type: ContentType.Json,
