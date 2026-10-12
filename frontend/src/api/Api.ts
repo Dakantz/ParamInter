@@ -806,6 +806,37 @@ export class Api<
       }),
 
     /**
+     * @description A contiguous slice of raw input rows (indices + values) in dataset order, for client-side plots that need to page through the *entire* dataset in batches rather than a random sample.
+     *
+     * @name GetDataPageDatasetsSetNameDataPageGet
+     * @summary Get Data Page
+     * @request GET:/datasets/{set_name}/data/page
+     */
+    getDataPageDatasetsSetNameDataPageGet: (
+      setName: string,
+      query?: {
+        /**
+         * Offset
+         * @default 0
+         */
+        offset?: number;
+        /**
+         * Limit
+         * @default 2000
+         */
+        limit?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<DataSample, HTTPValidationError>({
+        path: `/datasets/${setName}/data/page`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * No description
      *
      * @name GetHistogramDatasetsSetNameDataHistGet

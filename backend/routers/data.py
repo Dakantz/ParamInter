@@ -54,6 +54,21 @@ def get_data_sample(
     return DataSample(indices=indices.tolist(), inputs=inputs)
 
 
+@data_router.get("/page")
+def get_data_page(
+    set_name: str = None, offset: int = 0, limit: int = 2000
+) -> DataSample:
+    """A contiguous slice of raw input rows (indices + values) in dataset order, for client-side
+    plots that need to page through the *entire* dataset in batches rather than a random sample."""
+    data_man = sets_manager.get_manager(set_name)
+    n = len(data_man.cleaned)
+    offset = max(0, min(offset, n))
+    limit = max(0, limit)
+    indices = np.arange(offset, min(offset + limit, n))
+    inputs = data_man.cleaned[data_man.input_cols].iloc[indices].values.tolist()
+    return DataSample(indices=indices.tolist(), inputs=inputs)
+
+
 @data_router.get("/hist")
 def get_histogram(col_name: str, set_name: str = None, bins: int = 10) -> HistogramData:
     data_man = sets_manager.get_manager(set_name, True)

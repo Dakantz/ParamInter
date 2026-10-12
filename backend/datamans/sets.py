@@ -62,6 +62,8 @@ class SetsManager:
             self.load_config_file(configs_json)
         else:
             print("Using default dataset configs.")
+            if not Path("configs.json").exists():
+                print("No configs.json found, creating one with default configs.")
             self.load_defaults()
 
         self.managers: dict[str, dict[str,] | ModelManager] = {}

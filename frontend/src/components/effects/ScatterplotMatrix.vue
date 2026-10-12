@@ -1,6 +1,8 @@
 <template>
     <div class="splom-container">
-        <Loading v-if="state.loading" />
+        <div v-if="state.loading" class="splom-loading-bar">
+            <LoadingBar :progress="load_progress" :label="load_label" />
+        </div>
         <div class="splom-scroll" ref="container">
             <svg ref="plot"></svg>
             <div v-if="popover_cell" class="splom-popover" :style="popoverStyle">
@@ -17,7 +19,7 @@ import { DataRepository } from '../../proc/data-store';
 import { InteractionBackgroundResult } from '../../api/Api';
 import { colormaps_d3 } from '../helpers/colormaps';
 import { BackgroundMode } from './types';
-import Loading from '../ui/Loading.vue';
+import LoadingBar from '../ui/LoadingBar.vue';
 
 const { data_rep, highlight_row, highlight_cell, highlight_point_index, output_col, background_mode } = defineProps({
     data_rep: {
@@ -71,19 +73,30 @@ const plot = useTemplateRef('plot');
 const popoverPlot = useTemplateRef('popoverPlot');
 
 interface Cell { row: string; col: string; ri: number; ci: number }
-
+const indices = [] as number[];
 const state = reactive({
     loading: false,
     dims: [] as string[],
     // rows: [] as number[][],
-    indices: [] as number[],
+    // indices: [] as number[],
     domains: {} as Record<string, [number, number]>,
     cell_size: MAX_CELL,
     hovered_cell: null as { row: string; col: string } | null,
     // KNN-interpolated background for whichever (var1=col, var2=row) pair the popover currently
     // shows - null while nothing has loaded yet for that pair (see fetchBackground below).
     background: null as InteractionBackgroundResult | null,
+    // Total row count of the dataset, for the loading bar's progress fraction - known up front
+    // from the dataset description, before any page has come back.
+    total_rows: 0,
 });
+
+// Progress fraction for the loading bar - state.indices grows as each page of loadData() lands.
+const load_progress = computed(() => (
+    state.total_rows > 0 ? indices.length / state.total_rows : 0
+));
+const load_label = computed(() => (
+    state.total_rows > 0 ? `${indices.length} / ${state.total_rows} rows` : 'loading…'
+));
 
 // Keyed by set/output/pair so re-hovering an already-seen cell (or flipping background_mode,
 // which only changes which field of the same response is drawn) never re-fetches.
@@ -129,10 +142,23 @@ function getDesc() {
     return data_rep.description || data_rep.manager_settings?.data_description || null;
 }
 let rows = [] as number[][];
+// The full dataset is loaded a page at a time (not a random sample) rather than as one request:
+// each page redraws immediately, so the matrix fills in progressively instead of blocking on the
+// whole dataset, and no single request has to carry the full payload.
+const BATCH_SIZE = 2000;
+
+// Bumped on every loadData() call so a stale in-flight batch loop (e.g. from a dataset switch)
+// stops appending once a newer load has started.
+let load_seq = 0;
+
 async function loadData() {
     const desc = getDesc();
     if (!desc || !desc.input_cols?.length) return;
+    const seq = ++load_seq;
     state.loading = true;
+    rows = [];
+    indices.length = 0;
+    state.total_rows = desc.num_samples ?? 0;
     try {
         state.dims = [...desc.input_cols];
         state.domains = {};
@@ -141,24 +167,25 @@ async function loadData() {
             const hi = desc.max_values?.[dim] ?? 1;
             state.domains[dim] = [lo, hi];
         }
-        // Cap total rendered points at roughly 20k circles (n_dims^2 cells x sample_size points).
-        // const sample_size = Math.max(
-        //     40,
-        //     Math.min(250, Math.floor(20000 / Math.max(1, state.dims.length * state.dims.length))),
-        // );
-        const sample_size = 20000;
-        const res = await data_rep.client.datasets.getDataSampleDatasetsSetNameDataSampleGet(
-            data_rep.set_name,
-            { max_samples: sample_size, seed: 0 },
-        );
-        rows = res.data.inputs;
-        state.indices = res.data.indices;
-        redraw();
+
+        for (let offset = 0; ; offset += BATCH_SIZE) {
+            if (seq !== load_seq) return;
+            const res = await data_rep.client.datasets.getDataPageDatasetsSetNameDataPageGet(
+                data_rep.set_name,
+                { offset, limit: BATCH_SIZE },
+            );
+            if (seq !== load_seq) return;
+            if (!res.data.indices.length) break;
+            indices.push(...res.data.indices);
+            rows.push(...res.data.inputs);
+            redraw();
+            if (res.data.indices.length < BATCH_SIZE) break;
+        }
     } catch (error) {
         console.error('Error loading data for scatterplot matrix:', error);
-        rows = [];
+        if (seq === load_seq) rows = [];
     } finally {
-        state.loading = false;
+        if (seq === load_seq) state.loading = false;
     }
 }
 
@@ -486,6 +513,12 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     align-items: center;
+}
+
+.splom-loading-bar {
+    width: 100%;
+    max-width: 320px;
+    margin: 8px 0;
 }
 
 .splom-scroll {

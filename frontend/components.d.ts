@@ -20,6 +20,7 @@ declare module 'vue' {
     IntOverview: typeof import('./src/components/interpolation/IntOverview.vue')['default']
     IntSingleOut: typeof import('./src/components/interpolation/IntSingleOut.vue')['default']
     Loading: typeof import('./src/components/ui/Loading.vue')['default']
+    LoadingBar: typeof import('./src/components/ui/LoadingBar.vue')['default']
     NaryOp: typeof import('./src/components/formulation/parts/NaryOp.vue')['default']
     Overview: typeof import('./src/components/adjuster/Overview.vue')['default']
     ParallelCoordinatesSelector: typeof import('./src/components/panels/ParallelCoordinatesSelector.vue')['default']
