@@ -12,3 +12,4 @@ openpyxl
 seaborn
 torchmetrics
 gpytorch
+shap
