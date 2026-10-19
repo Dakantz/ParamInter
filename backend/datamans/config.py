@@ -1,8 +1,9 @@
-from dataclasses import dataclass, field
 import os
-from enum import Enum
-from ucq.models import RandomBaseline, GP_VAE, VAE, BaseUCQModel
 import typing
+from dataclasses import dataclass, field
+from enum import Enum
+
+from ucq.models import GP_VAE, VAE, BaseUCQModel, RandomBaseline
 
 
 class VAEOptions(str, Enum):

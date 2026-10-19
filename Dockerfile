@@ -22,6 +22,8 @@ RUN CMAKE_ARGS="-DGGML_CUDA=on  -DLLAVA_BUILD=off" uv sync
 
 
 ADD ./backend /app/backend
+ADD ./ucq /app/ucq
+
 
 # Sync the project into a new environment, asserting the lockfile is up to date
 ENV PATH="/app/.venv/bin:$PATH"
