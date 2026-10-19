@@ -1,0 +1,59 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Kantz"
+  given-names: "Benedikt"
+  orcid: "https://orcid.org/0000-0003-3294-8421"
+- family-names: "Waldert"
+  given-names: "Peter"
+  orcid: "https://orcid.org/0009-0004-8459-7381"
+- family-names: "Lengauer"
+  given-names: "Stefan"
+  orcid: "https://orcid.org/0000-0001-5136-4320"
+- family-names: "Staudinger"
+  given-names: "Clemens"
+- family-names: "Schuster"
+  given-names: "Stefan"
+- family-names: "Schreck"
+  given-names: "Tobias"
+  orcid: "https://orcid.org/0000-0003-0778-8665"
+title: "ParamInter: Parameter Space Analysis through Guided Visual Interpolations"
+version: mlvis-2026
+doi: 10.2312/mlvis.20261001
+date-released: 2026-04-29
+url: "https://github.com/Dakantz/ParamInter"
+repository-code: "https://github.com/Dakantz/ParamInter"
+license: MIT
+identifiers:
+- type: doi
+  value: 10.2312/mlvis.20261001
+  description: "MLVis 2026 paper"
+- type: doi
+  value: 10.5281/zenodo.19886990
+  description: "Zenodo archive of release mlvis-2026"
+preferred-citation:
+  type: conference-paper
+  title: "Parameter Space Analysis through Guided Visual Interpolations"
+  authors:
+  - family-names: "Kantz"
+    given-names: "Benedikt"
+    orcid: "https://orcid.org/0000-0003-3294-8421"
+  - family-names: "Waldert"
+    given-names: "Peter"
+    orcid: "https://orcid.org/0009-0004-8459-7381"
+  - family-names: "Lengauer"
+    given-names: "Stefan"
+    orcid: "https://orcid.org/0000-0001-5136-4320"
+  - family-names: "Staudinger"
+    given-names: "Clemens"
+  - family-names: "Schuster"
+    given-names: "Stefan"
+  - family-names: "Schreck"
+    given-names: "Tobias"
+    orcid: "https://orcid.org/0000-0003-0778-8665"
+  collection-title: "MLVis 2026: Machine Learning Methods in Visualisation for Big Data"
+  publisher:
+    name: "The Eurographics Association"
+  isbn: "978-3-03868-310-0"
+  year: 2026
+  doi: 10.2312/mlvis.20261001
