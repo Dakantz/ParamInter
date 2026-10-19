@@ -54,7 +54,7 @@ No dataset is patient-derived, so no ethics approval applies. `backend/datamans/
 - **Pipeline.** The table is split by column position into inputs and outputs. The backend fits a 2D embedding per column group (t-SNE by default; UMAP or PCA via the `EMBEDDING` environment variable), a nearest-neighbour index over inputs and outputs, and one LightGBM regressor per output column as a forward surrogate. Interpolations between two samples are predicted with the surrogates and snapped to the nearest real sample for display. Sensitivity hints perturb one input at a time; the effects view computes SHAP values and interaction effects on the surrogates.
 - **Training.** All models are fitted on the server at runtime, on the loaded dataset only, and cached under `$DATA_DIR/models/`. No weights are shipped. An optional VAE or GP-VAE (`ucq/`) estimates per-column uncertainty; it is enabled per dataset (`use_ucq`); the default configuration in `backend/datamans/sets.py` enables it only for the blast-furnace sets.
 - **Privacy techniques.** None; no personal data is processed.
-- **Outside services.** The backend contacts no outside service. The built frontend loads the Roboto font stylesheet from Google Fonts (`fonts.googleapis.com`) in the user's browser, so a visitor's IP address reaches Google. No application data is sent.
+- **Outside services.** None. The backend contacts no outside service, and the frontend serves its Roboto and Roboto Mono fonts itself (`frontend/public/fonts/`), so the browser only talks to the ParamInter server.
 
 ## Performance
 
@@ -71,7 +71,6 @@ There is no predictive model whose accuracy is claimed. The contribution is the 
 ## Responsible use
 
 - **Terms of use.** MIT licence ([LICENSE](LICENSE)). The public demo is read-only: there is no upload path and nothing a user enters is stored.
-- **Open pre-release items.** Self-host the Roboto font instead of loading it from Google Fonts.
 - **Contact for misuse or vulnerability reports.** Benedikt Kantz, benedikt.kantz@tugraz.at
 
 ## Acknowledgement

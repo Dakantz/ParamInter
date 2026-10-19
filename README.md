@@ -20,7 +20,7 @@ The interpolation is shown as small multiples of all inputs and outputs and as a
 LightGBM surrogates, fitted per output column, provide sensitivity hints and SHAP-based effect views; an optional VAE estimates per-column uncertainty.
 
 An earlier version, AlloyInter, was developed for the IEEE SciVis Contest 2025 ([arXiv:2509.19202](https://arxiv.org/abs/2509.19202)).
-ParamInter uses no outside service; the built frontend loads the Roboto font from Google Fonts.
+ParamInter uses no outside service; fonts are served locally.
 
 ## Data
 
@@ -114,3 +114,4 @@ Neither the European Union nor the granting authority can be held responsible fo
 ## License
 
 MIT, see [LICENSE](LICENSE).
+The bundled Roboto and Roboto Mono fonts are under the SIL Open Font License 1.1, see [frontend/public/fonts/](frontend/public/fonts/).
