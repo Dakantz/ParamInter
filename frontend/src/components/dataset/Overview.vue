@@ -13,6 +13,7 @@
             <button v-bind:class="load_btn_class" @click="loadDataset">Load</button>
             <RouterLink :to="`./interpolator/${dataset_id}`" v-bind:class="explore_link_class">Interpolator</RouterLink>
             <RouterLink :to="`./effects/${dataset_id}`" v-bind:class="explore_link_class">Effects</RouterLink>
+            <RouterLink v-if="dataset.use_ucq" :to="`./conditioner/${dataset_id}`" class="link_btn">Conditioner</RouterLink>
 
         </p>
     </div>

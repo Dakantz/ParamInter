@@ -31,6 +31,10 @@ class DataConfig:
     is_config: bool = True
     use_ucq: bool = False
     vae_mode: VAEOptions = VAEOptions.m_GPVAE
+    # training epochs + extra constructor kwargs for the UCQ model (e.g. latent_size,
+    # gp_latent_size, n_inducing); latent_size defaults to sqrt(#columns)
+    ucq_epochs: int = 3
+    ucq_model_kwargs: dict = field(default_factory=dict)
 
     def __post_init__(self):
         self.vae_mode = VAEOptions(self.vae_mode)

@@ -38,6 +38,7 @@ class DataSample(BaseModel):
 
     indices: list[int]
     inputs: list[list[float]]
+    outputs: list[list[float]] = []
 
 
 class HistogramData(BaseModel):
@@ -232,3 +233,48 @@ class ManagerSettings(BaseModel):
     col_defs: dict[str, list[str]] = {}
     loaded: bool = False
     use_ucq: bool = False
+
+
+class ConditionSpec(BaseModel):
+    column: str
+    value: float
+    width: float = 0.0  # 0 = point condition, otherwise the full width of a range condition
+
+
+class ConditionRequest(BaseModel):
+    conditions: list[ConditionSpec] = []
+    n_samples: int = 64
+    grid_points: int = 80
+    seed: int = 0
+
+
+class ConditionResult(BaseModel):
+    """
+    GP-VAE conditional prediction: every column's posterior given the conditioned columns
+    (a Gaussian mixture over a bank of encoded training latents, see ucq/conditioning.py),
+    summarised as per-column mean/std, the posterior correlation matrix, mixture samples and
+    per-column marginal densities evaluated on `grid`.
+    """
+
+    columns: list[str]
+    input_cols: list[str]
+    output_cols: list[str]
+    conditioned: list[str]
+    mean: list[float]
+    std: list[float]
+    prior_std: list[float]  # unconditioned GP-VAE spread per column
+    data_mean: list[float]
+    data_std: list[float]
+    correlation: list[list[float]]
+    samples: list[list[float]]
+    grid: list[list[float]]  # [column][grid_points]
+    density: list[list[float]]  # [column][grid_points]
+    ess: float
+    temperature: float
+
+
+class ConditionerStatus(BaseModel):
+    available: bool
+    reason: str = ""
+    columns: list[str] = []
+    bank_size: int = 0

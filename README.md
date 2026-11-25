@@ -20,7 +20,29 @@ The interpolation is shown as small multiples of all inputs and outputs and as a
 LightGBM surrogates, fitted per output column, provide sensitivity hints and SHAP-based effect views; an optional VAE estimates per-column uncertainty.
 
 An earlier version, AlloyInter, was developed for the IEEE SciVis Contest 2025 ([arXiv:2509.19202](https://arxiv.org/abs/2509.19202)).
-ParamInter uses no outside service; the built frontend loads the Roboto font from Google Fonts.
+ParamInter uses no outside service; fonts are served locally.
+
+### GP-VAE conditioning view
+
+For datasets with `use_ucq` and the `gpvae` UCQ model, the dataset list links a **Conditioner** view.
+It shows all inputs and outputs as parallel coordinates.
+Brushing an axis conditions on a range, and double-clicking an axis fixes a single value.
+The GP-VAE (`ucq/conditioning.py`) then predicts every other parameter as a Gaussian mixture.
+Mixture samples, the mean and a mean ± σ band are drawn between neighbouring axes.
+Their opacity encodes how certain the prediction is there: 1 − posterior σ / data σ.
+Hovering a parameter shows its posterior density against the data distribution, the uncertainty of every parameter, and the posterior correlations below the plot.
+
+### iUCAM benchmark
+
+`python -m benchmark.run` scores input-uncertainty attribution mechanisms against known, simulated heteroscedastic input noise.
+It ranks each sample's inputs by attributed uncertainty and reports P/R/F1@k, NDCG@k, AP, Hit@1, Spearman, cell AUROC and the MSE score s_l2.
+The attributors are:
+- SCA (shallow heteroscedastic NN + SmoothGrad + uncertainty-propagation inversion, Gaussian and kNN neighbourhoods; Kantz et al., ICASSP 2025), and its oracle
+- gradient- and SHAP-based attribution of σ
+- the VAE / GP-VAE UCQ models, and GP-VAE leave-one-out conditioning
+- Predict-0 and random baselines
+
+Results go to `benchmark/results/` (`results.jsonl`, `summary.md`).
 
 ## Data
 
@@ -28,6 +50,7 @@ No data is included in this repository. Datasets are read from `$DATA_DIR/datase
 
 - **Alloy simulation data** ([IEEE SciVis Contest 2025](https://sciviscontest2025.github.io/data/), CC-BY-4.0): download `Dataset_VisContest_Rapid_Alloy_development_v3.txt` from [Zenodo](https://doi.org/10.5281/zenodo.15189444) and save it as `data/datasets/scivis/alloy_data.txt`.
 - **Electric arc furnace simulation**: generated with `models/eaf/run_simulation.py`; the EAF model in `models/eaf/system_model` is refactored from [SayYoungMan/EAF_modelling](https://github.com/SayYoungMan/EAF_modelling) (MIT).
+- **Gas turbine CO/NOx emissions** ([UCI 551](https://archive.ics.uci.edu/dataset/551), CC-BY-4.0): `python scripts/prepare_gas_turbine.py` downloads it to `data/datasets/gas_turbine/gas_turbine.csv`; serve it with `SETS_CONFIG_JSON=configs/gas_turbine.json`.
 - The MAST, PrivBayes, blast-furnace and Hilti configurations in `backend/datamans/sets.py` refer to data that is not distributed with this repository.
 
 Datasets are configured as `DataConfig` entries (`backend/datamans/config.py`): the first `input_cols` columns (after an optional leading time column) are inputs, the next `output_cols` columns are outputs.
@@ -114,3 +137,4 @@ Neither the European Union nor the granting authority can be held responsible fo
 ## License
 
 MIT, see [LICENSE](LICENSE).
+The bundled Roboto and Roboto Mono fonts are under the SIL Open Font License 1.1, see [frontend/public/fonts/](frontend/public/fonts/).

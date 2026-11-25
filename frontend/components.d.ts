@@ -8,6 +8,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     BeeswarmChart: typeof import('./src/components/effects/BeeswarmChart.vue')['default']
+    ConditionalPCP: typeof import('./src/components/conditioning/ConditionalPCP.vue')['default']
     Constant: typeof import('./src/components/formulation/parts/Constant.vue')['default']
     DatapointGuide: typeof import('./src/components/panels/DatapointGuide.vue')['default']
     DatapointInterpolation: typeof import('./src/components/panels/DatapointInterpolation.vue')['default']
@@ -32,5 +33,6 @@ declare module 'vue' {
     SingleAdj: typeof import('./src/components/adjuster/SingleAdj.vue')['default']
     SpyderChart: typeof import('./src/components/spyder/SpyderChart.vue')['default']
     SpyderChart_Base: typeof import('./src/components/spyder/SpyderChart_Base.vue')['default']
+    UncertaintyDetail: typeof import('./src/components/conditioning/UncertaintyDetail.vue')['default']
   }
 }
