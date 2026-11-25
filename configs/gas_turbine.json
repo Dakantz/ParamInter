@@ -1,0 +1,17 @@
+{
+    "gas_turbine": {
+        "is_config": true,
+        "modes": ["umap"],
+        "data_file": "gas_turbine/gas_turbine.csv",
+        "data_name": "Gas Turbine CO/NOx Emissions (UCI)",
+        "short_data_name": "gas_turbine",
+        "input_cols": 9,
+        "output_cols": 2,
+        "time_col": 0,
+        "inputs_constrained": false,
+        "use_ucq": true,
+        "vae_mode": "gpvae",
+        "ucq_epochs": 20,
+        "ucq_model_kwargs": {"latent_size": 6, "gp_latent_size": 6, "n_inducing": 256}
+    }
+}

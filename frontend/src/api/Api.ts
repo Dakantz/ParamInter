@@ -29,6 +29,104 @@ export interface BeeswarmResult {
   base_value: number;
 }
 
+/** ConditionRequest */
+export interface ConditionRequest {
+  /**
+   * Conditions
+   * @default []
+   */
+  conditions?: ConditionSpec[];
+  /**
+   * N Samples
+   * @default 64
+   */
+  n_samples?: number;
+  /**
+   * Grid Points
+   * @default 80
+   */
+  grid_points?: number;
+  /**
+   * Seed
+   * @default 0
+   */
+  seed?: number;
+}
+
+/**
+ * ConditionResult
+ * GP-VAE conditional prediction: every column's posterior given the conditioned columns
+ * (a Gaussian mixture over a bank of encoded training latents, see ucq/conditioning.py),
+ * summarised as per-column mean/std, the posterior correlation matrix, mixture samples and
+ * per-column marginal densities evaluated on `grid`.
+ */
+export interface ConditionResult {
+  /** Columns */
+  columns: string[];
+  /** Input Cols */
+  input_cols: string[];
+  /** Output Cols */
+  output_cols: string[];
+  /** Conditioned */
+  conditioned: string[];
+  /** Mean */
+  mean: number[];
+  /** Std */
+  std: number[];
+  /** Prior Std */
+  prior_std: number[];
+  /** Data Mean */
+  data_mean: number[];
+  /** Data Std */
+  data_std: number[];
+  /** Correlation */
+  correlation: number[][];
+  /** Samples */
+  samples: number[][];
+  /** Grid */
+  grid: number[][];
+  /** Density */
+  density: number[][];
+  /** Ess */
+  ess: number;
+  /** Temperature */
+  temperature: number;
+}
+
+/** ConditionSpec */
+export interface ConditionSpec {
+  /** Column */
+  column: string;
+  /** Value */
+  value: number;
+  /**
+   * Width
+   * @default 0
+   */
+  width?: number;
+}
+
+/** ConditionerStatus */
+export interface ConditionerStatus {
+  /** Available */
+  available: boolean;
+  /**
+   * Reason
+   * @default ""
+   */
+  reason?: string;
+  /**
+   * Columns
+   * @default []
+   */
+  columns?: string[];
+  /**
+   * Bank Size
+   * @default 0
+   */
+  bank_size?: number;
+}
+
 /** CostOverview */
 export interface CostOverview {
   /** Costs */
@@ -193,6 +291,11 @@ export interface DataSample {
   indices: number[];
   /** Inputs */
   inputs: number[][];
+  /**
+   * Outputs
+   * @default []
+   */
+  outputs?: number[][];
 }
 
 /** EffectsRequest */
@@ -494,6 +597,10 @@ export interface ValidationError {
   msg: string;
   /** Error Type */
   type: string;
+  /** Input */
+  input?: any;
+  /** Context */
+  ctx?: object;
 }
 
 import type {
@@ -794,6 +901,11 @@ export class Api<
          * @default 0
          */
         seed?: number;
+        /**
+         * Include Outputs
+         * @default false
+         */
+        include_outputs?: boolean;
       },
       params: RequestParams = {},
     ) =>
@@ -1182,6 +1294,45 @@ export class Api<
     ) =>
       this.request<InteractionBackgroundResult, HTTPValidationError>({
         path: `/datasets/${setName}/effects/interaction-background`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Builds (training the GP-VAE if it is not cached yet) the conditioner for this dataset. Unlike the other views this does not need the dataset's embeddings to be `load`ed.
+     *
+     * @name GetConditionerStatusDatasetsSetNameConditioningStatusGet
+     * @summary Get Conditioner Status
+     * @request GET:/datasets/{set_name}/conditioning/status
+     */
+    getConditionerStatusDatasetsSetNameConditioningStatusGet: (
+      setName: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<ConditionerStatus, HTTPValidationError>({
+        path: `/datasets/${setName}/conditioning/status`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @name PredictConditionedDatasetsSetNameConditioningPredictPost
+     * @summary Predict Conditioned
+     * @request POST:/datasets/{set_name}/conditioning/predict
+     */
+    predictConditionedDatasetsSetNameConditioningPredictPost: (
+      setName: string,
+      data: ConditionRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ConditionResult, HTTPValidationError>({
+        path: `/datasets/${setName}/conditioning/predict`,
         method: "POST",
         body: data,
         type: ContentType.Json,

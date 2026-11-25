@@ -36,7 +36,6 @@ from umap.layouts import tqdm
 
 from ucq.models.base import BaseUCQModel
 from ucq.models.vae import VAE
-from ucq.utils import autodevice
 
 from linear_operator.settings import _linalg_dtype_cholesky
 
@@ -51,8 +50,25 @@ class MultitaskGP(ApproximateGP):
         input_size,
         gp_latent_size=176,
         n_inducing=512,
+        inducing_init: t.Tensor | None = None,
+        lengthscale_init: float | None = None,
     ):
-        inducing_points = t.randn(gp_latent_size, n_inducing, input_size).to(t.float32)
+        if inducing_init is not None:
+            # start the inducing points on (a subset of) the encoded training latents; randn
+            # inducing points around 0 can lie far outside the VAE's latent cloud, leaving the
+            # GP stuck at its prior mean
+            inducing_points = (
+                inducing_init[:n_inducing]
+                .to(t.float32)
+                .unsqueeze(0)
+                .repeat(gp_latent_size, 1, 1)
+                .clone()
+            )
+            n_inducing = inducing_points.shape[1]
+        else:
+            inducing_points = t.randn(gp_latent_size, n_inducing, input_size).to(
+                t.float32
+            )
         variational_distribution = CholeskyVariationalDistribution(
             num_inducing_points=n_inducing, batch_shape=t.Size([gp_latent_size])
         )
@@ -88,6 +104,8 @@ class MultitaskGP(ApproximateGP):
             RBFKernel(batch_shape=t.Size([gp_latent_size])),
             batch_shape=t.Size([gp_latent_size]),
         )
+        if lengthscale_init is not None:
+            self.covar_module.base_kernel.lengthscale = lengthscale_init
         self.norm = nn.BatchNorm1d(gp_latent_size)
         self.linear = nn.Linear(gp_latent_size, gp_latent_size)
 
@@ -109,9 +127,16 @@ class GP_VAE(BaseUCQModel):
         n_inducing=512,
         vae_model: VAE = None,
         retrain_vae=True,
+        gp_latent_size: int | None = None,
+        vae_layers: list[int] | None = None,
+        gp_lr: float | None = 1e-2,
         **kwargs,
     ):
         self.retrain_vae = retrain_vae
+        # number of independent latent GPs mixed by the LMC strategy; defaults to latent_size/2
+        self.gp_latent_size = gp_latent_size
+        self.gp_lr = gp_lr
+        self.vae_layers = vae_layers
         self.latent_size = latent_size
         self.input_size = input_size
         self.n_inducing = n_inducing
@@ -150,13 +175,17 @@ class GP_VAE(BaseUCQModel):
         val_dataloader=None,
         log=False,
     ):
+        from ucq.utils import autodevice  # local import: ucq.utils imports ucq.models
+
         Y = x.dataset[:][0]
         N = Y.shape[0]
         self.N = N
         self.reinit()
         if self.vae_model is None:
             self.vae_model = VAE(
-                Y.shape[-1], layers=[64, 32], latent_size=self.latent_size
+                Y.shape[-1],
+                layers=getattr(self, "vae_layers", None) or [64, 32],
+                latent_size=self.latent_size,
             ).to()
             dev = autodevice()
         else:
@@ -183,14 +212,22 @@ class GP_VAE(BaseUCQModel):
             latents = latents.rsample()
         self.inducing_inputs = latents
         self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.input_size).to(dev)
+        # data is min-max normalised, so start from a small noise instead of gpytorch's ~0.7
+        self.likelihood.noise = 1e-4
+        self.likelihood.task_noises = t.full((self.input_size,), 1e-3, device=dev)
+        perm = t.randperm(latents.shape[0], generator=self.rng)[: self.n_inducing]
+        lengthscale = float(latents.std(0).median().clamp(min=1e-3))
 
         self.gp = (
             MultitaskGP(
                 likelihood=self.likelihood,
                 input_size=self.latent_size,
-                gp_latent_size=int(self.latent_size / 2),
+                gp_latent_size=getattr(self, "gp_latent_size", None)
+                or max(1, int(self.latent_size / 2)),
                 num_tasks=self.input_size,
                 n_inducing=self.n_inducing,
+                inducing_init=latents[perm].cpu(),
+                lengthscale_init=lengthscale,
             )
             .to(t.float32)
             .to(dev)
@@ -206,19 +243,22 @@ class GP_VAE(BaseUCQModel):
                 {"params": self.gp.parameters()},
                 {"params": self.likelihood.parameters()},
             ],
-            lr=lr,
+            lr=getattr(self, "gp_lr", None) or lr,
         )
         loss_list = []
         gen = tqdm(total=epochs * len(x)) if log else None
         for epoch in range(epochs):
             for batch_data in enumerate(x):
                 Y = batch_data[1][0].to(dev)
+                # zero_grad used to sit inside the `else` branch only, so with the (tuple
+                # returning) VAE encoder gradients accumulated across every batch.
+                optimizer.zero_grad()
                 latent = self.vae_model.encode(Y)
                 if isinstance(latent, tuple):
-                    sample_batch = latent[0].detach()
+                    # train on the latent mean, which is also what forward/uncertainty use
+                    sample_batch = latent[1].detach()
                 else:
                     sample_batch = latent.rsample()
-                    optimizer.zero_grad()
                 output_batch = self.gp(sample_batch.to(t.float32).to(dev))
                 loss = -mll(output_batch, Y).sum()
                 loss_list.append(loss.item())

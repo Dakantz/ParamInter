@@ -54,6 +54,23 @@ hilti_man = DataConfig(
     inputs_constrained=False,
 )
 
+# UCI "Gas Turbine CO and NOx Emission" (id 551), prepared by scripts/prepare_gas_turbine.py:
+# ambient + process parameters -> CO/NOx emissions. Industrial parameter set used by the
+# GP-VAE conditioning view.
+gas_turbine_man = DataConfig(
+    modes=os.getenv("EMBEDDING", "umap").split(","),
+    data_file="gas_turbine/gas_turbine.csv",
+    data_name="Gas Turbine CO/NOx Emissions (UCI)",
+    short_data_name="gas_turbine",
+    input_cols=9,
+    output_cols=2,
+    time_col=0,
+    inputs_constrained=False,
+    use_ucq=True,
+    ucq_epochs=20,
+    ucq_model_kwargs={"latent_size": 6, "gp_latent_size": 6, "n_inducing": 256},
+)
+
 
 class SetsManager:
     def __init__(self, separator: str = "-"):
@@ -132,6 +149,7 @@ class SetsManager:
             "electric_arc_furnace": eaf_man,
             "blast_furnace": blast_furnace_sets,
             "hilti": hilti_man,
+            "gas_turbine": gas_turbine_man,
         }
         with open("configs.json", "w") as f:
             import json

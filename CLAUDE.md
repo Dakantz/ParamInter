@@ -21,6 +21,10 @@ python -m uvicorn backend:app --reload       # run the API (serves OpenAPI at /o
 
 There is no test suite, linter, or formatter configured for the backend.
 
+Industrial demo dataset: `python scripts/prepare_gas_turbine.py` downloads the UCI gas turbine
+CO/NOx set into `data/datasets/gas_turbine/`; `SETS_CONFIG_JSON=configs/gas_turbine.json` serves
+only that dataset (the hardcoded defaults expect every other dataset file to exist).
+
 Useful env vars (see `backend/datamans/config.py`, `.vscode/launch.json`):
 - `DATA_DIR` — base directory for datasets/models (default `./data`).
 - `SETS_CONFIG_JSON` — path to a JSON file describing dataset configs to load instead of the
@@ -111,6 +115,11 @@ listing/loading datasets:
 When adding a new dataset, add a `DataConfig` (in `sets.py` or a `SETS_CONFIG_JSON` file) rather
 than new code — the generic `ModelManager` pipeline is meant to handle arbitrary tabular datasets.
 
+- `conditioning.py` (`/conditioning`) — GP-VAE conditional prediction for the Conditioner view:
+  `/status` builds (training if needed) the dataset's `GPVAEConditioner` without a full `load()`;
+  `/predict` takes point/range conditions and returns every column's posterior mean/std,
+  mixture samples, marginal densities and posterior correlations.
+
 ### UCQ module (`ucq/`)
 
 Standalone-ish package for uncertainty-conditioned quantification, imported by the backend for
@@ -120,10 +129,30 @@ optional per-point uncertainty estimates:
 - `ucq/models/vae.py`, `ucq/models/gp_vae.py` — the two concrete VAE variants
   (`VAEOptions.m_VAE` / `VAEOptions.m_GPVAE` in `config.py`); a Gaussian-process-flavored VAE and a
   plain VAE.
+- `ucq/conditioning.py` — `GPVAEConditioner`: precomputes the GP-VAE's per-latent multitask
+  Gaussian (mean + full cross-column covariance) over a bank of encoded training rows, then
+  conditions on any column subset in closed form (Gaussian conditioning per component, mixture
+  weights from the observed-column likelihood, tempered when the ESS collapses). Range conditions
+  are moment-matched as an observation with variance width²/12.
 - `ucq/models/random_model.py` — a baseline/random model for comparison.
 - `ucq/utils.py` — training loop (`train_vae_noiseless`) and tensor helpers
   (`minmaxnormed_tensor_of`, `autodevice`) used by `ModelManager.load()`.
 - `ucq/exploration.ipynb` — exploratory notebook, not part of the served app.
+
+### Benchmark (`benchmark/`)
+
+iUCAM benchmark (input uncertainty attribution): simulated heteroscedastic input noise with
+known per-cell sigma_x (polynomial, polynomial-GMM, Styblinski-Tang, gas turbine + injected noise),
+a shallow heteroscedastic NN (conformally calibrated) as the uncertainty-aware model, and
+attributors: SCA (SmoothGrad + uncertainty-propagation inversion, Gaussian/kNN neighbourhoods,
+Kantz et al. ICASSP 2025), SCA oracle, gradient/SHAP on sigma, VAE/GP-VAE (UCQ), GP-VAE
+leave-one-out conditioning, Predict-0 and random. Scored with P/R/F1@k, NDCG@k, AP, Hit@1,
+Spearman, cell AUROC and s_l2.
+
+```bash
+python -m benchmark.run --datasets polynomial,styblinski_tang:4,gas_turbine --levels 0.3,0.6 --seeds 3
+# -> benchmark/results/results.jsonl + summary.md
+```
 
 ### Frontend
 
@@ -136,7 +165,11 @@ Vue 3 + Vuetify + Vite SPA (auto-imports components via `unplugin-vue-components
   (`envPrefix: 'PI_'` in `vite.config.mts`; see `.env.development` / `.env.production`).
 - `frontend/src/proc/data-store.ts` — client-side state/data handling for the loaded dataset.
 - `frontend/src/views/` — top-level routed pages: `DataSetSelector.vue` (pick/load a dataset),
-  `Interpolator.vue` (main exploration UI).
+  `Interpolator.vue` (main exploration UI), `Effects.vue` (SHAP views), `Conditioner.vue`
+  (GP-VAE conditioning: parallel coordinates over all columns, brush/double-click to condition,
+  predicted columns drawn with opacity = certainty between axes, hover detail below with the
+  posterior density, per-parameter uncertainty bars and posterior correlations; components in
+  `components/conditioning/`). Only shown for datasets with `use_ucq` + `gpvae`.
 - `frontend/src/components/` — organized by feature area: `adjuster/` (parameter sliders),
   `dataset/` (dataset overview), `formulation/` (building linear cost-target expressions, mirrors
   `LinearTarget`/`DataPointMinimzer` on the backend), `interpolation/` and `panels/` (interpolation

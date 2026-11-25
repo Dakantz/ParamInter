@@ -21,7 +21,7 @@ except ImportError:
 from backend.col_defs import column_types
 import pandas as pd
 import numpy as np
-from .config import DataConfig
+from .config import DataConfig, VAEOptions
 import tqdm
 from pathlib import Path
 import os
@@ -62,6 +62,7 @@ class ModelManager:
         self.load_data_file()
 
         self.vae_model: BaseUCQModel = None
+        self.conditioner = None
         self.dev = autodevice()
         self.embedded_tsne: np.ndarray = None
 
@@ -197,30 +198,7 @@ class ModelManager:
             model_ensemble[output_col] = model
 
         print("Model ensemble loaded with models for outputs:", model_ensemble.keys())
-        self.vae_model_path = (
-            self.models_path / f"vae_model_{self.cfg.vae_mode.name}.pckle"
-        )
-        self.vae_model = None
-        if self.cfg.use_ucq:
-            if self.vae_model_path.exists():
-                print("Loading VAE model from", self.vae_model_path)
-                with open(self.vae_model_path, "rb") as f:
-                    self.vae_model = pickle.load(f)
-
-            if self.vae_model is None:
-                print("Training VAE model, no model @", self.vae_model_path)
-                self.vae_model = train_vae_noiseless(
-                    self.cleaned,
-                    self.cfg.vae_mode.toClass(),
-                    epochs=3,
-                    log=True,
-                    model_kwargs={"latent_size": int(np.sqrt(self.cleaned.shape[1]))},
-                )
-
-                with open(self.vae_model_path, "wb") as f:
-                    pickle.dump(self.vae_model.cpu(), f)
-
-            self.vae_model = self.vae_model.to(self.dev)
+        self.load_ucq()
         self.eval_uncertainties()
         self.model_ensemble = model_ensemble
         self.scaler_outs = scaler_outs
@@ -235,6 +213,49 @@ class ModelManager:
         self.column_types = self.column_types_loaded
         self.loaded = True
 
+    def load_ucq(self) -> BaseUCQModel | None:
+        """Load (or train + cache) the UCQ model. Independent of the (expensive) embeddings so the
+        conditioning view can use it without a full `load()`."""
+        if self.vae_model is not None or not self.cfg.use_ucq:
+            return self.vae_model
+        self.vae_model_path = (
+            self.models_path / f"vae_model_{self.cfg.vae_mode.name}.pckle"
+        )
+        if self.vae_model_path.exists():
+            print("Loading VAE model from", self.vae_model_path)
+            with open(self.vae_model_path, "rb") as f:
+                self.vae_model = pickle.load(f)
+
+        if self.vae_model is None:
+            print("Training VAE model, no model @", self.vae_model_path)
+            model_kwargs = {"latent_size": int(np.sqrt(self.cleaned.shape[1]))}
+            model_kwargs.update(self.cfg.ucq_model_kwargs or {})
+            self.vae_model = train_vae_noiseless(
+                self.cleaned,
+                self.cfg.vae_mode.toClass(),
+                epochs=self.cfg.ucq_epochs,
+                log=True,
+                model_kwargs=model_kwargs,
+            )
+
+            with open(self.vae_model_path, "wb") as f:
+                pickle.dump(self.vae_model.cpu(), f)
+
+        self.vae_model = self.vae_model.to(self.dev)
+        return self.vae_model
+
+    def get_conditioner(self):
+        """GP-VAE based conditional predictor (see ucq/conditioning.py), built lazily."""
+        if self.conditioner is not None:
+            return self.conditioner
+        if self.cfg.vae_mode != VAEOptions.m_GPVAE or not self.cfg.use_ucq:
+            return None
+        from ucq.conditioning import GPVAEConditioner
+
+        model = self.load_ucq()
+        self.conditioner = GPVAEConditioner(model, self.cleaned)
+        return self.conditioner
+
     def eval_uncertainties(self):
         if self.vae_model is None:
             self.uncertainty = pd.DataFrame(
@@ -242,8 +263,14 @@ class ModelManager:
             )
             return
         cleaned_minmax = minmaxnormed_tensor_of(self.cleaned).to(self.dev)
-        noise = self.vae_model.uncertainty(cleaned_minmax.to())
-        noise_df = pd.DataFrame(data=noise.cpu().numpy(), columns=self.cleaned.columns)
+        # batched: the GP-VAE's multitask posterior over the full dataset at once is huge
+        noise = np.concatenate(
+            [
+                self.vae_model.uncertainty(cleaned_minmax[i : i + 4096]).cpu().numpy()
+                for i in range(0, len(cleaned_minmax), 4096)
+            ]
+        )
+        noise_df = pd.DataFrame(data=noise, columns=self.cleaned.columns)
         self.uncertainty = noise_df * (self.cleaned.max() - self.cleaned.min())
 
     def get_settings(self) -> ManagerSettings:

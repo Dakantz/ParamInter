@@ -39,7 +39,10 @@ def get_data(set_name: str = None) -> DataPoints:
 
 @data_router.get("/sample")
 def get_data_sample(
-    set_name: str = None, max_samples: int = 500, seed: int = 0
+    set_name: str = None,
+    max_samples: int = 500,
+    seed: int = 0,
+    include_outputs: bool = False,
 ) -> DataSample:
     """A random sample of raw input rows (indices + values), for client-side plots (e.g. parallel
     coordinates) that need real rows without paying for the full dataset's outputs/size."""
@@ -51,7 +54,12 @@ def get_data_sample(
         rng = np.random.default_rng(seed)
         indices = np.sort(rng.choice(n, size=max_samples, replace=False))
     inputs = data_man.cleaned[data_man.input_cols].iloc[indices].values.tolist()
-    return DataSample(indices=indices.tolist(), inputs=inputs)
+    outputs = (
+        data_man.cleaned[data_man.output_cols].iloc[indices].values.tolist()
+        if include_outputs
+        else []
+    )
+    return DataSample(indices=indices.tolist(), inputs=inputs, outputs=outputs)
 
 
 @data_router.get("/page")

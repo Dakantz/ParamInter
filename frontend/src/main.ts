@@ -21,6 +21,7 @@ const app = createApp(App)
 import DataSetSelector from './views/DataSetSelector.vue'
 import Interpolator from './views/Interpolator.vue'
 import Effects from './views/Effects.vue'
+import Conditioner from './views/Conditioner.vue'
 import { API_BASE_URL, SITE_BASE_URL } from './config'
 
 console.log('SITE_BASE_URL:', SITE_BASE_URL, 'API_BASE_URL:', API_BASE_URL)
@@ -28,6 +29,7 @@ const routes = [
   { path: `${SITE_BASE_URL}/`, component: DataSetSelector },
   { path: `${SITE_BASE_URL}/interpolator/:setname`, component: Interpolator },
   { path: `${SITE_BASE_URL}/effects/:setname`, component: Effects },
+  { path: `${SITE_BASE_URL}/conditioner/:setname`, component: Conditioner },
 ]
 console.log('Routes:', routes, window.location.pathname)
 export const router = createRouter({
