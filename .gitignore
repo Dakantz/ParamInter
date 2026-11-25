@@ -21,3 +21,4 @@ hilti*
 
 # benchmark logs
 benchmark/results/*.log
+benchmark/results/_running/

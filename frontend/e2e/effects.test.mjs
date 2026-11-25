@@ -10,7 +10,7 @@ import {
     managerSettings, columnTypesHilti, dataSampleHilti, beeswarmResult, interactionResultHilti,
     interactionBackgroundResultHilti,
     manyDimsManagerSettings, columnTypesManyDims, dataSampleManyDims, manyDimsCols,
-    makeFixtureRouter,
+    makeFixtureRouter, dataPageOf,
 } from './fixtures.mjs';
 
 const app = makeApp(3002);
@@ -20,6 +20,8 @@ const fixtureForHilti = makeFixtureRouter({
     'GET /datasets/hilti': managerSettings,
     'GET /datasets/hilti/data/column_types': columnTypesHilti,
     'GET /datasets/hilti/data/sample': dataSampleHilti,
+    // the scatterplot matrix loads the full dataset page by page, not a random sample
+    'GET /datasets/hilti/data/page': dataPageOf(dataSampleHilti),
     'POST /datasets/hilti/effects/beeswarm': beeswarmResult,
     'POST /datasets/hilti/effects/interaction': interactionResultHilti,
     'POST /datasets/hilti/effects/interaction-background': interactionBackgroundResultHilti,
@@ -29,6 +31,7 @@ const fixtureForManyDims = makeFixtureRouter({
     'GET /datasets/manydims': manyDimsManagerSettings,
     'GET /datasets/manydims/data/column_types': columnTypesManyDims,
     'GET /datasets/manydims/data/sample': dataSampleManyDims,
+    'GET /datasets/manydims/data/page': dataPageOf(dataSampleManyDims),
 });
 
 const highlightedCount = (page) =>
@@ -156,8 +159,8 @@ test('Effects panel: hovering a Dependency row shows a ~1/3-container-width popo
     });
 
     await t.test('hovering a specific point in the Dependency row highlights that point in the popover', async () => {
-        // interactionResultHilti.indices[0] === 0, and dataSampleHilti.indices includes 0 (the
-        // scatterplot matrix's own separate sample), so this dataset row is in both - point 0's
+        // interactionResultHilti.indices[0] === 0, and dataSampleHilti.indices includes 0 (served
+        // as the scatterplot matrix's own /data/page rows), so this dataset row is in both - point 0's
         // dot carries d3 datum {i: 0, ...} (see BeeswarmChart's swarm layout).
         const dotBox = await page.evaluate(() => {
             const panel = document.querySelectorAll('.wide-panel')[1];
