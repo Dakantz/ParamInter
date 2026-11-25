@@ -10,6 +10,17 @@
  * ---------------------------------------------------------------
  */
 
+/** AttributionRequest */
+export interface AttributionRequest {
+  /**
+   * Conditions
+   * @default []
+   */
+  conditions?: ConditionSpec[];
+  /** Target */
+  target: string;
+}
+
 /**
  * BeeswarmResult
  * Per-feature SHAP values (first order) for a sample of the dataset, for one output column.
@@ -587,6 +598,38 @@ export interface SensitivityAnalysisResult {
   sensitivity_scores: number[];
   /** Out Col */
   out_col: string;
+}
+
+/**
+ * UncertaintyAttribution
+ * Per-column explanation of the GP-VAE posterior std of `target` given the conditions (see
+ * `GPVAEConditioner.attribute`). All stds are in target units; lists follow `columns`.
+ * - remove_std / condition_effect (= remove_std - base_std): conditioned columns only.
+ * - add_std / pin_gain (= base_std - add_std): free columns only; expected target std after
+ *   additionally pinning that column (averaged over its posterior, 5-pt Gauss-Hermite).
+ * - explained_share: squared posterior correlation with the target, in [0, 1].
+ */
+export interface UncertaintyAttribution {
+  /** Target */
+  target: string;
+  /** Columns */
+  columns: string[];
+  /** Conditioned */
+  conditioned: string[];
+  /** Kind */
+  kind: string[];
+  /** Base Std */
+  base_std: number;
+  /** Remove Std */
+  remove_std: (number | null)[];
+  /** Condition Effect */
+  condition_effect: (number | null)[];
+  /** Add Std */
+  add_std: (number | null)[];
+  /** Pin Gain */
+  pin_gain: (number | null)[];
+  /** Explained Share */
+  explained_share: number[];
 }
 
 /** ValidationError */
@@ -1333,6 +1376,27 @@ export class Api<
     ) =>
       this.request<ConditionResult, HTTPValidationError>({
         path: `/datasets/${setName}/conditioning/predict`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Explains the posterior std of `target` given the conditions: effect of removing each condition, expected gain of pinning each free column, and each column's share of the target's posterior variance (see ucq/conditioning.py `GPVAEConditioner.attribute`).
+     *
+     * @name AttributeUncertaintyDatasetsSetNameConditioningAttributionPost
+     * @summary Attribute Uncertainty
+     * @request POST:/datasets/{set_name}/conditioning/attribution
+     */
+    attributeUncertaintyDatasetsSetNameConditioningAttributionPost: (
+      setName: string,
+      data: AttributionRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<UncertaintyAttribution, HTTPValidationError>({
+        path: `/datasets/${setName}/conditioning/attribution`,
         method: "POST",
         body: data,
         type: ContentType.Json,
