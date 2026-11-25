@@ -49,7 +49,12 @@ test('Effects link navigates to the effects view and renders the beeswarm chart 
     ]);
 
     await t.test('shows the dataset name in the page title', async () => {
-        await page.waitForSelector('h2.small_h2');
+        // The <h2> renders immediately as " - Effects" and only gains the dataset name once
+        // GET /datasets/hilti resolves - wait for that rather than reading it on first paint.
+        await page.waitForFunction(
+            () => document.querySelector('h2.small_h2')?.textContent.trim().startsWith('Hilti'),
+            { timeout: 5000 },
+        ).catch(() => {});
         const title = await page.$eval('h2.small_h2', (el) => el.textContent.trim());
         assert.equal(title, 'Hilti - Effects');
     });

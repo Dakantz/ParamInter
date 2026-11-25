@@ -147,11 +147,20 @@ export async function waitForPanelRow(page, panelIndex) {
         { timeout: 10000 },
         panelIndex,
     );
-    const handle = await page.evaluateHandle(
-        (i) => document.querySelectorAll('.wide-panel')[i].querySelector('g.beeswarm-row rect'),
+    // Measured in-page in one step (and polled until non-empty), not via an ElementHandle +
+    // boundingBox(): a redraw between those two round-trips detaches the handle and
+    // boundingBox() then returns null.
+    const box = await page.waitForFunction(
+        (i) => {
+            const rect = document.querySelectorAll('.wide-panel')[i]?.querySelector('g.beeswarm-row rect');
+            if (!rect) return null;
+            const r = rect.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+        },
+        { timeout: 10000 },
         panelIndex,
     );
-    return handle.asElement().boundingBox();
+    return box.jsonValue();
 }
 
 // Moves the mouse onto the center-ish of `box` via a stepped move. A single-jump `mouse.move`

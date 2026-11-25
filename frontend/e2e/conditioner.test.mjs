@@ -9,7 +9,7 @@ import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { makeApp, FRONTEND_DIR } from './helpers.mjs';
 import {
-    CONDITIONER_SET, COLS, BASE_REL,
+    CONDITIONER_SET, COLS, BASE_REL, PIN_GAIN,
     makeConditionerRouter, statusUnavailable,
 } from './conditioner-fixtures.mjs';
 
@@ -221,6 +221,156 @@ test('Conditioner: brush / double click / remove / clear conditions', (t) => {
             assert.deepEqual(body.conditions.map((c) => c.column).sort(), ['a', 'y2']);
             assert.deepEqual((await condRowNames(page)).sort(), ['a', 'y2']);
         });
+    });
+});
+
+// --- uncertainty attribution panel -------------------------------------------------------------
+
+const COND_COLOR = '#d1495b';
+const PRED_COLOR = '#2f6db3';
+
+async function waitForAttributionTarget(page, target) {
+    await page.waitForFunction(
+        (t) => document.querySelector('.ua-panel h3')?.textContent.includes(`σ(${t})`)
+            && !document.querySelector('.ua-loading')
+            && document.querySelectorAll('g.ua-row').length > 0,
+        { timeout: 5000 },
+        target,
+    );
+}
+
+async function hoverAxis(page, col) {
+    const box = await overlayBox(page, col);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 10 });
+}
+
+// Per row: {col, kind, barFill, text}.
+const attributionRows = (page) => page.$$eval('g.ua-row', (els) => els.map((g) => ({
+    col: g.getAttribute('data-col'),
+    kind: g.getAttribute('class').match(/ua-row-(\w+)/)[1],
+    barFill: g.querySelector('rect.ua-bar')?.getAttribute('fill') ?? null,
+    text: g.querySelector('text.ua-text')?.textContent ?? '',
+})));
+const summaryText = (page) => page.$eval('.ua-summary', (el) => el.textContent.replace(/\s+/g, ' ').trim());
+
+test('Conditioner: uncertainty attribution panel', (t) => {
+    const { fixtureFor, predictBodies, attributionBodies } = makeConditionerRouter();
+    return app.withPage(fixtureFor, async (page) => {
+        await page.setViewport({ width: 1600, height: 1150 });
+        await openConditioner(page);
+        await waitForPredict(predictBodies, () => true);
+
+        await t.test('renders one row per column for the default detail column (y2)', async () => {
+            await waitForAttributionTarget(page, 'y2');
+            const rows = await attributionRows(page);
+            assert.deepEqual(rows.map((r) => r.col), COLS, 'same row order as the uncertainty bars');
+            assert.deepEqual(rows.map((r) => r.kind), ['free', 'free', 'free', 'free', 'target']);
+            assert.match(rows[4].text, /^target/);
+            const body = attributionBodies.find((b) => b.target === 'y2');
+            assert.ok(body, 'an attribution request for y2 was sent');
+            assert.deepEqual(body.conditions, []);
+            // unconditioned: no condition sentence, best pin = b (largest PIN_GAIN)
+            const summary = await summaryText(page);
+            assert.match(summary, /No conditions/);
+            assert.match(summary, new RegExp(`Fixing b would reduce σ\\(y2\\) most \\(−${PIN_GAIN.b * 100}%\\)`));
+            // labels coloured like the other charts (inputs dark, outputs orange)
+            const fills = await page.$$eval('g.ua-row text.ua-label', (els) => els.map((e) => e.getAttribute('fill')));
+            assert.deepEqual(fills, ['#333', '#333', '#333', '#c76b00', '#c76b00']);
+            // PCP: small attribution indicator under the free axis labels
+            assert.ok(await page.$('rect.attr-ind-b'), 'PCP indicator for b');
+        });
+
+        await t.test('the request target follows the hovered axis', async () => {
+            await hoverAxis(page, 'c');
+            await waitForAttributionTarget(page, 'c');
+            assert.ok(attributionBodies.some((b) => b.target === 'c'));
+            const rows = await attributionRows(page);
+            assert.equal(rows.find((r) => r.kind === 'target').col, 'c');
+            await hoverAxis(page, 'y1');
+            await waitForAttributionTarget(page, 'y1');
+            // hovering back to c is answered from the cache, without a new request
+            const n = attributionBodies.filter((b) => b.target === 'c').length;
+            await hoverAxis(page, 'c');
+            await waitForAttributionTarget(page, 'c');
+            await sleep(300);
+            assert.equal(attributionBodies.filter((b) => b.target === 'c').length, n, 'cached attribution reused');
+        });
+
+        await t.test('conditioned rows vs free rows: colours, labels and summary', async () => {
+            await brushAxis(page, 'b', 0.3, 0.6);
+            await dblclickAxis(page, 'y1', 0.5);
+            await page.waitForFunction(() => document.querySelectorAll('.cond-row').length === 2, { timeout: 3000 });
+            await hoverAxis(page, 'y2'); // stay there: moving away would sweep over other axes
+            await page.waitForFunction(() => {
+                const rows = document.querySelectorAll('g.ua-row-conditioned');
+                return document.querySelector('.ua-panel h3')?.textContent.includes('σ(y2)') && rows.length === 2;
+            }, { timeout: 5000 });
+            const body = attributionBodies.findLast((b) => b.target === 'y2');
+            assert.deepEqual(body.conditions.map((c) => c.column), ['b', 'y1'], 'conditions sent sorted by column');
+            const rows = await attributionRows(page);
+            const by = Object.fromEntries(rows.map((r) => [r.col, r]));
+            for (const c of ['b', 'y1']) {
+                assert.equal(by[c].kind, 'conditioned');
+                assert.equal(by[c].barFill, COND_COLOR);
+                // fixture: dropping one condition grows σ by 1/0.6 - 1 = 66.7 %
+                assert.match(by[c].text, /^condition reduces σ by 66\.7%$/);
+            }
+            for (const c of ['a', 'c']) {
+                assert.equal(by[c].kind, 'free');
+                assert.equal(by[c].barFill, PRED_COLOR);
+                assert.match(by[c].text, new RegExp(`^pin next: −${PIN_GAIN[c] * 100}%$`));
+            }
+            assert.equal(by.y2.kind, 'target');
+            assert.equal(by.y2.barFill, null);
+            const summary = await summaryText(page);
+            assert.match(summary, /Most of the certainty comes from b/);
+            assert.match(summary, /Fixing c would reduce σ\(y2\) most \(−12%\)/, summary);
+            // PCP indicators: condition colour on conditioned axes, prediction colour on free ones
+            assert.equal(await page.$eval('rect.attr-ind-b', (e) => e.getAttribute('fill')), COND_COLOR);
+            assert.equal(await page.$eval('rect.attr-ind-c', (e) => e.getAttribute('fill')), PRED_COLOR);
+        });
+
+        await t.test('hovering an attribution row highlights the column without retargeting', async () => {
+            const h3 = await page.$eval('.ua-panel h3', (el) => {
+                const r = el.getBoundingClientRect();
+                return { x: r.x + 20, y: r.y + r.height / 2 };
+            });
+            const row = await page.$eval('g.ua-row[data-col="a"] rect.ua-bg', (el) => {
+                const r = el.getBoundingClientRect();
+                return { x: r.x + 30, y: r.y + r.height / 2 };
+            });
+            await page.mouse.move(h3.x, h3.y); // jump into the panel, away from other hover targets
+            await page.mouse.move(row.x, row.y, { steps: 10 });
+            await page.waitForFunction(() => document.querySelector('g.axis-a .domain')?.getAttribute('stroke-width') === '3', { timeout: 3000 });
+            assert.match(await page.$eval('.ua-panel h3', (el) => el.textContent), /σ\(y2\)/, 'target unchanged');
+            assert.match(await detailTitle(page), /^y2\b/);
+            assert.equal(await page.$eval('g.ua-row[data-col="a"] rect.ua-bg', (e) => e.getAttribute('fill')), '#eef3fa');
+            await page.mouse.move(h3.x, h3.y, { steps: 10 });
+            await page.waitForFunction(() => document.querySelector('g.axis-a .domain')?.getAttribute('stroke-width') === '1', { timeout: 3000 });
+        });
+    });
+});
+
+test('Conditioner: stale attribution responses do not overwrite newer ones', () => {
+    // the response for target "a" arrives 1.5 s late, after the one for "c"
+    const { fixtureFor, predictBodies, attributionBodies } = makeConditionerRouter({
+        attributionDelay: (b) => (b.target === 'a' ? 1500 : 0),
+    });
+    return app.withPage(fixtureFor, async (page) => {
+        await page.setViewport({ width: 1600, height: 1150 });
+        await openConditioner(page);
+        await waitForPredict(predictBodies, () => true);
+        await waitForAttributionTarget(page, 'y2');
+        await hoverAxis(page, 'a');
+        const deadline = Date.now() + 3000;
+        while (!attributionBodies.some((b) => b.target === 'a') && Date.now() < deadline) await sleep(20);
+        assert.ok(attributionBodies.some((b) => b.target === 'a'), 'request for a was sent');
+        await hoverAxis(page, 'c');
+        await waitForAttributionTarget(page, 'c');
+        await sleep(2000); // the late "a" response has arrived by now
+        assert.match(await page.$eval('.ua-panel h3', (el) => el.textContent), /σ\(c\)/);
+        const rows = await attributionRows(page);
+        assert.equal(rows.find((r) => r.kind === 'target').col, 'c');
     });
 });
 
