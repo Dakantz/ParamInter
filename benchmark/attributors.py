@@ -181,8 +181,15 @@ class _JointUCQ(Attributor):
     def _table(self, split):
         return pd.DataFrame(np.column_stack([split.x_noisy, split.y]))
 
+    _cache: dict = {}  # (model class, task identity) -> (model, train, lo, diff); shared by subclasses
+
     def fit_model(self, task):
         from ucq.utils import train_vae_noiseless
+
+        key = (self.model_cls.__name__, task.name, task.meta["noise_level"], task.meta["seed"], len(task.train.y), self.epochs, self.seed)
+        if key in _JointUCQ._cache:
+            model, train, self.lo, self.diff = _JointUCQ._cache[key]
+            return model, train
 
         t.manual_seed(self.seed)
         train = self._table(task.train)
@@ -199,6 +206,8 @@ class _JointUCQ(Attributor):
         diff = (train.max() - train.min()).values.copy()
         diff[diff == 0] = 1
         self.diff = diff
+        _JointUCQ._cache.clear()  # keep only the current task's model around
+        _JointUCQ._cache[key] = (model, train, self.lo, self.diff)
         return model, train
 
     def normed_test(self, task):

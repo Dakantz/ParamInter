@@ -182,7 +182,8 @@ function drawAll() {
     drawBars();
     drawCorr();
 }
-watch(() => [props.result, props.column, props.conditions, props.data_rows], drawAll, { deep: true });
+// flush: 'post' - the svgs live under v-if="result", so draw after the DOM update
+watch(() => [props.result, props.column, props.conditions, props.data_rows], drawAll, { deep: true, flush: 'post' });
 onMounted(drawAll);
 </script>
 

@@ -50,7 +50,7 @@ class GPVAEConditioner:
         bank_size: int = 3000,
         batch_size: int = 64,
         seed: int = 0,
-        point_jitter: float = 1e-4,
+        point_jitter: float = 1e-6,
         min_ess: float = 16.0,
     ):
         self.model = model

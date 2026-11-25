@@ -121,6 +121,10 @@ function drawStatic() {
             });
         brushes[col] = brush as d3.BrushBehavior<unknown>;
         const bg = g.append('g').attr('class', `brush brush-${cssSafe(col)}`).call(brush);
+        bg.select('.overlay').attr('fill', 'transparent').attr('stroke', 'none');
+        bg.select('.selection').attr('fill', '#d1495b').attr('fill-opacity', 0.18)
+            .attr('stroke', '#d1495b').attr('stroke-width', 1);
+        bg.selectAll('.handle').attr('fill', 'transparent');
         bg.on('dblclick', (event: MouseEvent) => {
             const [, py] = d3.pointer(event, g.node());
             bg.call(brush.move as any, null);
