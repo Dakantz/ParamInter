@@ -55,10 +55,11 @@ npm run preview
 npm run generate-client  # regenerate frontend/src/api/Api.ts from a running backend's OpenAPI schema
                           # (`sta generate -p http://localhost:8091/openapi.json -o ./src/api/ --axios`)
                           # run this after changing any backend router/model, then start the backend first
+npm run test:e2e      # node --test e2e/*.test.mjs: real Vite + Puppeteer, backend mocked per file
+                      # (fixtures.mjs, conditioner-fixtures.mjs); ~20 s
 ```
 
-There is no frontend test suite or linter/formatter configured (biome/eslint are present only as
-transitive deps, not wired up).
+No linter/formatter is configured (biome/eslint are present only as transitive deps).
 
 ### Docker
 
@@ -127,11 +128,6 @@ listing/loading datasets:
 
 When adding a new dataset, add a `DataConfig` (in `sets.py` or a `SETS_CONFIG_JSON` file) rather
 than new code — the generic `ModelManager` pipeline is meant to handle arbitrary tabular datasets.
-
-- `conditioning.py` (`/conditioning`) — GP-VAE conditional prediction for the Conditioner view:
-  `/status` builds (training if needed) the dataset's `GPVAEConditioner` without a full `load()`;
-  `/predict` takes point/range conditions and returns every column's posterior mean/std,
-  mixture samples, marginal densities and posterior correlations.
 
 ### UCQ module (`ucq/`)
 
