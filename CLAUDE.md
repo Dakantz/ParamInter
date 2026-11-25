@@ -19,7 +19,15 @@ uv sync --index-strategy unsafe-best-match   # install deps; needed because of t
 python -m uvicorn backend:app --reload       # run the API (serves OpenAPI at /openapi.json)
 ```
 
-There is no test suite, linter, or formatter configured for the backend.
+Tests (pytest, `tests/`; ~10 s, no datasets or cached models needed — a tiny GP-VAE is trained on
+a synthetic table, the API tests stub `sets_manager.get_manager`):
+
+```bash
+VIRTUAL_ENV=.venv uv pip install pytest httpx   # test deps are not in uv.lock
+.venv/bin/python -m pytest -q                    # config in pyproject [tool.pytest.ini_options]
+```
+
+There is no linter or formatter configured for the backend.
 
 Industrial demo dataset: `python scripts/prepare_gas_turbine.py` downloads the UCI gas turbine
 CO/NOx set into `data/datasets/gas_turbine/`; `SETS_CONFIG_JSON=configs/gas_turbine.json` serves
@@ -111,6 +119,11 @@ listing/loading datasets:
   `/interpolation` finds the best-`k` candidate points under filters/costs and interpolates paths
   toward them the same way `datapoint.py` does, augmenting the nearest-neighbor lookup with the
   cost value as an extra dimension so the path favors cost-decreasing intermediate points.
+- `conditioning.py` (`/conditioning`) — GP-VAE conditional prediction (`ucq/conditioning.py`
+  `GPVAEConditioner`): `GET /status`, `POST /predict` (posterior of all columns given point/range
+  conditions), `POST /attribution` (`UncertaintyAttribution`: per-column explanation of a target's
+  posterior std — effect of removing each condition, expected gain of pinning each free column,
+  explained variance share).
 
 When adding a new dataset, add a `DataConfig` (in `sets.py` or a `SETS_CONFIG_JSON` file) rather
 than new code — the generic `ModelManager` pipeline is meant to handle arbitrary tabular datasets.

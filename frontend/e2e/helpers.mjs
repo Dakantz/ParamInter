@@ -80,7 +80,10 @@ export function makeApp(port) {
                     },
                 });
             }
-            const fixture = fixtureFor(req.url(), req.method());
+            // The request itself is passed as a third argument so routers that need the POST
+            // body (e.g. conditioner-fixtures.mjs) can read it via req.postData(); routers that
+            // only take (url, method) simply ignore it.
+            const fixture = fixtureFor(req.url(), req.method(), req);
             if (fixture === undefined) return req.continue();
             req.respond({
                 status: 200,

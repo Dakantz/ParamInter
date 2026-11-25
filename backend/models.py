@@ -278,3 +278,30 @@ class ConditionerStatus(BaseModel):
     reason: str = ""
     columns: list[str] = []
     bank_size: int = 0
+
+
+class AttributionRequest(BaseModel):
+    conditions: list[ConditionSpec] = []
+    target: str
+
+
+class UncertaintyAttribution(BaseModel):
+    """
+    Per-column explanation of the GP-VAE posterior std of `target` given the conditions (see
+    `GPVAEConditioner.attribute`). All stds are in target units; lists follow `columns`.
+    - remove_std / condition_effect (= remove_std - base_std): conditioned columns only.
+    - add_std / pin_gain (= base_std - add_std): free columns only; expected target std after
+      additionally pinning that column (averaged over its posterior, 5-pt Gauss-Hermite).
+    - explained_share: squared posterior correlation with the target, in [0, 1].
+    """
+
+    target: str
+    columns: list[str]
+    conditioned: list[str]
+    kind: list[str]  # "target" | "conditioned" | "free"
+    base_std: float
+    remove_std: list[float | None]
+    condition_effect: list[float | None]
+    add_std: list[float | None]
+    pin_gain: list[float | None]
+    explained_share: list[float]

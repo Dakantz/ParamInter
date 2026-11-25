@@ -217,3 +217,135 @@ class GPVAEConditioner:
             "ess": _ess(w),
             "temperature": beta,
         }
+
+    # ----------------------------------------------------------- attribution
+    # 5-point Gauss-Hermite rule (probabilists'): nodes in units of sigma, weights sum to 1.
+    _GH_NODES = np.array([-2.856970013872806, -1.355626179974266, 0.0, 1.355626179974266, 2.856970013872806])
+    _GH_WEIGHTS = np.array([0.011257411327720691, 0.22207592200561266, 0.5333333333333333, 0.22207592200561266, 0.011257411327720691])
+
+    def _target_moments(self, o: list[int], v: t.Tensor, r: t.Tensor, j: int):
+        """Mixture mean/variance of column ``j`` (normalised space) for observed columns ``o``.
+
+        ``v`` is a batch of observation vectors ``(B, |o|)`` that share ``o`` and the
+        observation noise ``r``, so the Cholesky factor and the component variances are
+        computed once and reused for every value. Same maths (incl. tempering) as
+        :meth:`mixture`, restricted to the single target row. Returns ``(mean (B,), var (B,))``.
+        """
+        m, C = self.bank_mean, self.bank_cov
+        K = m.shape[0]
+        if not o:
+            w = t.full((K,), 1.0 / K, dtype=t.float64)
+            mu, var_c = m[:, j], C[:, j, j]
+            mean = (w * mu).sum()
+            var = (w * (var_c + mu**2)).sum() - mean**2
+            B = v.shape[0]
+            return mean.expand(B), var.clamp(min=0).expand(B)
+        o_t = t.tensor(o)
+        S = C[:, o_t][:, :, o_t] + t.diag_embed(r).unsqueeze(0)  # (K, o, o)
+        L = t.linalg.cholesky(S)
+        resid = (v[:, None, :] - m[None, :, o_t]).unsqueeze(-1)  # (B, K, o, 1)
+        alpha = t.cholesky_solve(resid, L.unsqueeze(0))  # (B, K, o, 1)
+        logdet = 2 * t.log(t.diagonal(L, dim1=1, dim2=2)).sum(-1)  # (K,)
+        loglik = -0.5 * ((resid * alpha).sum((2, 3)) + logdet[None])  # (B, K)
+        k_jo = C[:, o_t, j].unsqueeze(-1)  # (K, o, 1)
+        mu = m[None, :, j] + (k_jo.transpose(1, 2).unsqueeze(0) @ alpha)[..., 0, 0]  # (B, K)
+        var_c = C[:, j, j] - (k_jo.transpose(1, 2) @ t.cholesky_solve(k_jo, L))[:, 0, 0]  # (K,)
+        means, variances = [], []
+        for b in range(v.shape[0]):
+            w, _ = self._temper(loglik[b])
+            mean = (w * mu[b]).sum()
+            means.append(mean)
+            variances.append(((w * (var_c + mu[b] ** 2)).sum() - mean**2).clamp(min=0))
+        return t.stack(means), t.stack(variances)
+
+    def attribute(self, conditions: list[Condition], target: str) -> dict:
+        """Explain the posterior std of ``target`` given ``conditions``, per column.
+
+        All std values are in target units (denormalised). For every column ``k`` (in
+        ``self.columns`` order):
+
+        * ``remove_std[k]`` (conditioned ``k`` != target): target std when condition ``k`` is
+          dropped and the others are kept; ``condition_effect = remove_std - base_std`` is how
+          much that condition reduces the target uncertainty (may be negative in a mixture: a
+          condition can move the posterior onto a more spread-out region).
+        * ``add_std[k]`` (free ``k`` != target): *expected* target std if ``k`` were also pinned
+          as a point condition. Pinning at a single value (the posterior mean) is a biased
+          estimate of what pinning achieves on average, so we average the conditional target
+          variance over ``k``'s current posterior, approximated by a Gaussian with the mixture's
+          mean/std of ``k`` and a 5-point Gauss-Hermite rule (mean, mean +- 1.36 sd,
+          mean +- 2.86 sd; nodes clipped to the data range +- 5 %):
+          ``add_std = sqrt(sum_i q_i Var(target | conditions, k = v_i))``.
+          ``pin_gain = base_std - add_std`` ranks "which parameter to pin next".
+        * ``explained_share[k]``: Cov(t, k)^2 / (Var(k) Var(t)) under the posterior mixture
+          covariance (squared posterior correlation), clipped to [0, 1]; 1 for the target and
+          0 when Var(k) ~= 0 (point-conditioned columns).
+        """
+        if target not in self.columns:
+            raise KeyError(f"Unknown column {target}")
+        j = self.columns.index(target)
+        o, v, r = self._normalise_conditions(conditions)  # validates the columns
+        cond_cols = {self.columns[i] for i in o}
+        scale = float(self.diff[j])
+
+        w, means, covs, _ = self.mixture(conditions)
+        mean_n, cov_n = self._moments(w, means, covs)
+        var_n = t.diagonal(cov_n).clamp(min=0)
+        _, base_var = self._target_moments(o, v[None], r, j)
+        base_std = float(base_var[0].sqrt()) * scale
+
+        kind, remove_std, effect, add_std, gain, share = [], [], [], [], [], []
+        var_t = float(var_n[j])
+        for k, col in enumerate(self.columns):
+            if k == j:
+                kind.append("target")
+            elif col in cond_cols:
+                kind.append("conditioned")
+            else:
+                kind.append("free")
+            # explained share
+            if k == j:
+                share.append(1.0)
+            elif float(var_n[k]) < 1e-5 or var_t < 1e-12:
+                share.append(0.0)
+            else:
+                s = float(cov_n[j, k]) ** 2 / (float(var_n[k]) * var_t)
+                share.append(min(max(s, 0.0), 1.0))
+
+            if kind[-1] == "conditioned":
+                keep = [i for i, oi in enumerate(o) if oi != k]
+                _, var_r = self._target_moments([o[i] for i in keep], v[keep][None], r[keep], j)
+                rs = float(var_r[0].sqrt()) * scale
+                remove_std.append(rs)
+                effect.append(rs - base_std)
+            else:
+                remove_std.append(None)
+                effect.append(None)
+
+            if kind[-1] == "free":
+                sd_k = float(var_n[k].sqrt())
+                nodes = (float(mean_n[k]) + sd_k * self._GH_NODES).clip(-0.05, 1.05)
+                vals = t.cat(
+                    [v[None].expand(len(nodes), -1), t.tensor(nodes, dtype=t.float64)[:, None]], 1
+                )
+                r_k = t.cat([r, t.tensor([self.point_jitter], dtype=t.float64)])
+                _, var_a = self._target_moments(o + [k], vals, r_k, j)
+                q = t.tensor(self._GH_WEIGHTS, dtype=t.float64)
+                a = float((q * var_a).sum().sqrt()) * scale
+                add_std.append(a)
+                gain.append(base_std - a)
+            else:
+                add_std.append(None)
+                gain.append(None)
+
+        return {
+            "target": target,
+            "columns": list(self.columns),
+            "conditioned": [self.columns[i] for i in o],
+            "kind": kind,
+            "base_std": base_std,
+            "remove_std": remove_std,
+            "condition_effect": effect,
+            "add_std": add_std,
+            "pin_gain": gain,
+            "explained_share": share,
+        }

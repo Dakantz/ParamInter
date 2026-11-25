@@ -37,3 +37,9 @@ name = "nv"
 # Required URL for the index.
 url = "https://pypi.nvidia.com"
 
+
+# Test deps are not in the lock file (uv.lock is pinned against the NVIDIA index); install with
+#   VIRTUAL_ENV=.venv uv pip install pytest httpx
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
