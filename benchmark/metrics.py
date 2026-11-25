@@ -15,14 +15,15 @@ Per sample metrics (averaged over samples):
   Hit@1           - is the top predicted feature the most uncertain one
   Spearman        - rank correlation between score_i and sigma_i
 Global:
-  AUROC           - cell-level separation of relevant vs non-relevant (i, j) cells
+  AUROC           - per-sample separation of relevant vs non-relevant features (ties count
+                    0.5), averaged over samples that have both classes
   s_l2            - MSE between score and sigma (only meaningful for calibrated methods)
 """
 
 from __future__ import annotations
 
 import numpy as np
-from scipy.stats import rankdata, spearmanr
+from scipy.stats import spearmanr
 from sklearn.metrics import roc_auc_score
 
 
@@ -67,9 +68,14 @@ def rank_metrics(
             add("Spearman", 0.0)
 
     out = {k: float(np.mean(v)) for k, v in acc.items()}
-    flat_rel = rel.ravel()
-    if flat_rel.any() and not flat_rel.all():
-        # pessimistic tie handling for AUROC via ranks with jitter-free average ranks
-        out["AUROC"] = float(roc_auc_score(flat_rel, rankdata(score.ravel())))
+    # per-row AUROC: relevance is defined relative to each row's own maximum, so pooling cells
+    # across rows would mix scales (a perfect attributor would score < 1)
+    aucs = [
+        roc_auc_score(rel[i], score[i])
+        for i in range(n)
+        if rel[i].any() and not rel[i].all()
+    ]
+    if aucs:
+        out["AUROC"] = float(np.mean(aucs))
     out["s_l2"] = float(((score - sigma) ** 2).mean())
     return out

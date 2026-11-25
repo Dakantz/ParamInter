@@ -19,6 +19,7 @@ export const managerSettings = {
     data_name: 'Hilti',
     short_data_name: 'hilti',
     loaded: true,
+    use_ucq: false,
 };
 
 export const beeswarmResult = {
@@ -32,8 +33,10 @@ export const beeswarmResult = {
 
 export const columnTypesHilti = { temp: ['input'], pressure: ['input'], strength: ['output'] };
 
-// A random sample of raw input rows, as served by GET /datasets/{set}/data/sample - used by both
-// the parallel-coordinates selector (Interpolator) and the scatterplot matrix (Effects).
+// A random sample of raw input rows, as served by GET /datasets/{set}/data/sample - used by the
+// parallel-coordinates selector (Interpolator). The scatterplot matrix (Effects) instead pages
+// through the whole dataset via GET /datasets/{set}/data/page (see dataPageOf below), which the
+// effects tests serve from these same rows.
 export const dataSampleHilti = {
     indices: [0, 1, 2, 3],
     inputs: [[10, 30], [20, 40], [80, 60], [90, 70]],
@@ -128,6 +131,14 @@ export const dataSampleManyDims = {
     indices: [0, 1, 2, 3, 4],
     inputs: Array.from({ length: 5 }, (_, i) => manyDimsCols.map((_, j) => (i * 17 + j * 5) % 100)),
 };
+
+// GET /datasets/{set}/data/page response for a dataset small enough to fit in one page: the
+// scatterplot matrix requests `offset=0&limit=2000` and stops as soon as a page comes back
+// shorter than `limit`, so returning every row once (no outputs - the endpoint doesn't send any)
+// is exactly what the real backend would answer.
+export function dataPageOf(sample) {
+    return { indices: sample.indices, inputs: sample.inputs, outputs: [] };
+}
 
 // Builds a `fixtureFor(url, method)` function from a `{'METHOD /path': value}` map, so each test
 // file only wires up the endpoints it actually exercises instead of importing one giant router.

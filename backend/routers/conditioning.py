@@ -1,7 +1,13 @@
 from fastapi import APIRouter, HTTPException
 
 from backend.datamans import sets_manager
-from backend.models import ConditionRequest, ConditionResult, ConditionerStatus
+from backend.models import (
+    AttributionRequest,
+    ConditionRequest,
+    ConditionResult,
+    ConditionerStatus,
+    UncertaintyAttribution,
+)
 from ucq.conditioning import Condition
 
 conditioning_router = APIRouter(prefix="/conditioning")
@@ -47,3 +53,21 @@ def predict_conditioned(set_name: str, req: ConditionRequest) -> ConditionResult
     return ConditionResult(
         input_cols=manager.input_cols, output_cols=manager.output_cols, **res
     )
+
+
+@conditioning_router.post("/attribution")
+def attribute_uncertainty(set_name: str, req: AttributionRequest) -> UncertaintyAttribution:
+    """Explains the posterior std of `target` given the conditions: effect of removing each
+    condition, expected gain of pinning each free column, and each column's share of the
+    target's posterior variance (see ucq/conditioning.py `GPVAEConditioner.attribute`)."""
+    manager = _manager(set_name)
+    cond = manager.get_conditioner()
+    if cond is None:
+        raise HTTPException(400, "Dataset has no GP-VAE conditioner (use_ucq + gpvae).")
+    try:
+        res = cond.attribute(
+            [Condition(c.column, c.value, c.width) for c in req.conditions], req.target
+        )
+    except KeyError as e:
+        raise HTTPException(400, str(e))
+    return UncertaintyAttribution(**res)
