@@ -33,6 +33,7 @@ declare module 'vue' {
     SingleAdj: typeof import('./src/components/adjuster/SingleAdj.vue')['default']
     SpyderChart: typeof import('./src/components/spyder/SpyderChart.vue')['default']
     SpyderChart_Base: typeof import('./src/components/spyder/SpyderChart_Base.vue')['default']
+    UncertaintyAttribution: typeof import('./src/components/conditioning/UncertaintyAttribution.vue')['default']
     UncertaintyDetail: typeof import('./src/components/conditioning/UncertaintyDetail.vue')['default']
   }
 }

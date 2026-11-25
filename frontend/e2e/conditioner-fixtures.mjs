@@ -163,12 +163,49 @@ export function makeConditionResult(conditions = []) {
     };
 }
 
-// Router for the conditioner endpoints. Returns `{ fixtureFor, predictBodies }`;
-// every POSTed /conditioning/predict body is parsed and pushed onto `predictBodies`.
+// Expected sigma(target) reduction (fraction of the current sigma) when pinning a free column next;
+// b is the best "pin next" candidate for every target except b itself (then: y2).
+export const PIN_GAIN = { a: 0.06, b: 0.3, c: 0.12, y1: 0.08, y2: 0.18 };
+
+// Builds a plausible UncertaintyAttribution for the POSTed {conditions, target}, consistent with
+// makeConditionResult: base sigma = the posterior std of the target there, dropping condition k
+// gives the std with one condition fewer (so every condition reduces sigma by 1/SHRINK - 1 =
+// 66.7 % of the current sigma), pin_gain = PIN_GAIN * base, explained_share = min(1, 2 * PIN_GAIN).
+export function makeAttribution(conditions = [], target = 'y2') {
+    const res = makeConditionResult(conditions);
+    const j = COLS.indexOf(target);
+    const base = res.std[j];
+    const conditioned = conditions.map((c) => c.column);
+    const n = conditions.length;
+    const kind = COLS.map((col) => (col === target ? 'target' : conditioned.includes(col) ? 'conditioned' : 'free'));
+    const targetCond = conditioned.includes(target);
+    const removeStd = COLS.map((_, k) => (kind[k] === 'conditioned'
+        ? (targetCond ? base * 1.05 : DATA_STD[j] * BASE_REL[target] * SHRINK ** (n - 1))
+        : null));
+    const pinGain = COLS.map((col, k) => (kind[k] === 'free' ? base * PIN_GAIN[col] : null));
+    return {
+        target,
+        columns: COLS,
+        conditioned,
+        kind,
+        base_std: base,
+        remove_std: removeStd,
+        condition_effect: removeStd.map((r) => (r == null ? null : r - base)),
+        add_std: pinGain.map((g) => (g == null ? null : base - g)),
+        pin_gain: pinGain,
+        explained_share: COLS.map((col, k) => (k === j ? 1 : kind[k] === 'free' ? Math.min(1, 2 * PIN_GAIN[col]) : 0)),
+    };
+}
+
+// Router for the conditioner endpoints. Returns `{ fixtureFor, predictBodies, attributionBodies }`;
+// every POSTed /conditioning/predict (/attribution) body is parsed and pushed onto
+// `predictBodies` (`attributionBodies`). `attributionDelay(body)` may return a delay in ms for an
+// attribution response (to test that stale responses are dropped).
 // `fixtureFor(url, method, req)` matches helpers.mjs's interception callback (the third
 // argument is the puppeteer request, needed for the POST body).
-export function makeConditionerRouter({ status = statusAvailable, datasets } = {}) {
+export function makeConditionerRouter({ status = statusAvailable, datasets, attributionDelay } = {}) {
     const predictBodies = [];
+    const attributionBodies = [];
     const base = `/datasets/${CONDITIONER_SET}`;
     const routes = {
         'GET /datasets/': datasets ?? { [CONDITIONER_SET]: conditionerSettings, plain: plainSettings },
@@ -178,17 +215,26 @@ export function makeConditionerRouter({ status = statusAvailable, datasets } = {
     };
     const fixtureFor = (url, method, req) => {
         const path = new URL(url).pathname;
-        if (method === 'POST' && path === `${base}/conditioning/predict`) {
-            let body = {};
+        const parse = () => {
             try {
-                body = JSON.parse(req?.postData() ?? '{}');
+                return JSON.parse(req?.postData() ?? '{}');
             } catch {
-                // keep {}
+                return {};
             }
+        };
+        if (method === 'POST' && path === `${base}/conditioning/predict`) {
+            const body = parse();
             predictBodies.push(body);
             return makeConditionResult(body.conditions ?? []);
         }
+        if (method === 'POST' && path === `${base}/conditioning/attribution`) {
+            const body = parse();
+            attributionBodies.push(body);
+            const result = makeAttribution(body.conditions ?? [], body.target);
+            const delay = attributionDelay?.(body) ?? 0;
+            return delay > 0 ? new Promise((r) => setTimeout(() => r(result), delay)) : result;
+        }
         return routes[`${method} ${path}`];
     };
-    return { fixtureFor, predictBodies };
+    return { fixtureFor, predictBodies, attributionBodies };
 }

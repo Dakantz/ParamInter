@@ -61,7 +61,7 @@ export function makeApp(port) {
 
     async function withMockedApi(page, fixtureFor) {
         await page.setRequestInterception(true);
-        page.on('request', (req) => {
+        page.on('request', async (req) => {
             if (!req.url().startsWith(API_BASE)) return req.continue();
             if (req.method() === 'OPTIONS') {
                 // The app (127.0.0.1:port) and the mocked API (127.0.0.1:8091) are different
@@ -83,7 +83,9 @@ export function makeApp(port) {
             // The request itself is passed as a third argument so routers that need the POST
             // body (e.g. conditioner-fixtures.mjs) can read it via req.postData(); routers that
             // only take (url, method) simply ignore it.
-            const fixture = fixtureFor(req.url(), req.method(), req);
+            // A router may also return a Promise (e.g. to delay one response, see the stale-response
+            // test in conditioner.test.mjs).
+            const fixture = await fixtureFor(req.url(), req.method(), req);
             if (fixture === undefined) return req.continue();
             req.respond({
                 status: 200,

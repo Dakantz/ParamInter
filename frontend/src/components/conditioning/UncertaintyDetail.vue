@@ -18,16 +18,19 @@
                 <span class="sw" style="background: #d1495b"></span> condition
             </p>
         </div>
-        <div class="ud-panel">
+        <div class="ud-panel ud-bars">
             <h3>Uncertainty per parameter</h3>
             <p class="ud-sub">posterior σ relative to the data σ (hover a bar or an axis)</p>
             <svg ref="bars"></svg>
         </div>
-        <div class="ud-panel">
+        <div class="ud-panel ud-corr">
             <h3>Posterior correlation with {{ column ?? '-' }}</h3>
             <p class="ud-sub">how the remaining uncertainty of the other parameters co-varies</p>
             <svg ref="corr"></svg>
         </div>
+        <UncertaintyAttribution :attribution="attribution" :column="column" :columns="columns"
+            :output_cols="output_cols" :loading="attribution_loading" :highlight="highlight"
+            @hover="c => emit('highlight', c)" />
     </div>
 </template>
 
@@ -35,7 +38,9 @@
 import { computed, onMounted, useTemplateRef, watch } from 'vue';
 import * as d3 from 'd3';
 import type { ConditionResult } from '../../api/Api';
-import { CondValue, relUncertainty, PRED_COLOR, INPUT_COLOR, OUTPUT_COLOR } from './types';
+import type { UncertaintyAttribution as Attribution } from '../../api/Api';
+import { CondValue, relUncertainty, PRED_COLOR, INPUT_COLOR, OUTPUT_COLOR, COND_COLOR } from './types';
+import UncertaintyAttribution from './UncertaintyAttribution.vue';
 
 const props = defineProps<{
     result: ConditionResult | null;
@@ -44,8 +49,15 @@ const props = defineProps<{
     output_cols: string[];
     data_rows: number[][];
     conditions: Record<string, CondValue>;
+    attribution: Attribution | null;
+    attribution_loading: boolean;
+    /** linked highlight from the attribution panel (does not change the detail column) */
+    highlight: string | null;
 }>();
-const emit = defineEmits<{ (e: 'hover', column: string | null): void }>();
+const emit = defineEmits<{
+    (e: 'hover', column: string | null): void;
+    (e: 'highlight', column: string | null): void;
+}>();
 
 const density = useTemplateRef('density');
 const bars = useTemplateRef('bars');
@@ -64,7 +76,7 @@ const stats = computed(() => {
 
 function drawDensity() {
     if (!density.value) return;
-    const W = 460, H = 200, M = { t: 10, r: 14, b: 26, l: 14 };
+    const W = 320, H = 200, M = { t: 10, r: 14, b: 26, l: 14 };
     const svg = d3.select(density.value).attr('width', W).attr('height', H);
     svg.selectAll('*').remove();
     const r = props.result;
@@ -120,7 +132,7 @@ function drawDensity() {
 function drawBars() {
     if (!bars.value) return;
     const r = props.result;
-    const rowH = 18, W = 360, L = 70;
+    const rowH = 18, W = 260, L = 54;
     const H = props.columns.length * rowH + 24;
     const svg = d3.select(bars.value).attr('width', W).attr('height', H);
     svg.selectAll('*').remove();
@@ -131,17 +143,18 @@ function drawBars() {
         const rel = relUncertainty(r, i);
         const cond = !!props.conditions[col];
         const hovered = col === props.column;
+        const hl = col === props.highlight;
         const g = svg.append('g').attr('transform', `translate(0,${k * rowH + 4})`)
             .style('cursor', 'pointer')
             .on('mouseenter', () => emit('hover', col))
             .on('mouseleave', () => emit('hover', null));
-        g.append('rect').attr('x', 0).attr('width', W).attr('height', rowH).attr('fill', hovered ? '#eef3fa' : 'transparent');
+        g.append('rect').attr('x', 0).attr('width', W).attr('height', rowH).attr('fill', hovered || hl ? '#eef3fa' : 'transparent');
         g.append('text').attr('x', L - 6).attr('y', rowH / 2 + 4).attr('text-anchor', 'end').attr('font-size', 10)
-            .attr('font-weight', hovered ? 700 : 400)
+            .attr('font-weight', hovered || hl ? 700 : 400)
             .attr('fill', props.output_cols.includes(col) ? OUTPUT_COLOR : INPUT_COLOR).text(col);
         g.append('rect').attr('x', xs(0)).attr('y', 3).attr('height', rowH - 6)
             .attr('width', Math.max(1, xs(rel) - xs(0)))
-            .attr('fill', cond ? '#d1495b' : PRED_COLOR)
+            .attr('fill', cond ? COND_COLOR : PRED_COLOR)
             .attr('opacity', 0.35 + 0.65 * rel);
         g.append('text').attr('x', xs(rel) + 4).attr('y', rowH / 2 + 4).attr('font-size', 9).attr('fill', '#555')
             .text(cond ? 'cond.' : `${Math.round(rel * 100)}%`);
@@ -154,7 +167,7 @@ function drawBars() {
 function drawCorr() {
     if (!corr.value) return;
     const r = props.result;
-    const rowH = 18, W = 320, L = 70;
+    const rowH = 18, W = 230, L = 54;
     const H = props.columns.length * rowH + 24;
     const svg = d3.select(corr.value).attr('width', W).attr('height', H);
     svg.selectAll('*').remove();
@@ -183,7 +196,7 @@ function drawAll() {
     drawCorr();
 }
 // flush: 'post' - the svgs live under v-if="result", so draw after the DOM update
-watch(() => [props.result, props.column, props.conditions, props.data_rows], drawAll, { deep: true, flush: 'post' });
+watch(() => [props.result, props.column, props.conditions, props.data_rows, props.highlight], drawAll, { deep: true, flush: 'post' });
 onMounted(drawAll);
 </script>
 
@@ -191,9 +204,21 @@ onMounted(drawAll);
 .ud-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 18px;
-    padding: 6px 20px;
+    gap: 14px;
+    padding: 6px 12px;
     border-top: 1px solid #ddd;
+}
+
+.ud-density {
+    width: 320px;
+}
+
+.ud-bars {
+    width: 260px;
+}
+
+.ud-corr {
+    width: 230px;
 }
 
 .ud-panel h3 {

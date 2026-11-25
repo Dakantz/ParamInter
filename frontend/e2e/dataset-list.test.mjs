@@ -14,7 +14,7 @@ const fixtureFor = makeFixtureRouter({
 before(app.start);
 after(app.stop);
 
-test('dataset list shows a loaded dataset with working Explore/Effects links', (t) => app.withPage(fixtureFor, async (page) => {
+test('dataset list shows a loaded dataset with working Interpolator/Effects links', (t) => app.withPage(fixtureFor, async (page) => {
     await page.goto(`${app.BASE}/`, { waitUntil: 'networkidle0' });
     await page.waitForSelector('.dataset-overview');
 
@@ -23,11 +23,15 @@ test('dataset list shows a loaded dataset with working Explore/Effects links', (
         assert.equal(heading, 'Hilti');
     });
 
-    await t.test('shows Explore and Effects links, both enabled', async () => {
+    // Overview.vue labels the links 'Interpolator' and 'Effects', and only adds a third
+    // 'Conditioner' link when the dataset has `use_ucq` set - the hilti fixture has it false.
+    await t.test('shows Interpolator and Effects links, both enabled, and no Conditioner link without use_ucq', async () => {
         const links = await page.$$eval('.dataset-overview a.link_btn', (as) =>
             as.map((a) => ({ text: a.textContent.trim(), inactive: a.classList.contains('inactive') })),
         );
-        assert.deepEqual(links.map((l) => l.text), ['Explore', 'Effects']);
+        assert.equal(managerSettings.use_ucq, false, 'fixture precondition: hilti has use_ucq false');
+        assert.deepEqual(links.map((l) => l.text), ['Interpolator', 'Effects']);
+        assert.ok(!links.some((l) => l.text === 'Conditioner'), 'Conditioner link should be absent when use_ucq is false');
         assert.ok(links.every((l) => !l.inactive), 'links should not be disabled for a loaded dataset');
     });
 }));

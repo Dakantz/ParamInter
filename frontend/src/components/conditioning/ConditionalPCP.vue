@@ -7,8 +7,8 @@
 <script lang="ts" setup>
 import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue';
 import * as d3 from 'd3';
-import type { ConditionResult } from '../../api/Api';
-import { CondValue, confidenceOf, PRED_COLOR, OUTPUT_COLOR, INPUT_COLOR } from './types';
+import type { ConditionResult, UncertaintyAttribution } from '../../api/Api';
+import { CondValue, confidenceOf, PRED_COLOR, OUTPUT_COLOR, INPUT_COLOR, COND_COLOR, attributionCap } from './types';
 
 /**
  * Parallel coordinates over every column (inputs, then outputs) of a dataset.
@@ -18,6 +18,8 @@ import { CondValue, confidenceOf, PRED_COLOR, OUTPUT_COLOR, INPUT_COLOR } from '
  *  - the GP-VAE prediction is drawn as mixture samples + mean line + a mean +- std band between
  *    each pair of neighbouring axes; the opacity of everything between two axes encodes how
  *    certain the prediction is there (1 - posterior std / data std, averaged over both axes).
+ *  - with an attribution for the detail column, a small bar under each axis label shows how much
+ *    that column's condition reduces (red) / pinning it would reduce (blue) σ of the detail column.
  */
 const props = defineProps<{
     columns: string[];
@@ -27,6 +29,10 @@ const props = defineProps<{
     result: ConditionResult | null;
     conditions: Record<string, CondValue>;
     hover_column: string | null;
+    /** linked highlight (e.g. a hovered attribution row) */
+    highlight?: string | null;
+    /** attribution of the detail column: drawn as a small bar under each axis label */
+    attribution?: UncertaintyAttribution | null;
 }>();
 const emit = defineEmits<{
     (e: 'update-condition', column: string, value: CondValue | null): void;
@@ -75,6 +81,7 @@ function drawStatic() {
     svg.append('g').attr('class', 'data-layer');
     svg.append('g').attr('class', 'pred-layer');
     const axes = svg.append('g').attr('class', 'axes-layer');
+    svg.append('g').attr('class', 'attr-layer');
     svg.append('g').attr('class', 'handle-layer');
 
     const step = x.step();
@@ -134,6 +141,50 @@ function drawStatic() {
     syncBrushes();
     drawData();
     drawPrediction();
+    drawAttribution();
+}
+
+function drawHighlight() {
+    if (!plot.value) return;
+    // linked highlight: thicker, darker axis line (a filled background would cover the lines)
+    for (const col of props.columns) {
+        const hl = !!props.highlight && col === props.highlight;
+        d3.select(plot.value).select(`g.axis-${cssSafe(col)} .domain`)
+            .attr('stroke', hl ? '#111' : '#777').attr('stroke-width', hl ? 3 : 1);
+        d3.select(plot.value).select(`g.axis-${cssSafe(col)} text.axis-label`)
+            .attr('text-decoration', hl ? 'underline' : null);
+    }
+}
+
+function drawAttribution() {
+    if (!plot.value) return;
+    const layer = d3.select(plot.value).select('g.attr-layer');
+    layer.selectAll('*').remove();
+    drawHighlight();
+    const a = props.attribution;
+    if (!a || a.target !== props.hover_column) return;
+    const base = a.base_std || 1e-12;
+    const rel = a.columns.map((_, k) => {
+        const v = a.kind[k] === 'conditioned' ? a.condition_effect[k] : a.kind[k] === 'free' ? a.pin_gain[k] : null;
+        return v == null ? null : v / base;
+    });
+    const vmax = attributionCap(rel, a.kind);
+    const maxW = Math.min(44, x.step() * 0.45);
+    a.columns.forEach((col, k) => {
+        const cx = x(col);
+        const v = rel[k];
+        if (cx === undefined || v == null || v <= 0.002) return;
+        const w = Math.max(1.5, maxW * Math.min(1, v / vmax));
+        layer.append('rect')
+            .attr('class', `attr-ind attr-ind-${cssSafe(col)}`)
+            .attr('x', cx - w / 2).attr('width', w)
+            .attr('y', 33).attr('height', 3).attr('rx', 1)
+            .attr('fill', a.kind[k] === 'conditioned' ? COND_COLOR : PRED_COLOR)
+            .attr('opacity', 0.8)
+            .append('title').text(a.kind[k] === 'conditioned'
+                ? `condition on ${col} reduces σ(${a.target}) by ${d3.format('.1~%')(v)}`
+                : `pinning ${col} would reduce σ(${a.target}) by ≈ ${d3.format('.1~%')(v)}`);
+    });
 }
 
 function syncBrushes() {
@@ -270,6 +321,7 @@ watch(() => [props.columns, props.domains], drawStatic, { deep: true });
 watch(() => props.data_rows, drawData);
 watch(() => props.conditions, () => { syncBrushes(); drawData(); drawPrediction(); }, { deep: true });
 watch(() => [props.result, props.hover_column], drawPrediction);
+watch(() => [props.attribution, props.hover_column, props.highlight], drawAttribution);
 
 let observer: ResizeObserver | null = null;
 let last_width = 0;

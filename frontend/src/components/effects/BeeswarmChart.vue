@@ -114,17 +114,24 @@ function redraw() {
         const emitRowEnter = () => emit('hover-row', row.features && row.features.length ? row.features : [row.key]);
         const emitRowLeave = () => emit('hover-row', null);
 
+        // Row-level hover lives on the row's <g>, not on the hit-rect below: the label/mean|effect|
+        // texts and the dots are siblings of that rect, so entering any of them fired the rect's
+        // mouseleave and cleared the row hover (and with it the scatterplot matrix highlight /
+        // popover) while the pointer was still on the row. They're all descendants of row_g, so
+        // its mouseleave only fires once the pointer actually leaves the row.
+        row_g
+            .on('mouseenter', emitRowEnter)
+            .on('mouseleave', emitRowLeave);
+
         // Full-row invisible hit target (spans the label + plot area) so hovering anywhere on
-        // the row - not just directly over a dot - reports which feature(s) it represents.
+        // the row - not just directly over a dot or label - counts as hovering the row.
         row_g.append('rect')
             .attr('x', -label_width)
             .attr('y', row_idx * row_height)
             .attr('width', label_width + plot_width)
             .attr('height', row_height)
             .attr('fill', 'transparent')
-            .style('pointer-events', 'all')
-            .on('mouseenter', emitRowEnter)
-            .on('mouseleave', emitRowLeave);
+            .style('pointer-events', 'all');
 
         const label_sel = row_g.append('text')
             .attr('x', -label_width + 4)
@@ -184,17 +191,12 @@ function redraw() {
                     showTooltip(event, row.label, row.values[i], color_values[i] ?? null, row.indices?.[i] ?? null);
                 })
                 .on('mouseenter', (event: MouseEvent, i: number) => {
-                    // Dots are siblings of the row's hit-rect above, not descendants of it, so
-                    // the browser fires the rect's mouseleave the instant the pointer lands on a
-                    // dot (mouseleave fires whenever the new hover target isn't a descendant of
-                    // the element being left) - re-assert the row-level hover here so hovering a
-                    // point doesn't also clear the row highlight/popover it's meant to appear in.
-                    emitRowEnter();
+                    // Only the point-level hover here - the row-level hover is handled by row_g,
+                    // which this dot is a descendant of (see above).
                     emit('hover-point', row.indices?.[i] ?? null);
                 })
                 .on('mouseleave', () => {
                     state.tooltip = null;
-                    emitRowLeave();
                     emit('hover-point', null);
                 });
             return;
@@ -228,12 +230,10 @@ function redraw() {
             })
             .on('mouseenter', (event: MouseEvent, d) => {
                 // see the comment on the equivalent handler in the 'path' branch above.
-                emitRowEnter();
                 emit('hover-point', row.indices?.[d.i] ?? null);
             })
             .on('mouseleave', () => {
                 state.tooltip = null;
-                emitRowLeave();
                 emit('hover-point', null);
             });
     });

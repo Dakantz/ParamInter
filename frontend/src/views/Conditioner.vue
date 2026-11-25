@@ -40,10 +40,12 @@
             <div class="cond-plots">
                 <ConditionalPCP :columns="state.columns" :output_cols="output_cols" :domains="state.domains"
                     :data_rows="state.data_rows" :result="state.result" :conditions="state.conditions"
-                    :hover_column="detail_column" @update-condition="onUpdateCondition" @hover="onHover" />
+                    :hover_column="detail_column" :highlight="state.highlight" :attribution="shown_attribution"
+                    @update-condition="onUpdateCondition" @hover="onHover" />
                 <UncertaintyDetail :result="state.result" :column="detail_column" :columns="state.columns"
                     :output_cols="output_cols" :data_rows="state.data_rows" :conditions="state.conditions"
-                    @hover="onHover" />
+                    :attribution="shown_attribution" :attribution_loading="attribution_loading"
+                    :highlight="state.highlight" @hover="onHover" @highlight="c => state.highlight = c" />
             </div>
         </div>
     </div>
@@ -53,7 +55,7 @@
 import { computed, reactive, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import * as d3 from 'd3';
-import { Api, ConditionResult, ManagerSettings } from '../api/Api';
+import { Api, ConditionResult, ManagerSettings, UncertaintyAttribution } from '../api/Api';
 import { API_BASE_URL, SITE_BASE_URL } from '../config';
 import Loading from '../components/ui/Loading.vue';
 import ConditionalPCP from '../components/conditioning/ConditionalPCP.vue';
@@ -77,6 +79,10 @@ const state = reactive({
     hover: null as string | null,
     last_hover: null as string | null,
     bank_size: 0,
+    /** linked highlight from the attribution panel; unlike `hover` it keeps the detail column */
+    highlight: null as string | null,
+    attribution: null as UncertaintyAttribution | null,
+    attribution_key: '' as string,
 });
 
 const output_cols = computed(() => state.settings?.data_description.output_cols ?? []);
@@ -120,6 +126,9 @@ async function init(set_name: string) {
     state.error = '';
     state.conditions = {};
     state.result = null;
+    state.attribution = null;
+    state.attribution_key = '';
+    attribution_cache.clear();
     try {
         state.settings = (await api.datasets.getSetDatasetsSetNameGet(set_name, { load: false })).data;
         const desc = state.settings.data_description;
@@ -142,6 +151,7 @@ async function init(set_name: string) {
         });
         state.ready = true;
         await predict();
+        scheduleAttribution();
     } catch (error) {
         console.error('Error initialising conditioner:', error);
         state.error = `Error initialising conditioner: ${error}`;
@@ -170,6 +180,55 @@ async function predict() {
         if (id === request_id) state.loading_pred = false;
     }
 }
+
+// --- uncertainty attribution of the detail column (debounced, cached, stale-safe)
+function conditionSpecs() {
+    return Object.entries(state.conditions)
+        .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+        .map(([column, c]) => ({ column, value: c.value, width: c.width }));
+}
+const attribution_key = computed(() => detail_column.value
+    ? JSON.stringify({ conditions: conditionSpecs(), target: detail_column.value }) : '');
+const attribution_cache = new Map<string, UncertaintyAttribution>();
+const ATTRIBUTION_CACHE_SIZE = 300;
+let attribution_request = 0;
+let attribution_pending: ReturnType<typeof setTimeout> | null = null;
+// the last received attribution is kept (dimmed) until the new one arrives
+const shown_attribution = computed(() => state.attribution);
+const attribution_loading = computed(() => !!attribution_key.value && state.attribution_key !== attribution_key.value);
+
+function scheduleAttribution() {
+    if (attribution_pending) clearTimeout(attribution_pending);
+    const key = attribution_key.value;
+    if (!key || !state.ready) return;
+    const cached = attribution_cache.get(key);
+    if (cached) {
+        attribution_request++; // invalidate any in-flight request
+        state.attribution = cached;
+        state.attribution_key = key;
+        return;
+    }
+    attribution_pending = setTimeout(() => fetchAttribution(key), 100);
+}
+async function fetchAttribution(key: string) {
+    const id = ++attribution_request;
+    const body = JSON.parse(key);
+    try {
+        const res = await api.datasets.attributeUncertaintyDatasetsSetNameConditioningAttributionPost(state.set_name, body);
+        if (attribution_cache.size >= ATTRIBUTION_CACHE_SIZE) {
+            attribution_cache.delete(attribution_cache.keys().next().value as string);
+        }
+        attribution_cache.set(key, res.data);
+        // drop stale responses: only the latest request for the current key may update the view
+        if (id === attribution_request && key === attribution_key.value) {
+            state.attribution = res.data;
+            state.attribution_key = key;
+        }
+    } catch (error) {
+        console.error('Error fetching uncertainty attribution:', error);
+    }
+}
+watch(attribution_key, scheduleAttribution);
 
 function onUpdateCondition(column: string, value: CondValue | null) {
     if (value === null) {
